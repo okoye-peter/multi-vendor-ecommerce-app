@@ -1,0 +1,28 @@
+backend/node_modules
+backend/.env
+
+react js/logs
+react js/*.log
+react js/npm-debug.log*
+react js/yarn-debug.log*
+react js/yarn-error.log*
+react js/pnpm-debug.log*
+react js/lerna-debug.log*
+
+react js/node_modules
+react js/dist
+react js/dist-ssr
+react js/*.local
+
+# Editor directories and files
+react js/.vscode/*
+react js/!.vscode/extensions.json
+react js/.idea
+react js/.DS_Store
+react js/*.suo
+react js/*.ntvs*
+react js/*.njsproj
+react js/*.sln
+react js/*.sw?
+react js/.env
+.DS_Store
