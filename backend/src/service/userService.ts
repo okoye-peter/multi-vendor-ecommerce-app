@@ -1,0 +1,101 @@
+// services/userService.js
+import { PrismaClient } from "@prisma/client";
+import { userSchema } from "../controllers/auth.controller.ts";
+import type z from "zod";
+import bcrypt from "bcryptjs";
+const prisma = new PrismaClient();
+
+type UserData = z.infer<typeof userSchema>;
+
+export default class UserService {
+    async getAllUsers() {
+        return prisma.user.findMany();
+    }
+
+    async getUserById(id: number) {
+        const user = await prisma.user.findUnique({ where: { id: Number(id) } });
+        if (!user) throw new Error("User not found");
+        return user;
+    }
+
+    async createUser(data: UserData) {
+
+        try {
+            // Check for existing user by email or phone
+            const existingUser = await prisma.user.findFirst({
+                where: {
+                    OR: [{ email: data.email }, { phone: data.phone }],
+                },
+            });
+
+            if (existingUser) {
+                if (existingUser.email === data.email) {
+                    throw { status: 400, message: "User with this email already exists" };
+                }
+                if (existingUser.phone === data.phone) {
+                    throw { status: 400, message: "User with this phone number already exists" };
+                }
+            }
+
+            // Hash password before saving
+            const hashedPassword = await bcrypt.hash(data.password, 10);
+            data.password = hashedPassword;
+
+            // generate email verification code
+            const emailVerificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+            const emailVerificationCodeExpiresAt = new Date(Date.now() + 1000 * 60 * 15);
+            const { repeat_password, ...cleanData } = data; // Exclude repeat_password from being saved
+
+            // generate phone verification code
+            const phoneVerificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+            const phoneVerificationCodeExpiresAt = new Date(Date.now() + 1000 * 60 * 15);
+
+            const user = await prisma.user.create({
+                data: { ...cleanData, emailVerificationCode, emailVerificationCodeExpiresAt, phoneVerificationCode, phoneVerificationCodeExpiresAt },
+                select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    phone: true,
+                    type: true,
+                    pictureUrl: true,
+                    createdAt: true,
+                },
+            });
+            return { user, emailVerificationCode }
+
+        } catch (err) {
+            if (err instanceof Error) {
+                throw { status: 500, message: err.message };
+            } else if (typeof err === "object" && err !== null && "status" in (err as Record<string, any>)) {
+                throw err;
+            } else {
+                // ✅ Fallback
+                throw { status: 500, message: "An unexpected error occurred" };
+            }
+        }
+    }
+
+    async deleteUser(id) {
+        return prisma.user.delete({ where: { id: Number(id) } });
+    }
+
+    async verifyEmail(userId: number, code: string) {
+        const user = await prisma.user.findUnique({ where: { id: userId } });
+        if (!user) throw { status: 404, message: "User not found" };
+        if (user.emailVerifiedAt) throw { status: 400, message: "Email already verified" };
+        if (user.emailVerificationCode !== code) throw { status: 400, message: "Invalid verification code" };
+        if (user.emailVerificationCodeExpiresAt && user.emailVerificationCodeExpiresAt < new Date()) {
+            throw { status: 400, message: "Verification code has expired" };
+        }
+
+        await prisma.user.update({
+            where: { id: userId },
+            data: {
+                emailVerifiedAt: new Date(),
+                emailVerificationCodeExpiresAt: null,
+                emailVerificationCode: null,
+            },
+        });
+    }
+}

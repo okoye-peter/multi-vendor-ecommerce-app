@@ -1,0 +1,11 @@
+model State {
+    id        Int     @id @default(autoincrement())
+    name      String
+    countryId Int     @map("country_id")
+    country   Country @relation(fields: [countryId], references: [id], onDelete: Cascade)
+
+    lga LGA[]
+    vendors Vendor[]
+
+    @@map("states")
+}

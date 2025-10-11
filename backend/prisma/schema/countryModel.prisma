@@ -1,0 +1,11 @@
+model Country {
+    id        Int      @id @default(autoincrement())
+    name      String
+    createdAt DateTime @default(now()) @map("created_at")
+    updatedAt DateTime @updatedAt @map("updated_at")
+
+    // 👇 Relation back to Vendor
+    states State[]
+
+    @@map("countries")
+}

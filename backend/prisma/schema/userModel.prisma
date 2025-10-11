@@ -1,0 +1,28 @@
+model User {
+    id                             Int       @id @default(autoincrement())
+    name                           String
+    email                          String    @unique
+    emailVerificationCode          String?   @map("email_verification_code")
+    emailVerificationCodeExpiresAt DateTime? @map("email_verification_code_expires_at")
+    emailVerifiedAt                DateTime? @map("email_verified_at")
+    phone                          String    @unique
+    phoneVerificationCode          String?   @map("phone_verification_code")
+    phoneVerificationCodeExpiresAt DateTime? @map("phone_verification_code_expires_at")
+    phoneVerifiedAt                DateTime? @map("phone_verified_at")
+    type                           Role      @default(CUSTOMER)
+    pictureUrl                     String?   @map("picture_url")
+    password                       String
+    createdAt                      DateTime  @default(now()) @map("created_at")
+    updatedAt                      DateTime  @updatedAt @map("updated_at")
+
+    vendor             Vendor?
+    passwordResetTokens PasswordResetToken[]
+
+    @@map("users")
+}
+
+enum Role {
+    CUSTOMER
+    ADMIN
+    VENDOR
+}

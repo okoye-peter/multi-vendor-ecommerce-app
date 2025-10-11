@@ -1,0 +1,8 @@
+model LGA {
+    id      Int    @id @default(autoincrement())
+    name    String
+    stateId Int    @map("state_id")
+    states  State  @relation(fields: [stateId], references: [id], onDelete: Cascade)
+
+    @@map("l_g_a_s")
+}
