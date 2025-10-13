@@ -301,3 +301,39 @@ export const verifyEmail: RequestHandler = async (req, res, next) => {
         }
     }
 };
+
+export const getAuthenticatedUser: RequestHandler = async (req, res, next) => {
+    try {
+        if(req.user?.id){
+            const user = await prisma.user.findUnique({
+                where: {
+                    id: req.user.id
+                }, 
+                select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    emailVerifiedAt: true,
+                    phone: true,
+                    phoneVerifiedAt: true,
+                    type: true,
+                    pictureUrl: true,
+                    createdAt: true
+                }
+            })
+            
+            if(user) 
+                return res.status(200).json({message: 'user retrieved successfully', user})
+        }
+
+        return res.status(401).json({ message: "User unauthorized" });
+    } catch (error) {
+        if (error instanceof Error) {
+            res.status(500).json({ message: error.message });
+        } else if (typeof error === "object" && error !== null && "status" in (error as Record<string, any>)) {
+            throw error;
+        } else {
+            res.status(500).json({ message: "An unexpected error occurred" });
+        }
+    }
+}
