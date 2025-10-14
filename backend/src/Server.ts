@@ -22,8 +22,11 @@ const corsConfig: CorsOptions = {
     origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
         const allowedOrigins = ["https://yourapp.com", "https://www.yourapp.com"];
 
-        if (process.env.NODE_ENV === "development") {
-            allowedOrigins.push("*");
+        if (
+            process.env.NODE_ENV === "development" &&
+            ["http://localhost:5173", "http://127.0.0.1:5173"].includes(origin)
+        ) {
+            return callback(null, true);
         }
 
         if (!origin || allowedOrigins.includes(origin)) {
@@ -35,6 +38,8 @@ const corsConfig: CorsOptions = {
     credentials: true,
     optionsSuccessStatus: 200,
 };
+
+
 
 // server.ts
 app.use(helmet());

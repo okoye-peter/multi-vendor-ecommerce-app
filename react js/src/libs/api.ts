@@ -1,6 +1,6 @@
 import type { loginData, PasswordResetData, registrationData } from "../types/Index.ts";
-import { axiosInstance } from "./axios.ts";
-import { AxiosError } from "axios";
+import axiosInstance from "./axios.ts";
+// import { AxiosError } from "axios";
 
 
 export const login = async (loginData: loginData) => {
@@ -29,11 +29,11 @@ export const resetPassword = async (passwordResetData: PasswordResetData) => {
 }
 
 export const verifyEmail = async (verificationCode: string) => {
-    const res = axiosInstance.post('/auth/verify-email', {verificationCode})
+    const res = await axiosInstance.post('/auth/verify-email', {verificationCode})
     return res.data
 }
 
 export const getAuthUser = async () => {
-    const res = axiosInstance.get('/auth/user')
+    const res = await axiosInstance.get('/auth/user')
     return res.data;
 }

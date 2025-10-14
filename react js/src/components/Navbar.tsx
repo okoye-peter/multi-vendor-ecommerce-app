@@ -1,8 +1,10 @@
 import React, { useState } from 'react'
 import { Link } from 'react-router';
+import type { RootState } from '../store/Index';
+import { useSelector } from 'react-redux';
 
 export const Navbar = () => {
-    const [isLoggedIn, setIsLoggedIn] = useState(false);
+    const user = useSelector((state:RootState) => state.auth.user)
     const [showSearch, setShowSearch] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
 
@@ -102,7 +104,7 @@ export const Navbar = () => {
                         )}
 
                         {/* Notification */}
-                        {isLoggedIn && (
+                        {user && (
                             <button className="btn btn-ghost btn-circle">
                                 <div className="indicator">
                                     <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -114,13 +116,13 @@ export const Navbar = () => {
                         )}
 
                         {/* Cart */}
-                        {isLoggedIn && (
+                        {user && (
                             <div className="dropdown dropdown-end">
                                 <div tabIndex={0} role="button" className="btn btn-ghost btn-circle">
                                     <div className="indicator">
                                         <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                                        </svg>
+                                        </svg> 
                                         <span className="badge badge-sm indicator-item">8</span>
                                     </div>
                                 </div>
@@ -137,26 +139,26 @@ export const Navbar = () => {
                         )}
 
                         {/* Profile */}
-                        {isLoggedIn && (
+                        {user && (
                             <div className="dropdown dropdown-end">
                                 <div tabIndex={0} role="button" className="btn btn-ghost btn-circle avatar">
                                     <div className="w-10 rounded-full">
                                         <img
                                             alt="User avatar"
-                                            src="https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp"
+                                            src={user?.pictureUrl ?? `https://eu.ui-avatars.com/api/?name=${user?.name.replace(' ', '+')}&background=random`}
                                         />
                                     </div>
                                 </div>
                                 <ul tabIndex={-1} className="p-2 mt-3 shadow menu menu-sm dropdown-content bg-base-100 rounded-box z-1 w-52">
                                     <li><a className="justify-between">Profile<span className="badge">New</span></a></li>
                                     <li><a>Settings</a></li>
-                                    <li><a onClick={() => setIsLoggedIn(false)}>Logout</a></li>
+                                    <li><a>Logout</a></li>
                                 </ul>
                             </div>
                         )}
 
                         {/* Get Started / Mobile Menu */}
-                        {!isLoggedIn && (
+                        {!user && (
                             <div className="flex gap-2">
                                 <Link to="/login" className="btn btn-ghost">Login</Link>
                                 <Link to ="/register" className="hidden text-white bg-black border-black rounded-full btn lg:flex">Register</Link>

@@ -1,0 +1,73 @@
+// authApi.ts
+import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import type { loginData, PasswordResetData, registrationData, User } from "../types/Index.ts";
+
+export const authApi = createApi({
+    reducerPath: 'authApi',
+    baseQuery: fetchBaseQuery({
+        baseUrl: import.meta.env.VITE_API_URL,
+        prepareHeaders: (headers) => {
+            // If you need to add auth headers, do it here
+            return headers;
+        },
+    }),
+    tagTypes: ['user'],
+    endpoints: (builder) => ({
+        login: builder.mutation<{ user: User, message: string, token: string }, loginData>({
+            query: (loginData) => ({
+                url: '/auth/login',
+                method: 'POST',
+                body: loginData,
+            }),
+        }),
+        register: builder.mutation<any, registrationData>({
+            query: (registrationData) => ({
+                url: '/auth/register',
+                method: 'POST',
+                body: registrationData,
+            }),
+        }),
+        logout: builder.mutation<any, void>({
+            query: () => ({
+                url: '/auth/logout',
+                method: 'POST',
+            }),
+        }),
+        sendPasswordResetAuthenticationCode: builder.mutation<any, { email: string }>({
+            query: ({ email }) => ({
+                url: '/auth/password/reset/code',
+                method: 'POST',
+                body: { email },
+            }),
+        }),
+        resetPassword: builder.mutation<any, PasswordResetData>({
+            query: (passwordResetData) => ({
+                url: '/auth/password/reset',
+                method: 'POST',
+                body: passwordResetData,
+            }),
+        }),
+        verifyEmail: builder.mutation<any, { verificationCode: string }>({
+            query: (verificationCode) => ({
+                url: '/auth/verify-email',
+                method: 'POST',
+                body: { verificationCode },
+            }),
+            invalidatesTags: ['user']
+        }),
+        getAuthenticatedUser: builder.query<{user: User, message: string}, void>({
+            query: () => '/auth/user',
+            providesTags: ['user']
+        }),
+    }),
+});
+
+export const {
+    useLoginMutation,
+    useRegisterMutation,
+    useLogoutMutation,
+    useSendPasswordResetAuthenticationCodeMutation,
+    useResetPasswordMutation,
+    useVerifyEmailMutation,
+    useGetAuthenticatedUserQuery,
+} = authApi;

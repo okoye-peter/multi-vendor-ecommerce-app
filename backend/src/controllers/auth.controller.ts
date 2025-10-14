@@ -102,7 +102,7 @@ export const register: RequestHandler = async (req, res, next) => {
         } else if (typeof error === "object" && error !== null && "status" in (error as Record<string, any>)) {
             throw error;
         } else {
-            res.status(500).json({ message: "An unexpected error occurred" });
+            res.status(500).json({ message: "Server Error" });
         }
     }
 };
@@ -131,14 +131,14 @@ export const login: RequestHandler = async (req, res, next) => {
 
         const token = generateAuthorizationTokenAndSetCookies(res, user.id);
 
-        res.status(200).json({ result: user, message: "User logged in successfully", token });
+        res.status(200).json({ user, message: "User logged in successfully", token });
     } catch (error) {
         if (error instanceof Error) {
             res.status(500).json({ message: error.message });
         } else if (typeof error === "object" && error !== null && "status" in (error as Record<string, any>)) {
             throw error;
         } else {
-            res.status(500).json({ message: "An unexpected error occurred" });
+            res.status(500).json({ message: "Server Error" });
         }
     }
 };
@@ -199,7 +199,7 @@ export const sendPasswordResetCode: RequestHandler = async (req, res, next) => {
         } else if (typeof error === "object" && error !== null && "status" in (error as Record<string, any>)) {
             throw error;
         } else {
-            res.status(500).json({ message: "An unexpected error occurred" });
+            res.status(500).json({ message: "Server Error" });
         }
     }
 };
@@ -261,10 +261,10 @@ export const resetPassword: RequestHandler = async (req, res, next) => {
         } else if (typeof error === "object" && error !== null && "status" in (error as Record<string, any>)) {
             throw error;
         } else {
-            res.status(500).json({ message: "An unexpected error occurred" });
+            res.status(500).json({ message: "Server Error" });
         }
     }
- };
+};
 
 export const verifyEmail: RequestHandler = async (req, res, next) => {
     const schema = z.object({
@@ -297,43 +297,58 @@ export const verifyEmail: RequestHandler = async (req, res, next) => {
         } else if (typeof error === "object" && error !== null && "status" in (error as Record<string, any>)) {
             throw error;
         } else {
-            res.status(500).json({ message: "An unexpected error occurred" });
+            res.status(500).json({ message: "Server Error" });
         }
     }
 };
 
 export const getAuthenticatedUser: RequestHandler = async (req, res, next) => {
     try {
-        if(req.user?.id){
-            const user = await prisma.user.findUnique({
-                where: {
-                    id: req.user.id
-                }, 
-                select: {
-                    id: true,
-                    name: true,
-                    email: true,
-                    emailVerifiedAt: true,
-                    phone: true,
-                    phoneVerifiedAt: true,
-                    type: true,
-                    pictureUrl: true,
-                    createdAt: true
-                }
-            })
-            
-            if(user) 
-                return res.status(200).json({message: 'user retrieved successfully', user})
+        const userId = req.user?.id;
+
+        if (!userId) {
+            throw { message: "User unauthorized", status: 401};
         }
 
-        return res.status(401).json({ message: "User unauthorized" });
-    } catch (error) {
-        if (error instanceof Error) {
-            res.status(500).json({ message: error.message });
-        } else if (typeof error === "object" && error !== null && "status" in (error as Record<string, any>)) {
-            throw error;
-        } else {
-            res.status(500).json({ message: "An unexpected error occurred" });
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: {
+                id: true,
+                name: true,
+                email: true,
+                emailVerifiedAt: true,
+                phone: true,
+                phoneVerifiedAt: true,
+                type: true,
+                pictureUrl: true,
+                createdAt: true,
+            },
+        });
+
+        if (!user) {
+            throw { message: "User unauthorized", status: 401};
         }
+        
+        return res.status(200).json({
+            message: "User retrieved successfully",
+            user,
+        });
+    } catch (error) {
+        // Handle known errors gracefully
+        if (error instanceof Error) {
+            return res.status(500).json({ message: error.message });
+        }
+
+        // Pass through custom errors with a status code
+        if (
+            typeof error === "object" &&
+            error !== null &&
+            "status" in (error as Record<string, any>)
+        ) {
+            return next(error);
+        }
+
+        // Catch-all for any unexpected errors
+        return res.status(500).json({ message: "Server error" });
     }
-}
+};
