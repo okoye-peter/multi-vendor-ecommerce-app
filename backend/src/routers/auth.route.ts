@@ -2,10 +2,11 @@ import express from 'express';
 import { register, login, sendPasswordResetCode, resetPassword, verifyEmail, logout, getAuthenticatedUser } from '../controllers/auth.controller.ts';
 import { isAuthenticated } from '../middleware/auth.middleware.ts';
 import { guestOnly } from '../middleware/guest.middleware.ts';
+import { uploadSingleFile, handleSingleFileUpload, rollbackOnError } from '../service/fileService.ts';
 
 const router = express.Router();
 
-router.post('/register', guestOnly, register);
+router.post('/register', guestOnly, uploadSingleFile('picture'), handleSingleFileUpload('users'), register);
 router.post('/login', guestOnly, login);
 router.post('/logout', isAuthenticated, logout);
 router.post('/password/reset/code', guestOnly, sendPasswordResetCode);

@@ -5,35 +5,42 @@ import generateAuthorizationTokenAndSetCookies from "../utils/generateAuthorizat
 import { sendEmailVerificationCode, sendPasswordResetToken } from "../utils/sendEmail.ts";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { FileService } from "../service/fileService.ts";
 
 const userService = new UserService();
 const prisma = new PrismaClient();
 
 export const userSchema = z
     .object({
-        name: z.string().min(3).max(50),
-        email: z.string().email(),
+        name: z.string().min(3, "Name must be at least 3 characters").max(50, "Name must not exceed 50 characters"),
+        email: z.string().email("Invalid email address"),
         phone: z
             .string()
-            .min(7)
-            .max(15)
-            .regex(/^[0-9]+$/),
+            .min(7, "Phone number is too short")
+            .max(15, "Phone number is too long")
+            .regex(/^[0-9]+$/, "Phone number must contain only digits"),
         picture: z
-            .file()
-            .mime(["image/jpeg", "image/png", "image/jpg", "image/webp"])
-            .max(2 * 1024 * 1024)
+            .object({
+                filename: z.string(),
+                path: z.string(),
+                mimetype: z.enum(["image/jpeg", "image/png", "image/jpg", "image/webp"]),
+                size: z.number().max(2 * 1024 * 1024, "File size must not exceed 2MB"),
+            })
             .optional(),
-        type: z.enum(["CUSTOMER", "ADMIN", "VENDOR"]),
+        picture_url: z.string().optional(),
+        type: z.enum(["CUSTOMER", "ADMIN", "VENDOR"], {
+            errorMap: () => ({ message: "Type must be CUSTOMER, ADMIN, or VENDOR" })
+        }),
         password: z
             .string()
-            .min(8)
-            .max(30)
-            .regex(/^[a-zA-Z0-9]{8,30}$/),
+            .min(8, "Password must be at least 8 characters")
+            .max(30, "Password must not exceed 30 characters")
+            .regex(/^[a-zA-Z0-9]{8,30}$/, "Password must contain only letters and numbers"),
         repeat_password: z
             .string()
-            .min(8)
-            .max(30)
-            .regex(/^[a-zA-Z0-9]{8,30}$/),
+            .min(8, "Confirm password must be at least 8 characters")
+            .max(30, "Confirm password must not exceed 30 characters")
+            .regex(/^[a-zA-Z0-9]{8,30}$/, "Confirm password must contain only letters and numbers"),
         vendor_name: z.string().optional(),
         vendor_address: z.string().optional(),
         state: z.string().optional(),
@@ -42,27 +49,23 @@ export const userSchema = z
         message: "Passwords do not match",
         path: ["repeat_password"],
     })
-    .refine((data) => data.password === data.repeat_password, {
-        message: "Passwords do not match",
-        path: ["repeat_password"],
-    })
     .superRefine((data, ctx) => {
         if (data.type === "VENDOR") {
-            if (!data.vendor_name) {
+            if (!data.vendor_name || data.vendor_name.trim() === "") {
                 ctx.addIssue({
                     code: z.ZodIssueCode.custom,
                     path: ["vendor_name"],
                     message: "Vendor name is required for vendors",
                 });
             }
-            if (!data.vendor_address) {
+            if (!data.vendor_address || data.vendor_address.trim() === "") {
                 ctx.addIssue({
                     code: z.ZodIssueCode.custom,
                     path: ["vendor_address"],
                     message: "Vendor address is required for vendors",
                 });
             }
-            if (!data.state) {
+            if (!data.state || data.state.trim() === "") {
                 ctx.addIssue({
                     code: z.ZodIssueCode.custom,
                     path: ["state"],
@@ -73,10 +76,29 @@ export const userSchema = z
     });
 
 export const register: RequestHandler = async (req, res, next) => {
+    const uploadedFile = (req as any).uploadedFile;
+    const uploadedFilePath = uploadedFile?.path;
     try {
+        const bodyData = {
+            ...req.body,
+            picture_url: uploadedFile?.path || null,
+            ...(uploadedFile && {
+                picture: {
+                    filename: uploadedFile.filename || uploadedFile.originalname,
+                    path: uploadedFile.path,
+                    mimetype: uploadedFile.mimetype,
+                    size: uploadedFile.size,
+                }
+            })
+        };
 
-        const result = userSchema.safeParse(req.body);
+        const result = userSchema.safeParse(bodyData);
         if (!result.success) {
+            // Rollback uploaded file if validation fails
+            if (uploadedFilePath) {
+                await FileService.rollback(uploadedFilePath);
+            }
+
             const { fieldErrors, formErrors } = result.error.flatten();
 
             // If there are no fieldErrors (all arrays empty), use formErrors instead
@@ -91,12 +113,16 @@ export const register: RequestHandler = async (req, res, next) => {
 
         const { user, emailVerificationCode } = await userService.createUser(result.data);
 
-        const token = generateAuthorizationTokenAndSetCookies(res, user.id);
+        generateAuthorizationTokenAndSetCookies(res, user.id);
 
         await sendEmailVerificationCode(user.email, parseInt(emailVerificationCode));
 
-        res.status(201).json({ result: user, message: "User registered successfully", token });
+        res.status(201).json({ user, message: "User registered successfully" });
     } catch (error) {
+        if (uploadedFilePath) {
+            await FileService.rollback(uploadedFilePath);
+        }
+
         if (error instanceof Error) {
             res.status(500).json({ message: error.message });
         } else if (typeof error === "object" && error !== null && "status" in (error as Record<string, any>)) {
@@ -129,9 +155,25 @@ export const login: RequestHandler = async (req, res, next) => {
         const isMatch = await bcrypt.compare(result.data.password, user.password);
         if (!isMatch) throw { status: 401, message: "email or password is incorrect" };
 
-        const token = generateAuthorizationTokenAndSetCookies(res, user.id);
+        generateAuthorizationTokenAndSetCookies(res, user.id);
 
-        res.status(200).json({ user, message: "User logged in successfully", token });
+        const allowedFields = [
+            'id',
+            'name',
+            'email',
+            'emailVerifiedAt',
+            'phone',
+            'phoneVerifiedAt',
+            'type',
+            'pictureUrl',
+            'createdAt'
+        ];
+
+        const filteredUser = Object.fromEntries(
+            Object.entries(user).filter(([key]) => allowedFields.includes(key))
+        );
+        
+        res.status(200).json({ user: filteredUser, message: "User logged in successfully" });
     } catch (error) {
         if (error instanceof Error) {
             res.status(500).json({ message: error.message });
@@ -307,7 +349,7 @@ export const getAuthenticatedUser: RequestHandler = async (req, res, next) => {
         const userId = req.user?.id;
 
         if (!userId) {
-            throw { message: "User unauthorized", status: 401};
+            throw { message: "User unauthorized", status: 401 };
         }
 
         const user = await prisma.user.findUnique({
@@ -326,9 +368,9 @@ export const getAuthenticatedUser: RequestHandler = async (req, res, next) => {
         });
 
         if (!user) {
-            throw { message: "User unauthorized", status: 401};
+            throw { message: "User unauthorized", status: 401 };
         }
-        
+
         return res.status(200).json({
             message: "User retrieved successfully",
             user,

@@ -1,42 +1,66 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
+import { useLoginMutation } from '../../store/features/AuthApi';
+import { useForm, type SubmitHandler } from 'react-hook-form';
+import z from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+import type { BackendError } from '../../types/Index';
+import { useDispatch } from 'react-redux';
+import { setUser } from '../../store/AuthSlice';
+
+const loginSchema = z.object({
+    email: z.string().email(),
+    password: z.string()
+})
+
+type loginData = z.infer<typeof loginSchema>;
 
 const Login = () => {
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
+    const {
+        register,
+        formState: { errors, isSubmitting },
+        handleSubmit,
+        setError
+    } = useForm<loginData>({ resolver: zodResolver(loginSchema) })
+
+    const [loginMutation, { isLoading: isLoggingIn }] = useLoginMutation();
+
+    const dispatch = useDispatch();
+    const navigate = useNavigate();
+
     const [showPassword, setShowPassword] = useState(false);
-    const [isLoading, setIsLoading] = useState(false);
-    const [theme, setTheme] = useState('dark');
 
-    // Set theme based on time of day
-    useEffect(() => {
-        const hour = new Date().getHours();
-        // 6 AM to 6 PM = light mode, otherwise dark mode
-        const currentTheme = hour >= 6 && hour < 18 ? 'light' : 'dark';
-        setTheme(currentTheme);
-        document.documentElement.setAttribute('data-theme', currentTheme);
-    }, []);
+    const onSubmit: SubmitHandler<loginData> = async (data: loginData) => {
+        try {
+            const res = await loginMutation(data).unwrap();
+            dispatch(setUser(res.user))
+            navigate('/');
+        } catch (error) {
+            const backendError = error as BackendError;
 
-    const handleEmailLogin = (e: React.MouseEvent<HTMLButtonElement>) => {
-        e.preventDefault();
-        setIsLoading(true);
-        console.log('Login with:', { email, password });
-        setTimeout(() => setIsLoading(false), 1000);
-    };
+            if (backendError.response?.data?.message && typeof backendError.response.data.message === 'object') {
+                const errors = backendError.response.data.message as Record<string, string[]>;
 
-    const handleGithubLogin = () => {
-        setIsLoading(true);
-        window.location.href = '/api/auth/github';
-    };
+                Object.keys(errors).forEach((key) => {
+                    setError(key as keyof loginData, {
+                        type: 'manual',
+                        message: errors[key][0]
+                    });
+                });
+            } else {
+                setError("root", {
+                    message: backendError.response?.data?.message as string || backendError.message || 'Registration failed'
+                });
+            }
+        }
+    }
 
-    const handleGmailLogin = () => {
-        setIsLoading(true);
-        window.location.href = '/api/auth/google';
-    };
+
+
 
     return (
         <div className="flex items-center justify-center min-h-screen bg-base-200">
-            <div className="w-full max-w-md p-8 rounded-lg shadow-2xl bg-base-100">
+            <form onSubmit={handleSubmit(onSubmit)} className="w-full max-w-md p-8 rounded-lg shadow-2xl bg-base-100">
                 {/* Header */}
                 <div className="mb-8 text-center">
                     <h1 className="mb-2 text-3xl font-bold text-base-content">Welcome Back</h1>
@@ -51,12 +75,12 @@ const Login = () => {
                     <input
                         id="email"
                         type="email"
-                        required
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
+                        {...register('email')}
                         className="w-full input input-bordered input-base-300 focus:outline-none focus:input-primary"
                         placeholder="you@example.com"
                     />
+                    {/* email error */}
+                    {errors.email && <p className="mt-1 text-xs text-error">{errors.email.message}</p>}
                 </div>
 
                 {/* Password Input */}
@@ -68,12 +92,12 @@ const Login = () => {
                         <input
                             id="password"
                             type={showPassword ? 'text' : 'password'}
-                            required
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
+                            {...register('password')}
                             className="w-full input input-bordered input-base-300 focus:outline-none focus:input-primary"
                             placeholder="••••••••"
                         />
+                        {/* password error */}
+                        {errors.password && <p className="mt-1 text-xs text-error">{errors.password.message}</p>}
                         <button
                             type="button"
                             onClick={() => setShowPassword(!showPassword)}
@@ -102,11 +126,18 @@ const Login = () => {
 
                 {/* Login Button */}
                 <button
-                    onClick={handleEmailLogin}
-                    disabled={isLoading}
+                    onClick={handleSubmit(onSubmit)}
+                    disabled={isLoggingIn}
                     className="w-full btn btn-primary"
                 >
-                    {isLoading ? 'Signing in...' : 'Sign In'}
+                    {isSubmitting ? (
+                        <>
+                            <span className="loading loading-spinner loading-sm"></span>
+                            Signing in...
+                        </>
+                    ) : (
+                        'Sign In'
+                    )}
                 </button>
 
                 {/* Divider */}
@@ -120,8 +151,7 @@ const Login = () => {
                 <div className="space-y-3">
                     {/* GitHub Button */}
                     <button
-                        onClick={handleGithubLogin}
-                        disabled={isLoading}
+                        disabled={isLoggingIn}
                         className="w-full btn btn-outline btn-base-300"
                     >
                         <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
@@ -132,8 +162,8 @@ const Login = () => {
 
                     {/* Google Button */}
                     <button
-                        onClick={handleGmailLogin}
-                        disabled={isLoading}
+                        type="submit"
+                        disabled={isLoggingIn}
                         className="w-full btn btn-outline btn-base-300"
                     >
                         <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -153,7 +183,7 @@ const Login = () => {
                         Sign up
                     </Link>
                 </p>
-            </div>
+            </form>
         </div>
     );
 };

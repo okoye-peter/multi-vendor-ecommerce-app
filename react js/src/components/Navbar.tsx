@@ -1,12 +1,40 @@
 import React, { useState } from 'react'
 import { Link } from 'react-router';
 import type { RootState } from '../store/Index';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
+import { ToastContainer, toast } from 'react-toastify';
+import { useLogoutMutation } from '../store/features/AuthApi';
+import { setUser } from '../store/AuthSlice';
+import FullscreenLoader from './FullPageLoader.tsx';
+import type { BackendError } from '../types/Index.ts';
+
+
 
 export const Navbar = () => {
-    const user = useSelector((state:RootState) => state.auth.user)
+    const user = useSelector((state: RootState) => state.auth.user)
     const [showSearch, setShowSearch] = useState(false);
+    const dispatch = useDispatch();
     const [searchQuery, setSearchQuery] = useState('');
+    const [logoutMutation, { isLoading:isLoggingOut }] = useLogoutMutation();
+
+    const handleLogout = async (e: React.FormEvent<HTMLAnchorElement>) => {
+        e.preventDefault();
+        try {
+            const res = await logoutMutation();
+            toast.success(res.data?.message ?? 'Logged out successfully', {
+                position: 'top-right',
+            });
+            dispatch(setUser(null));
+            
+        } catch (error) {
+            const backendError = error as BackendError;
+            toast.error(backendError.response?.data?.message as string || backendError.message || 'Registration failed', {
+                position: 'top-right',
+            });
+        }
+        
+    };
+
 
     const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -21,6 +49,7 @@ export const Navbar = () => {
 
     return (
         <>
+            {isLoggingOut && <FullscreenLoader />}
             {/* Navbar */}
             <nav className="shadow-sm bg-base-100 drawer">
                 <div className="grid items-center w-screen grid-cols-4 px-3 py-3 lg:grid-cols-3">
@@ -122,7 +151,7 @@ export const Navbar = () => {
                                     <div className="indicator">
                                         <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                                        </svg> 
+                                        </svg>
                                         <span className="badge badge-sm indicator-item">8</span>
                                     </div>
                                 </div>
@@ -145,14 +174,18 @@ export const Navbar = () => {
                                     <div className="w-10 rounded-full">
                                         <img
                                             alt="User avatar"
-                                            src={user?.pictureUrl ?? `https://eu.ui-avatars.com/api/?name=${user?.name.replace(' ', '+')}&background=random`}
+                                            src={
+                                                user?.pictureUrl
+                                                    ? import.meta.env.VITE_APP_URL + user.pictureUrl
+                                                    : `https://eu.ui-avatars.com/api/?name=${encodeURIComponent(user?.name || '')}&background=random`
+                                            }
                                         />
                                     </div>
                                 </div>
                                 <ul tabIndex={-1} className="p-2 mt-3 shadow menu menu-sm dropdown-content bg-base-100 rounded-box z-1 w-52">
                                     <li><a className="justify-between">Profile<span className="badge">New</span></a></li>
                                     <li><a>Settings</a></li>
-                                    <li><a>Logout</a></li>
+                                    <li><a onClick={handleLogout}>Logout</a></li>
                                 </ul>
                             </div>
                         )}
@@ -161,7 +194,7 @@ export const Navbar = () => {
                         {!user && (
                             <div className="flex gap-2">
                                 <Link to="/login" className="btn btn-ghost">Login</Link>
-                                <Link to ="/register" className="hidden text-white bg-black border-black rounded-full btn lg:flex">Register</Link>
+                                <Link to="/register" className="hidden text-white bg-black border-black rounded-full btn lg:flex">Register</Link>
                             </div>
                         )}
 
@@ -197,10 +230,9 @@ export const Navbar = () => {
                     </div>
                 </div>
 
-                
+
             </nav>
-
-
+            <ToastContainer />
         </>
     )
 }

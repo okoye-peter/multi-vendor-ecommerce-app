@@ -8,19 +8,6 @@ export interface User {
     pictureUrl: string | null,
 }
 
-export interface registrationData {
-    name: string,
-    email: string,
-    phone: string,
-    picture: File | null,
-    type: 'CUSTOMER' | 'VENDOR',
-    password: string,
-    repeat_password: string,
-    vendor_name: string,
-    vendor_address: string,
-    state: '' | number
-}
-
 export interface loginData {
     email: string,
     password: string
@@ -32,3 +19,16 @@ export interface PasswordResetData {
     newPassword: string,
     repeat_newPassword: string
 }
+
+export interface BackendError {
+    response?: {
+        data?: {
+            message?: Record<string, string[]> | string;
+        };
+    };
+    message?: string;
+}
+
+export interface LogoutResponse {
+  message: string;
+};

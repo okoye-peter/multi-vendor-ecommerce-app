@@ -3,6 +3,7 @@ import { PrismaClient } from "@prisma/client";
 import { userSchema } from "../controllers/auth.controller.ts";
 import type z from "zod";
 import bcrypt from "bcryptjs";
+import { FileService, type UploadedFile } from "../service/fileService.ts";
 const prisma = new PrismaClient();
 
 type UserData = z.infer<typeof userSchema>;
@@ -37,6 +38,7 @@ export default class UserService {
                 }
             }
 
+
             // Hash password before saving
             const hashedPassword = await bcrypt.hash(data.password, 10);
             data.password = hashedPassword;
@@ -44,14 +46,22 @@ export default class UserService {
             // generate email verification code
             const emailVerificationCode = Math.floor(100000 + Math.random() * 900000).toString();
             const emailVerificationCodeExpiresAt = new Date(Date.now() + 1000 * 60 * 15);
-            const { repeat_password, ...cleanData } = data; // Exclude repeat_password from being saved
+            const { repeat_password, picture, picture_url, ...cleanData } = data; // Exclude repeat_password from being saved
 
             // generate phone verification code
             const phoneVerificationCode = Math.floor(100000 + Math.random() * 900000).toString();
             const phoneVerificationCodeExpiresAt = new Date(Date.now() + 1000 * 60 * 15);
 
             const user = await prisma.user.create({
-                data: { ...cleanData, emailVerificationCode, emailVerificationCodeExpiresAt, phoneVerificationCode, phoneVerificationCodeExpiresAt },
+                data: {
+                    ...cleanData,
+                    password: hashedPassword,
+                    emailVerificationCode,
+                    emailVerificationCodeExpiresAt,
+                    phoneVerificationCode,
+                    phoneVerificationCodeExpiresAt,
+                    pictureUrl: data.picture_url || null 
+                },
                 select: {
                     id: true,
                     name: true,
@@ -65,6 +75,11 @@ export default class UserService {
             return { user, emailVerificationCode }
 
         } catch (err) {
+            if (data.picture_url) {
+                await FileService.deleteSingle(data.picture_url).catch((deleteErr) => {
+                    console.error('Failed to rollback uploaded picture:', deleteErr);
+                });
+            }
             if (err instanceof Error) {
                 throw { status: 500, message: err.message };
             } else if (typeof err === "object" && err !== null && "status" in (err as Record<string, any>)) {

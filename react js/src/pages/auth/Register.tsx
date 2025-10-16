@@ -1,173 +1,166 @@
-import React, { useState, useEffect } from 'react';
-import type { registrationData } from '../../types/Index.ts'
+import { useState } from 'react';
+import type { BackendError } from '../../types/Index.ts'
+import { useForm, type SubmitHandler } from 'react-hook-form';
+import { ToastContainer, toast } from 'react-toastify';
+import z from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useNavigate } from 'react-router';
+import { useDispatch } from 'react-redux';
+import { setUser } from '../../store/AuthSlice.ts';
+import { useRegisterMutation } from '../../store/features/AuthApi.ts';
 
-type FormDataKeys = keyof registrationData;
+const userSchema = z
+    .object({
+        name: z.string().min(3, "Name must be at least 3 characters").max(50),
+        email: z.string().email("Invalid email address"),
+        phone: z
+            .string()
+            .min(7, "Phone number is too short")
+            .max(15, "Phone number is too long")
+            .regex(/^[0-9]+$/, "Phone number must contain only digits"),
+
+        picture: z
+            .instanceof(FileList)
+            .optional()
+            .refine(
+                (files) => {
+                    if (!files || files.length === 0) return true; // Allow empty
+                    return files.length === 1;
+                },
+                "Please select only one file"
+            )
+            .refine(
+                (files) => {
+                    if (!files || files.length === 0) return true;
+                    const file = files[0];
+                    return ["image/jpeg", "image/png", "image/jpg", "image/webp"].includes(file.type);
+                },
+                "Only JPEG, PNG, JPG, and WebP formats are allowed"
+            )
+            .refine(
+                (files) => {
+                    if (!files || files.length === 0) return true;
+                    return files[0].size <= 2 * 1024 * 1024;
+                },
+                "Max file size is 2MB"
+            ),
+
+        type: z.enum(["CUSTOMER", "ADMIN", "VENDOR"]),
+        password: z
+            .string()
+            .min(8, "Password must be at least 8 characters")
+            .max(30, "Password must not exceed 30 characters")
+            .regex(/^[a-zA-Z0-9]+$/, "Password must contain only letters and numbers"),
+
+        repeat_password: z
+            .string()
+            .min(8, "Confirm password must be at least 8 characters")
+            .max(30, "Confirm password must not exceed 30 characters"),
+
+        vendor_name: z.string().optional(),
+        vendor_address: z.string().optional(),
+        state: z.string().optional(),
+    })
+    .refine((data) => data.password === data.repeat_password, { // FIXED: Changed !== to ===
+        message: "Passwords do not match",
+        path: ["repeat_password"],
+    })
+    .superRefine((data, ctx) => {
+        if (data.type === "VENDOR") {
+            if (!data.vendor_name || data.vendor_name.trim() === "") {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    path: ["vendor_name"],
+                    message: "Vendor name is required for vendors",
+                });
+            }
+            if (!data.vendor_address || data.vendor_address.trim() === "") {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    path: ["vendor_address"],
+                    message: "Vendor address is required for vendors",
+                });
+            }
+            if (!data.state || data.state.trim() === "") {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    path: ["state"],
+                    message: "State is required for vendors",
+                });
+            }
+        }
+    });
+
+type registrationData = z.infer<typeof userSchema>;
 
 const Register = () => {
-    const [formData, setFormData] = useState<registrationData>({
-        name: '',
-        email: '',
-        phone: '',
-        picture: null,
-        type: 'CUSTOMER',
-        password: '',
-        repeat_password: '',
-        vendor_name: '',
-        vendor_address: '',
-        state: ''
-    });
+    const navigate = useNavigate();
+    const dispatch = useDispatch();
+    const {
+        register,
+        watch,
+        formState: { errors },
+        handleSubmit,
+        setError
+    } = useForm<registrationData>({ resolver: zodResolver(userSchema) })
+    const selectedType = watch('type');
 
-    const [errors, setErrors] = useState({
-        name: '',
-        email: '',
-        phone: '',
-        picture: '',
-        type: '',
-        password: '',
-        repeat_password: '',
-        vendor_name: '',
-        vendor_address: '',
-        state: ''
-    });
     const [showPassword, setShowPassword] = useState(false);
     const [showRepeatPassword, setShowRepeatPassword] = useState(false);
-    const [isLoading, setIsLoading] = useState(false);
-    const [theme, setTheme] = useState('light');
 
-    // Set theme based on time of day
-    useEffect(() => {
-        const hour = new Date().getHours();
-        const currentTheme = hour >= 6 && hour < 18 ? 'light' : 'dark';
-        setTheme(currentTheme);
-        document.documentElement.setAttribute('data-theme', currentTheme);
-    }, []);
+    const [registerMutation, { isLoading:isRegistering }] = useRegisterMutation();
 
-    const validateForm = () => {
-        const newErrors = {
-            name: '',
-            email: '',
-            phone: '',
-            picture: '',
-            type: '',
-            password: '',
-            repeat_password: '',
-            vendor_name: '',
-            vendor_address: '',
-            state: ''
-        };
+    const onSubmit: SubmitHandler<registrationData> = async (data: registrationData) => {
+        try {
+            // Create FormData for file upload
+            const formData = new FormData();
 
-        // Name validation
-        if (!formData.name || formData.name.length < 3 || formData.name.length > 50) {
-            newErrors.name = 'Name must be between 3 and 50 characters';
-        }
+            formData.append('name', data.name);
+            formData.append('email', data.email);
+            formData.append('phone', data.phone);
+            formData.append('type', data.type);
+            formData.append('password', data.password);
+            formData.append('repeat_password', data.repeat_password);
 
-        // Email validation
-        if (!formData.email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
-            newErrors.email = 'Please enter a valid email address';
-        }
-
-        // Phone validation
-        if (!formData.phone || formData.phone.length < 7 || formData.phone.length > 15 || !/^[0-9]+$/.test(formData.phone)) {
-            newErrors.phone = 'Phone must be 7-15 digits';
-        }
-
-        // Password validation
-        if (!formData.password || formData.password.length < 8 || formData.password.length > 30) {
-            newErrors.password = 'Password must be between 8 and 30 characters';
-        }
-        if (formData.password && !/^[a-zA-Z0-9]{8,30}$/.test(formData.password)) {
-            newErrors.password = 'Password must contain only letters and numbers';
-        }
-
-        // Repeat password validation
-        if (!formData.repeat_password || formData.repeat_password.length < 8 || formData.repeat_password.length > 30) {
-            newErrors.repeat_password = 'Password must be between 8 and 30 characters';
-        }
-        if (formData.repeat_password && !/^[a-zA-Z0-9]{8,30}$/.test(formData.repeat_password)) {
-            newErrors.repeat_password = 'Password must contain only letters and numbers';
-        }
-
-        // Passwords match
-        if (formData.password !== formData.repeat_password) {
-            newErrors.repeat_password = 'Passwords do not match';
-        }
-
-        // Vendor specific validation
-        if (formData.type === 'VENDOR') {
-            if (!formData.vendor_name) {
-                newErrors.vendor_name = 'Vendor name is required';
-            }
-            if (!formData.vendor_address) {
-                newErrors.vendor_address = 'Vendor address is required';
-            }
-            if (!formData.state) {
-                newErrors.state = 'State is required';
-            }
-        }
-
-        setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
-    };
-
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-        const { name, value } = e.target as { name: FormDataKeys; value: string };
-        setFormData(prev => ({
-            ...prev,
-            [name]: value
-        }));
-        if (errors[name]) {
-            setErrors(prev => ({
-                ...prev,
-                [name]: ''
-            }));
-        }
-    };
-
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            const validTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
-            const maxSize = 2 * 1024 * 1024;
-
-            if (!validTypes.includes(file.type)) {
-                setErrors(prev => ({
-                    ...prev,
-                    picture: 'Only JPEG, PNG, JPG, and WebP images are allowed'
-                }));
-                return;
+            // Add vendor fields if type is VENDOR
+            if (data.type === 'VENDOR') {
+                if (data.vendor_name) formData.append('vendor_name', data.vendor_name);
+                if (data.vendor_address) formData.append('vendor_address', data.vendor_address);
+                if (data.state) formData.append('state', data.state);
             }
 
-            if (file.size > maxSize) {
-                setErrors(prev => ({
-                    ...prev,
-                    picture: 'File size must be less than 2MB'
-                }));
-                return;
+            // Add picture if exists
+            if (data.picture && data.picture.length > 0) {
+                formData.append('picture', data.picture[0]);
             }
 
-            setFormData(prev => ({
-                ...prev,
-                picture: file
-            }));
+            const res = await registerMutation(formData).unwrap();
+            toast.success(res.message, {
+                position: 'top-right'
+            })
+            dispatch(setUser(res.user));
+            navigate('/')
 
-            setErrors(prev => ({
-                ...prev,
-                picture: ''
-            }));
-        }
-    };
+        } catch (error) {
+            const backendError = error as BackendError;
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (validateForm()) {
-            setIsLoading(true);
-            console.log('Registering user:', formData);
-            setTimeout(() => {
-                setIsLoading(false);
-                alert('Registration successful!');
-            }, 1500);
+            if (backendError.response?.data?.message && typeof backendError.response.data.message === 'object') {
+                const errors = backendError.response.data.message as Record<string, string[]>;
+
+                Object.keys(errors).forEach((key) => {
+                    setError(key as keyof registrationData, {
+                        type: 'manual',
+                        message: errors[key][0]
+                    });
+                });
+            } else {
+                setError("root", {
+                    message: backendError.response?.data?.message as string || backendError.message || 'Registration failed'
+                });
+            }
         }
-    };
+    }
+
 
     return (
         <div className="flex items-center justify-center min-h-screen py-8 bg-base-200">
@@ -178,7 +171,7 @@ const Register = () => {
                     <p className="text-base-content/70">Join us today and start shopping</p>
                 </div>
 
-                <div className="space-y-6">
+                <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                     {/* Name Field */}
                     <div>
                         <label className="block mb-2 text-sm font-medium label-text">
@@ -186,13 +179,11 @@ const Register = () => {
                         </label>
                         <input
                             type="text"
-                            name="name"
-                            value={formData.name}
-                            onChange={handleInputChange}
+                            {...register('name')}
                             className={`w-full input focus:outline-none focus:border-[#388bff] input-bordered ${errors.name ? 'input-error' : ''}`}
                             placeholder="John Doe"
                         />
-                        {errors.name && <p className="mt-1 text-xs text-error">{errors.name}</p>}
+                        {errors.name && <p className="mt-1 text-xs text-error">{errors.name.message}</p>}
                     </div>
 
                     {/* Email Field */}
@@ -202,13 +193,11 @@ const Register = () => {
                         </label>
                         <input
                             type="email"
-                            name="email"
-                            value={formData.email}
-                            onChange={handleInputChange}
+                            {...register('email')}
                             className={`w-full input focus:outline-none focus:border-[#388bff] input-bordered ${errors.email ? 'input-error' : ''}`}
                             placeholder="you@example.com"
                         />
-                        {errors.email && <p className="mt-1 text-xs text-error">{errors.email}</p>}
+                        {errors.email && <p className="mt-1 text-xs text-error">{errors.email.message}</p>}
                     </div>
 
                     {/* Phone Field */}
@@ -218,13 +207,11 @@ const Register = () => {
                         </label>
                         <input
                             type="tel"
-                            name="phone"
-                            value={formData.phone}
-                            onChange={handleInputChange}
+                            {...register('phone')}
                             className={`w-full input focus:outline-none focus:border-[#388bff] input-bordered ${errors.phone ? 'input-error' : ''}`}
                             placeholder="1234567890"
                         />
-                        {errors.phone && <p className="mt-1 text-xs text-error">{errors.phone}</p>}
+                        {errors.phone && <p className="mt-1 text-xs text-error">{errors.phone.message}</p>}
                     </div>
 
                     {/* Account Type */}
@@ -233,18 +220,17 @@ const Register = () => {
                             Account Type
                         </label>
                         <select
-                            name="type"
-                            value={formData.type}
-                            onChange={handleInputChange}
+                            {...register('type')}
                             className="w-full select focus:outline-none focus:border-[#388bff] select-bordered"
                         >
                             <option value="CUSTOMER">Customer</option>
                             <option value="VENDOR">Vendor</option>
                         </select>
+                        {errors.type && <p className="mt-1 text-xs text-error">{errors.type.message}</p>}
                     </div>
 
                     {/* Vendor Fields - Show only when type is VENDOR */}
-                    {formData.type === 'VENDOR' && (
+                    {selectedType === 'VENDOR' && (
                         <div className="p-4 border-l-4 rounded border-primary bg-primary/5">
                             <h3 className="mb-4 text-sm font-semibold text-base-content">Vendor Information</h3>
 
@@ -256,13 +242,11 @@ const Register = () => {
                                     </label>
                                     <input
                                         type="text"
-                                        name="vendor_name"
-                                        value={formData.vendor_name}
-                                        onChange={handleInputChange}
+                                        {...register('vendor_name')}
                                         className={`w-full input focus:outline-none focus:border-[#388bff] input-bordered ${errors.vendor_name ? 'input-error' : ''}`}
                                         placeholder="Your Business Name"
                                     />
-                                    {errors.vendor_name && <p className="mt-1 text-xs text-error">{errors.vendor_name}</p>}
+                                    {errors.vendor_name && <p className="mt-1 text-xs text-error">{errors.vendor_name.message}</p>}
                                 </div>
 
                                 {/* Vendor Address */}
@@ -271,14 +255,12 @@ const Register = () => {
                                         Business Address
                                     </label>
                                     <textarea
-                                        name="vendor_address"
-                                        value={formData.vendor_address}
-                                        onChange={handleInputChange}
+                                        {...register('vendor_address')}
                                         className={`w-full textarea textarea-bordered focus:outline-none focus:border-[#388bff] resize-none ${errors.vendor_address ? 'textarea-error' : ''}`}
                                         placeholder="Your business address"
                                         rows={3}
                                     ></textarea>
-                                    {errors.vendor_address && <p className="mt-1 text-xs text-error">{errors.vendor_address}</p>}
+                                    {errors.vendor_address && <p className="mt-1 text-xs text-error">{errors.vendor_address.message}</p>}
                                 </div>
 
                                 {/* State */}
@@ -288,13 +270,11 @@ const Register = () => {
                                     </label>
                                     <input
                                         type="text"
-                                        name="state"
-                                        value={formData.state}
-                                        onChange={handleInputChange}
+                                        {...register('state')}
                                         className={`w-full input focus:outline-none focus:border-[#388bff] input-bordered ${errors.state ? 'input-error' : ''}`}
                                         placeholder="Your state"
                                     />
-                                    {errors.state && <p className="mt-1 text-xs text-error">{errors.state}</p>}
+                                    {errors.state && <p className="mt-1 text-xs text-error">{errors.state.message}</p>}
                                 </div>
                             </div>
                         </div>
@@ -307,13 +287,12 @@ const Register = () => {
                         </label>
                         <input
                             type="file"
-                            name="picture"
-                            onChange={handleFileChange}
+                            {...register('picture')}
                             accept="image/jpeg,image/png,image/jpg,image/webp"
                             className={`w-full file-input file-input-bordered ${errors.picture ? 'file-input-error' : ''}`}
                         />
                         <p className="mt-1 text-xs text-base-content/60">Max 2MB, JPEG/PNG/WebP only</p>
-                        {errors.picture && <p className="mt-1 text-xs text-error">{errors.picture}</p>}
+                        {errors.picture && <p className="mt-1 text-xs text-error">{errors.picture.message}</p>}
                     </div>
 
                     {/* Password Field */}
@@ -324,9 +303,7 @@ const Register = () => {
                         <div className="relative">
                             <input
                                 type={showPassword ? 'text' : 'password'}
-                                name="password"
-                                value={formData.password}
-                                onChange={handleInputChange}
+                                {...register('password')}
                                 className={`w-full input focus:outline-none focus:border-[#388bff] input-bordered ${errors.password ? 'input-error' : ''}`}
                                 placeholder="••••••••"
                             />
@@ -348,7 +325,7 @@ const Register = () => {
                             </button>
                         </div>
                         <p className="mt-1 text-xs text-base-content/60">8-30 characters, letters and numbers only</p>
-                        {errors.password && <p className="mt-1 text-xs text-error">{errors.password}</p>}
+                        {errors.password && <p className="mt-1 text-xs text-error">{errors.password.message}</p>}
                     </div>
 
                     {/* Confirm Password Field */}
@@ -359,9 +336,7 @@ const Register = () => {
                         <div className="relative">
                             <input
                                 type={showRepeatPassword ? 'text' : 'password'}
-                                name="repeat_password"
-                                value={formData.repeat_password}
-                                onChange={handleInputChange}
+                                {...register('repeat_password')}
                                 className={`w-full input focus:outline-none focus:border-[#388bff] input-bordered ${errors.repeat_password ? 'input-error' : ''}`}
                                 placeholder="••••••••"
                             />
@@ -382,16 +357,16 @@ const Register = () => {
                                 )}
                             </button>
                         </div>
-                        {errors.repeat_password && <p className="mt-1 text-xs text-error">{errors.repeat_password}</p>}
+                        {errors.repeat_password && <p className="mt-1 text-xs text-error">{errors.repeat_password.message}</p>}
                     </div>
 
                     {/* Submit Button */}
                     <button
-                        onClick={handleSubmit}
-                        disabled={isLoading}
+                        type='submit'
+                        disabled={isRegistering}
                         className="w-full mt-8 btn btn-primary"
                     >
-                        {isLoading ? (
+                        {isRegistering ? (
                             <>
                                 <span className="loading loading-spinner loading-sm"></span>
                                 Creating Account...
@@ -400,7 +375,7 @@ const Register = () => {
                             'Create Account'
                         )}
                     </button>
-                </div>
+                </form>
 
                 {/* Sign In Link */}
                 <p className="mt-6 text-sm text-center text-base-content/70">
@@ -410,6 +385,8 @@ const Register = () => {
                     </a>
                 </p>
             </div>
+
+            <ToastContainer />
         </div>
     );
 };

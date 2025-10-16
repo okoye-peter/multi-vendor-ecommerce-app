@@ -16,9 +16,10 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
         if (!decoded) {
             throw { message: "Unauthorized - Invalid token provided", status: 401 };
         }
-
+    
         const user = await prisma.user.findUnique({ where: { id: decoded.id } });
         if (!user) {
+            res.clearCookie('token')
             throw { message: "Unauthorized - User not found", status: 401 };
         }
 
