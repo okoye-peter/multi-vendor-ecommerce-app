@@ -50,7 +50,9 @@ const corsConfig: CorsOptions = {
 
 
 // server.ts
-app.use(helmet());
+app.use(helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+  }));
 app.use(cors(corsConfig));
 
 // Serve the /uploads folder publicly

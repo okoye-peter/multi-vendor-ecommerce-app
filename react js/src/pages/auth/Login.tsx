@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useLoginMutation } from '../../store/features/AuthApi';
 import { useForm, type SubmitHandler } from 'react-hook-form';
@@ -119,9 +119,9 @@ const Login = () => {
 
                 {/* Forgot Password Link */}
                 <div className="flex justify-end mb-6">
-                    <a href="/forgot-password" className="text-sm link link-primary">
+                    <Link to="/password/reset" className="text-sm link link-primary">
                         Forgot password?
-                    </a>
+                    </Link>
                 </div>
 
                 {/* Login Button */}

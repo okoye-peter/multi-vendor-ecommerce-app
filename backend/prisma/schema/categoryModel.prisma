@@ -1,0 +1,11 @@
+model Category {
+    id           Int        @id @default(autoincrement())
+    name         String     @unique
+    categoryId   Int?
+    parent       Category?  @relation("CategoryToSubcategories", fields: [categoryId], references: [id])
+    children     Category[] @relation("CategoryToSubcategories")
+    departmentId Int
+    department   Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+    createdAt    DateTime   @default(now()) @map("created_at")
+    updatedAt    DateTime   @updatedAt @map("updated_at")
+}

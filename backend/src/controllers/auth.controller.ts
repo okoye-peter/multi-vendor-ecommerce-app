@@ -136,7 +136,7 @@ export const register: RequestHandler = async (req, res, next) => {
 export const login: RequestHandler = async (req, res, next) => {
     const schema = z.object({
         email: z.string().email(),
-        password: z.string().min(8).max(30).regex(/^[a-zA-Z0-9]{8,30}$/),
+        password: z.string(),
     });
     try {
         const result = schema.safeParse(req.body);
@@ -228,7 +228,7 @@ export const sendPasswordResetCode: RequestHandler = async (req, res, next) => {
             data: {
                 userId: user.id,
                 token: passwordResetCode,
-                expiresAt: passwordResetCodeExpiresAt,
+                expiresAt: passwordResetCodeExpiresAt
             },
         });
 
@@ -250,9 +250,13 @@ export const resetPassword: RequestHandler = async (req, res, next) => {
     const schema = z.object({
         email: z.string().email(),
         resetAuthorizationCode: z.string().length(6).regex(/^[0-9]+$/),
-        newPassword: z.string().min(8).max(30).regex(/^[a-zA-Z0-9]{8,30}$/),
-        repeat_newPassword: z.string().min(8).max(30).regex(/^[a-zA-Z0-9]{8,30}$/),
-    }).refine((data) => data.newPassword === data.repeat_newPassword, {
+        newPassword: z.string().min(8).max(30).regex(/^[a-zA-Z0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]+$/, {
+            message: "Password may include letters, numbers, and special characters",
+        }),
+        repeatNewPassword: z.string().min(8).max(30).regex(/^[a-zA-Z0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]+$/, {
+            message: "Password may include letters, numbers, and special characters",
+        }),
+    }).refine((data) => data.newPassword === data.repeatNewPassword, {
         message: "Passwords do not match",
     })
 
@@ -272,7 +276,7 @@ export const resetPassword: RequestHandler = async (req, res, next) => {
 
         const user = await prisma.user.findUnique({ where: { email } });
         if (!user) {
-            return res.status(404).json({ message: "User not found" });
+            return res.status(404).json({ message: "No user with the provided details match our records" });
         }
 
         const validResetToken = await prisma.passwordResetToken.findFirst({

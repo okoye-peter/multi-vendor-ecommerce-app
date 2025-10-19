@@ -4,7 +4,7 @@ import Home from './pages/Home'
 import Login from './pages/auth/Login'
 import Register from './pages/auth/Register'
 import PasswordReset from './pages/auth/PasswordReset'
-import { useGetAuthenticatedUserQuery, useLogoutMutation } from './store/features/AuthApi.ts';
+import { useGetAuthenticatedUserQuery } from './store/features/AuthApi.ts';
 import PageLoader from './components/PageLoader.tsx'
 import { useDispatch } from 'react-redux'
 import type { AppDispatch } from './store/Index.ts'

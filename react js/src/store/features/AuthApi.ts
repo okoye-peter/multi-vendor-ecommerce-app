@@ -35,14 +35,14 @@ export const authApi = createApi({
                 method: 'POST',
             }),
         }),
-        sendPasswordResetAuthenticationCode: builder.mutation<any, { email: string }>({
+        sendPasswordResetAuthenticationCode: builder.mutation<{ message: string }, { email: string }>({
             query: ({ email }) => ({
                 url: '/auth/password/reset/code',
                 method: 'POST',
                 body: { email },
             }),
         }),
-        resetPassword: builder.mutation<any, PasswordResetData>({
+        resetPassword: builder.mutation<{ message: string }, PasswordResetData>({
             query: (passwordResetData) => ({
                 url: '/auth/password/reset',
                 method: 'POST',

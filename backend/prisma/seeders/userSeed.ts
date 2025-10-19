@@ -1,9 +1,7 @@
 import { PrismaClient } from "@prisma/client"
 import bcrypt from 'bcryptjs'
 
-const prisma = new PrismaClient();
-
-const seed = async () => {
+const seedUsers = async (prisma: PrismaClient) => {
     let password = 'password';
     try {
         const salt = await bcrypt.genSalt(10);
@@ -30,6 +28,4 @@ const seed = async () => {
     })
 }
 
-seed().then(() => {
-    prisma.$disconnect()
-})
+export default seedUsers;
