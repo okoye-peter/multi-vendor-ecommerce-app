@@ -172,7 +172,7 @@ export const login: RequestHandler = async (req, res, next) => {
         const filteredUser = Object.fromEntries(
             Object.entries(user).filter(([key]) => allowedFields.includes(key))
         );
-        
+
         res.status(200).json({ user: filteredUser, message: "User logged in successfully" });
     } catch (error) {
         if (error instanceof Error) {
@@ -311,6 +311,38 @@ export const resetPassword: RequestHandler = async (req, res, next) => {
         }
     }
 };
+
+export const resendEmailVerificationCode: RequestHandler = async (req, res, next) => {
+    try {
+        const user = req.user;
+        if (!user) {
+            return res.status(401).json({ message: 'unauthorized' })
+        }
+        const emailVerificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+        const emailVerificationCodeExpiresAt = new Date(Date.now() + 1000 * 60 * 15);
+
+        await sendEmailVerificationCode(user.email, parseInt(emailVerificationCode));
+
+        await prisma.user.update({
+            where: {
+                id: user.id
+            },
+            data: {
+                emailVerificationCode,
+                emailVerificationCodeExpiresAt
+            }
+        })
+        res.status(200).json({ message: 'Email verification code sent successfully' });
+    } catch (error) {
+        if (error instanceof Error) {
+            res.status(500).json({ message: error.message });
+        } else if (typeof error === "object" && error !== null && "status" in (error as Record<string, any>)) {
+            throw error;
+        } else {
+            res.status(500).json({ message: "Server Error" });
+        }
+    }
+}
 
 export const verifyEmail: RequestHandler = async (req, res, next) => {
     const schema = z.object({

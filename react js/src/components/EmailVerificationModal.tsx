@@ -1,5 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Mail, Check, AlertCircle, Clock, X } from 'lucide-react';
+import { useResendEmailVerificationCodeMutation, useVerifyEmailMutation } from '../store/features/AuthApi';
+import type { BackendError } from '../types/Index';
+import { toast } from 'react-toastify';
 
 interface EmailVerificationModalProps {
     isOpen?: boolean;
@@ -35,17 +38,36 @@ export default function EmailVerificationModal({
             setInternalIsOpen(false);
         }
     };
+    const [resendEmailVerificationCodeMutation, { isLoading: isSendingEmailVerification }] = useResendEmailVerificationCodeMutation();
+    const [verifyEmailMutation, { isLoading: isVerifyingEmail }] = useVerifyEmailMutation();
+
+    const handleSendOtp = useCallback(async (): Promise<void> => {
+        setError('');
+        setLoading(true);
+
+        try {
+            // API call: await sendOtpMutation({ email: userEmail }).unwrap();
+            await resendEmailVerificationCodeMutation().unwrap();
+            setResendTimer(60);
+            setCanResend(false);
+        } catch (err) {
+            const backendError = err as BackendError;
+            setError(backendError.response?.data?.message as string || backendError.message || 'Failed to send verification code. Please try again.');
+        } finally {
+            setLoading(false);
+        }
+    }, [resendEmailVerificationCodeMutation]);
 
     // Auto-send OTP when modal opens
     useEffect(() => {
         if (autoShow && isOpen) {
             handleSendOtp();
         }
-    }, [autoShow, isOpen]);
+    }, [autoShow, isOpen, handleSendOtp]);
 
     // Countdown timer for resend
     useEffect(() => {
-        let interval: NodeJS.Timeout | undefined;
+        let interval: ReturnType<typeof setInterval> | undefined;
         if (isOpen && resendTimer > 0) {
             interval = setInterval(() => {
                 setResendTimer((prev: number) => {
@@ -62,23 +84,6 @@ export default function EmailVerificationModal({
         };
     }, [isOpen, resendTimer]);
 
-    const handleSendOtp = async (): Promise<void> => {
-        setError('');
-        setLoading(true);
-
-        try {
-            // API call: await sendOtpMutation({ email: userEmail }).unwrap();
-            await new Promise(resolve => setTimeout(resolve, 1500));
-
-            setResendTimer(60);
-            setCanResend(false);
-        } catch (err) {
-            setError('Failed to send verification code. Please try again.');
-        } finally {
-            setLoading(false);
-        }
-    };
-
     const handleOtpChange = (index: number, value: string): void => {
         if (value.length > 1) return;
         if (!/^\d*$/.test(value)) return;
@@ -94,12 +99,12 @@ export default function EmailVerificationModal({
         }
 
         // Auto-submit when all 6 digits are entered
-        if (index === 5 && value) {
-            const fullOtp = [...newOtp.slice(0, 5), value].join('');
-            if (fullOtp.length === 6) {
-                setTimeout(() => handleVerifyOtp(fullOtp), 100);
-            }
-        }
+        // if (index === 5 && value) {
+        // const fullOtp = [...newOtp.slice(0, 5), value].join('');
+        // if (fullOtp.length === 6) {
+        //     setTimeout(() => handleVerifyOtp(fullOtp), 100);
+        // }
+        // }
     };
 
     const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>): void => {
@@ -126,13 +131,12 @@ export default function EmailVerificationModal({
         setLoading(true);
 
         try {
-            // API call: await verifyOtpMutation({ email: userEmail, otp: otpCode }).unwrap();
-            await new Promise(resolve => setTimeout(resolve, 1500));
-
+            await verifyEmailMutation({ verificationCode: otp.join('') }).unwrap()
             setSuccess(true);
             if (onSuccess) onSuccess(userEmail);
         } catch (err) {
-            setError('Invalid verification code. Please try again.');
+            const backendError = err as BackendError;
+            setError(backendError.response?.data?.message as string || backendError.message || 'Invalid verification code. Please try again.');
             setOtp(['', '', '', '', '', '']);
             const firstInput = document.getElementById('otp-0');
             if (firstInput) (firstInput as HTMLInputElement).focus();
@@ -149,15 +153,15 @@ export default function EmailVerificationModal({
         setLoading(true);
 
         try {
-            // API call: await sendOtpMutation({ email: userEmail }).unwrap();
-            await new Promise(resolve => setTimeout(resolve, 1000));
-
+            const res = await resendEmailVerificationCodeMutation().unwrap();
             setResendTimer(60);
             setCanResend(false);
             const firstInput = document.getElementById('otp-0');
+            toast.success(res.message || 'Email verification code sent successfully')
             if (firstInput) (firstInput as HTMLInputElement).focus();
-        } catch (err) {
-            setError('Failed to resend code. Please try again.');
+        } catch (error) {
+            const backendError = error as BackendError;
+            setError(backendError.response?.data?.message as string || backendError.message || 'Failed to resend code. Please try again.');
         } finally {
             setLoading(false);
         }
@@ -250,7 +254,7 @@ export default function EmailVerificationModal({
                                 <button
                                     onClick={() => handleVerifyOtp()}
                                     className={`btn btn-primary w-full ${loading ? 'loading' : ''}`}
-                                    disabled={loading || otp.join('').length !== 6}
+                                    disabled={loading || otp.join('').length !== 6 || isSendingEmailVerification || isVerifyingEmail}
                                 >
                                     {loading ? 'Verifying...' : 'Verify Email'}
                                 </button>

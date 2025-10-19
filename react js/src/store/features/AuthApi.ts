@@ -49,11 +49,17 @@ export const authApi = createApi({
                 body: passwordResetData,
             }),
         }),
-        verifyEmail: builder.mutation<any, { verificationCode: string }>({
+        resendEmailVerificationCode: builder.mutation<{ message: string }, void>({
+            query: () => ({
+                url: '/auth/email/verification/code/resend',
+                method: 'POST'
+            })
+        }),
+        verifyEmail: builder.mutation<{ message: string }, { verificationCode: string }>({
             query: (verificationCode) => ({
-                url: '/auth/verify-email',
+                url: '/auth/email/verify',
                 method: 'POST',
-                body: { verificationCode },
+                body: verificationCode,
             }),
             invalidatesTags: ['user']
         }),
@@ -72,4 +78,5 @@ export const {
     useResetPasswordMutation,
     useVerifyEmailMutation,
     useGetAuthenticatedUserQuery,
+    useResendEmailVerificationCodeMutation
 } = authApi;

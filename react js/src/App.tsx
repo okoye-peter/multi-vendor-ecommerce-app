@@ -11,7 +11,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import type { AppDispatch, RootState } from './store/Index.ts'
 import { setUser } from './store/AuthSlice.ts'
 import EmailVerificationModal from './components/EmailVerificationModal.tsx'
-// import { authApi } from './store/features/AuthApi.ts'
+import { authApi } from './store/features/AuthApi.ts'
 import { setShowEmailVerificationModal } from './store/AuthSlice.ts'
 import { toast, ToastContainer } from 'react-toastify'
 
@@ -22,8 +22,7 @@ function App() {
     const showEmailVerificationModal = useSelector((state: RootState) => state.auth.showEmailVerificationModal);
     const dispatch = useDispatch<AppDispatch>()
     const handleEmailVerificationSuccess = () => {
-        console.log('handleEmailVerificationSuccess is called');
-        // dispatch(authApi.util.invalidateTags(['user']));
+        dispatch(authApi.util.invalidateTags(['user']));
         dispatch(setShowEmailVerificationModal(false));
         toast.success('Email verified successfully', {
             position: 'top-center'
