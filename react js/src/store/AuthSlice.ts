@@ -4,6 +4,7 @@ import { authApi } from './features/AuthApi.ts';
 
 const initialState = {
     user: null as User | null,
+    showEmailVerificationModal: false
 };
 
 const authSlice = createSlice({
@@ -15,6 +16,9 @@ const authSlice = createSlice({
         },
         logout: (state) => {
             state.user = null;
+        },
+        setShowEmailVerificationModal: (state, action: PayloadAction<boolean>) => {
+            state.showEmailVerificationModal = action.payload
         }
     },
     extraReducers: (builder) => {
@@ -27,5 +31,5 @@ const authSlice = createSlice({
 })
 
 
-export const { setUser } = authSlice.actions;
+export const { setUser, setShowEmailVerificationModal } = authSlice.actions;
 export default authSlice.reducer

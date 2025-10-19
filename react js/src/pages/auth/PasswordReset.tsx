@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useSendPasswordResetAuthenticationCodeMutation, useResetPasswordMutation } from '../../store/features/AuthApi.ts';
 import type { BackendError } from '../../types/Index.ts';
-import { toast, ToastContainer } from 'react-toastify';
+import { toast } from 'react-toastify';
 import { Link } from 'react-router';
 import FullscreenLoader from '../../components/FullPageLoader.tsx';
 
@@ -458,7 +458,6 @@ export default function PasswordResetFlow() {
                     )}
                 </div>
             </div>
-            <ToastContainer />
             {step == 2 && isSendingOtp &&  <FullscreenLoader /> }
         </div>
     );

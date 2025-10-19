@@ -5,6 +5,8 @@ interface EmailVerificationModalProps {
     isOpen?: boolean;
     onClose?: () => void;
     onSuccess?: (email: string) => void;
+    userEmail: string; // Required - always provided from registration/login
+    autoShow?: boolean; // Show modal automatically if email not verified
 }
 
 type OtpArray = [string, string, string, string, string, string];
@@ -12,11 +14,11 @@ type OtpArray = [string, string, string, string, string, string];
 export default function EmailVerificationModal({
     isOpen: controlledIsOpen,
     onClose: controlledOnClose,
-    onSuccess
-}: EmailVerificationModalProps = {}) {
-    const [internalIsOpen, setInternalIsOpen] = useState<boolean>(true);
-    const [step, setStep] = useState<1 | 2>(1);
-    const [email, setEmail] = useState<string>('');
+    onSuccess,
+    userEmail,
+    autoShow = false
+}: EmailVerificationModalProps) {
+    const [internalIsOpen, setInternalIsOpen] = useState<boolean>(autoShow);
     const [otp, setOtp] = useState<OtpArray>(['', '', '', '', '', '']);
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<string>('');
@@ -26,13 +28,25 @@ export default function EmailVerificationModal({
 
     // Use controlled or internal state
     const isOpen = controlledIsOpen !== undefined ? controlledIsOpen : internalIsOpen;
-    const setIsOpen = controlledOnClose !== undefined
-        ? controlledOnClose
-        : () => setInternalIsOpen(false);
+    const handleCloseModal = () => {
+        if (controlledOnClose) {
+            controlledOnClose();
+        } else {
+            setInternalIsOpen(false);
+        }
+    };
 
+    // Auto-send OTP when modal opens
+    useEffect(() => {
+        if (autoShow && isOpen) {
+            handleSendOtp();
+        }
+    }, [autoShow, isOpen]);
+
+    // Countdown timer for resend
     useEffect(() => {
         let interval: NodeJS.Timeout | undefined;
-        if (step === 2 && resendTimer > 0) {
+        if (isOpen && resendTimer > 0) {
             interval = setInterval(() => {
                 setResendTimer((prev: number) => {
                     if (prev <= 1) {
@@ -46,37 +60,16 @@ export default function EmailVerificationModal({
         return () => {
             if (interval) clearInterval(interval);
         };
-    }, [step, resendTimer]);
-
-    const validateEmail = (email: string): boolean => {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        return emailRegex.test(email);
-    };
-
-    const handleClose = (): void => {
-        setIsOpen();
-    };
+    }, [isOpen, resendTimer]);
 
     const handleSendOtp = async (): Promise<void> => {
         setError('');
-
-        if (!email) {
-            setError('Please enter your email address');
-            return;
-        }
-
-        if (!validateEmail(email)) {
-            setError('Please enter a valid email address');
-            return;
-        }
-
         setLoading(true);
 
         try {
-            // API call: await sendOtpMutation({ email }).unwrap();
+            // API call: await sendOtpMutation({ email: userEmail }).unwrap();
             await new Promise(resolve => setTimeout(resolve, 1500));
 
-            setStep(2);
             setResendTimer(60);
             setCanResend(false);
         } catch (err) {
@@ -94,11 +87,13 @@ export default function EmailVerificationModal({
         newOtp[index] = value;
         setOtp(newOtp);
 
+        // Auto-focus next input
         if (value && index < 5) {
             const nextInput = document.getElementById(`otp-${index + 1}`);
             if (nextInput) (nextInput as HTMLInputElement).focus();
         }
 
+        // Auto-submit when all 6 digits are entered
         if (index === 5 && value) {
             const fullOtp = [...newOtp.slice(0, 5), value].join('');
             if (fullOtp.length === 6) {
@@ -131,11 +126,11 @@ export default function EmailVerificationModal({
         setLoading(true);
 
         try {
-            // API call: await verifyOtpMutation({ email, otp: otpCode }).unwrap();
+            // API call: await verifyOtpMutation({ email: userEmail, otp: otpCode }).unwrap();
             await new Promise(resolve => setTimeout(resolve, 1500));
 
             setSuccess(true);
-            if (onSuccess) onSuccess(email);
+            if (onSuccess) onSuccess(userEmail);
         } catch (err) {
             setError('Invalid verification code. Please try again.');
             setOtp(['', '', '', '', '', '']);
@@ -154,7 +149,7 @@ export default function EmailVerificationModal({
         setLoading(true);
 
         try {
-            // API call: await sendOtpMutation({ email }).unwrap();
+            // API call: await sendOtpMutation({ email: userEmail }).unwrap();
             await new Promise(resolve => setTimeout(resolve, 1000));
 
             setResendTimer(60);
@@ -168,32 +163,21 @@ export default function EmailVerificationModal({
         }
     };
 
-    const handleChangeEmail = (): void => {
-        setStep(1);
-        setOtp(['', '', '', '', '', '']);
-        setError('');
+    const handleSkip = (): void => {
+        handleCloseModal();
     };
 
     if (!isOpen) {
-        return (
-            <div className="flex items-center justify-center min-h-screen p-4 bg-base-200">
-                <button
-                    onClick={() => controlledOnClose ? controlledOnClose() : setInternalIsOpen(true)}
-                    className="btn btn-primary"
-                >
-                    Open Email Verification
-                </button>
-            </div>
-        );
+        return null;
     }
 
     return (
-        <div className="flex items-center justify-center min-h-screen p-4 bg-base-200">
-            <div className="modal modal-open">
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div className={`modal ${isOpen ? 'modal-open' : ''}`}>
                 <div className="relative max-w-md modal-box">
                     {/* Close Button */}
                     <button
-                        onClick={handleClose}
+                        onClick={handleCloseModal}
                         className="absolute btn btn-sm btn-circle btn-ghost right-2 top-2"
                     >
                         <X className="w-5 h-5" />
@@ -206,57 +190,14 @@ export default function EmailVerificationModal({
                             </div>
                             <h3 className="mb-2 text-2xl font-bold">Email Verified!</h3>
                             <p className="mb-6 text-base-content/70">
-                                Your email <strong>{email}</strong> has been successfully verified.
+                                Your email <strong>{userEmail}</strong> has been successfully verified.
                             </p>
                             <button
                                 className="btn btn-primary btn-wide"
-                                onClick={handleClose}
+                                onClick={handleCloseModal}
                             >
                                 Continue
                             </button>
-                        </div>
-                    ) : step === 1 ? (
-                        <div>
-                            <div className="mb-6 text-center">
-                                <div className="inline-flex items-center justify-center w-16 h-16 mb-4 rounded-full bg-primary/10">
-                                    <Mail className="w-8 h-8 text-primary" />
-                                </div>
-                                <h3 className="mb-2 text-2xl font-bold">Verify Your Email</h3>
-                                <p className="text-base-content/70">
-                                    We'll send you a verification code to confirm your email address
-                                </p>
-                            </div>
-
-                            <div className="space-y-4">
-                                <div className="form-control">
-                                    <label className="label">
-                                        <span className="font-medium label-text">Email Address</span>
-                                    </label>
-                                    <input
-                                        type="email"
-                                        placeholder="you@example.com"
-                                        className="w-full input input-bordered"
-                                        value={email}
-                                        onChange={(e) => setEmail(e.target.value)}
-                                        onKeyPress={(e) => e.key === 'Enter' && handleSendOtp()}
-                                    />
-                                </div>
-
-                                {error && (
-                                    <div className="alert alert-error">
-                                        <AlertCircle className="w-5 h-5" />
-                                        <span className="text-sm">{error}</span>
-                                    </div>
-                                )}
-
-                                <button
-                                    onClick={handleSendOtp}
-                                    className={`btn btn-primary w-full ${loading ? 'loading' : ''}`}
-                                    disabled={loading || !email}
-                                >
-                                    {loading ? 'Sending Code...' : 'Send Verification Code'}
-                                </button>
-                            </div>
                         </div>
                     ) : (
                         <div>
@@ -268,15 +209,7 @@ export default function EmailVerificationModal({
                                 <p className="mb-2 text-base-content/70">
                                     We've sent a 6-digit code to
                                 </p>
-                                <div className="flex items-center justify-center gap-2">
-                                    <strong className="text-base-content">{email}</strong>
-                                    <button
-                                        onClick={handleChangeEmail}
-                                        className="btn btn-ghost btn-xs"
-                                    >
-                                        Change
-                                    </button>
-                                </div>
+                                <strong className="text-lg text-base-content">{userEmail}</strong>
                             </div>
 
                             <div className="space-y-4">
@@ -284,7 +217,7 @@ export default function EmailVerificationModal({
                                     <label className="label">
                                         <span className="font-medium label-text">Enter Verification Code</span>
                                     </label>
-                                    <div className="flex justify-center gap-2 mb-2">
+                                    <div className="flex justify-between gap-2 mb-2">
                                         {otp.map((digit, index) => (
                                             <input
                                                 key={index}
@@ -322,6 +255,13 @@ export default function EmailVerificationModal({
                                     {loading ? 'Verifying...' : 'Verify Email'}
                                 </button>
 
+                                <button
+                                    onClick={handleSkip}
+                                    className="w-full btn btn-ghost"
+                                >
+                                    I'll Verify Later
+                                </button>
+
                                 <div className="text-xs divider">OR</div>
 
                                 <div className="text-center">
@@ -353,7 +293,7 @@ export default function EmailVerificationModal({
                         </div>
                     )}
                 </div>
-                <div className="modal-backdrop" onClick={handleClose}></div>
+                <div className="modal-backdrop" onClick={handleCloseModal}></div>
             </div>
         </div>
     );

@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import type { BackendError } from '../../types/Index.ts'
 import { useForm, type SubmitHandler } from 'react-hook-form';
-import { ToastContainer, toast } from 'react-toastify';
+import { toast } from 'react-toastify';
 import z from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate } from 'react-router';
 import { useDispatch } from 'react-redux';
-import { setUser } from '../../store/AuthSlice.ts';
+import { setUser, setShowEmailVerificationModal } from '../../store/AuthSlice.ts';
 import { useRegisterMutation } from '../../store/features/AuthApi.ts';
 
 const userSchema = z
@@ -139,6 +139,7 @@ const Register = () => {
                 position: 'top-right'
             })
             dispatch(setUser(res.user));
+            dispatch(setShowEmailVerificationModal(true));
             navigate('/')
 
         } catch (error) {
@@ -386,7 +387,6 @@ const Register = () => {
                 </p>
             </div>
 
-            <ToastContainer />
         </div>
     );
 };

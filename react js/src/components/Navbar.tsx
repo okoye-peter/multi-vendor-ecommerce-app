@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { Link } from 'react-router';
 import type { RootState } from '../store/Index';
 import { useDispatch, useSelector } from 'react-redux';
-import { ToastContainer, toast } from 'react-toastify';
+import { toast } from 'react-toastify';
 import { useLogoutMutation } from '../store/features/AuthApi';
 import { setUser } from '../store/AuthSlice';
 import FullscreenLoader from './FullPageLoader.tsx';
@@ -232,7 +232,6 @@ export const Navbar = () => {
 
 
             </nav>
-            <ToastContainer />
         </>
     )
 }

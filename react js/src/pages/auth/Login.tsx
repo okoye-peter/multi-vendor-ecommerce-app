@@ -6,7 +6,7 @@ import z from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { BackendError } from '../../types/Index';
 import { useDispatch } from 'react-redux';
-import { setUser } from '../../store/AuthSlice';
+import { setShowEmailVerificationModal, setUser } from '../../store/AuthSlice';
 
 const loginSchema = z.object({
     email: z.string().email(),
@@ -34,6 +34,9 @@ const Login = () => {
         try {
             const res = await loginMutation(data).unwrap();
             dispatch(setUser(res.user))
+            if(!res.user.emailVerifiedAt){
+                dispatch(setShowEmailVerificationModal(true));
+            }
             navigate('/');
         } catch (error) {
             const backendError = error as BackendError;
