@@ -10,6 +10,7 @@ import routeNotFoundErrorHandler from "./middleware/routeNotFound.middleware.ts"
 import { rollbackOnError } from "./service/fileService.ts";
 import path from "path";
 import { fileURLToPath } from "url";
+import departmentRoute from './routers/department.route.ts';
 
 dotenv.config();
 
@@ -64,6 +65,7 @@ app.use("/uploads", express.static(path.join(__dirname, "../public/uploads")));
 
 
 app.use('/api/auth', authRoute);
+app.use('/api/departments', departmentRoute);
 
 
 // Error Handling Middlewares

@@ -14,9 +14,14 @@ import EmailVerificationModal from './components/EmailVerificationModal.tsx'
 import { authApi } from './store/features/AuthApi.ts'
 import { setShowEmailVerificationModal } from './store/AuthSlice.ts'
 import { toast, ToastContainer } from 'react-toastify'
+import AdminLayout from './components/Layouts/AdminLayout.tsx';
+import Dashboard from './pages/admin/Dashboard.tsx';
+import { Outlet, useLocation } from 'react-router-dom';
 
 
 function App() {
+    const location = useLocation();
+    const isAdminRoute = location.pathname.startsWith('/admin');
     const { data, isLoading, isError, error } = useGetAuthenticatedUserQuery();
     const user = useSelector((state: RootState) => state.auth.user);
     const showEmailVerificationModal = useSelector((state: RootState) => state.auth.showEmailVerificationModal);
@@ -28,7 +33,7 @@ function App() {
             position: 'top-center'
         })
     };
-    
+
     useEffect(() => {
         if (data && !isError && !isLoading) {
             dispatch(setUser(data.user));
@@ -60,12 +65,17 @@ function App() {
 
     return (
         <div className="bg-base-200">
-            <Navbar />
+            {!isAdminRoute && <Navbar />}
             <Routes>
                 <Route path='/' element={<Home />} />
                 <Route path='/login' element={<Login />} />
                 <Route path='/register' element={<Register />} />
                 <Route path='/password/reset' element={<PasswordReset />} />
+
+                {/* Admin routes - parent route with layout */}
+                <Route path='/admin' element={<AdminLayout><Outlet /></AdminLayout>}>
+                    <Route path='dashboard' element={<Dashboard />} />
+                </Route>
             </Routes>
 
             {/* Email Verification Modal */}
@@ -77,6 +87,7 @@ function App() {
                     userEmail={user.email}
                 />
             )}
+
 
             <ToastContainer />
         </div>

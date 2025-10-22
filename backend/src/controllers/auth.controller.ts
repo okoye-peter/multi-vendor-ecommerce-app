@@ -26,8 +26,9 @@ export const userSchema = z
                 mimetype: z.enum(["image/jpeg", "image/png", "image/jpg", "image/webp"]),
                 size: z.number().max(2 * 1024 * 1024, "File size must not exceed 2MB"),
             })
+            .nullable()
             .optional(),
-        picture_url: z.string().optional(),
+        picture_url: z.string().nullable().optional(),
         type: z.enum(["CUSTOMER", "ADMIN", "VENDOR"], {
             errorMap: () => ({ message: "Type must be CUSTOMER, ADMIN, or VENDOR" })
         }),

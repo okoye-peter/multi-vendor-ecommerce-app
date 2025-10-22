@@ -6,7 +6,7 @@ import { uploadSingleFile, handleSingleFileUpload, rollbackOnError } from '../se
 
 const router = express.Router();
 
-router.post('/register', guestOnly, uploadSingleFile('picture'), handleSingleFileUpload('users'), register);
+router.post('/register', guestOnly, handleSingleFileUpload('users'), register);
 router.post('/login', guestOnly, login);
 router.post('/logout', isAuthenticated, logout);
 router.post('/password/reset/code', guestOnly, sendPasswordResetCode);

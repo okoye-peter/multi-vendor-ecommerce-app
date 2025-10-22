@@ -5,6 +5,7 @@ import seedDepartments from './departmentSeed.ts'
 import seedCategories from './categorySeed.ts'
 import seedStatesAndLgas from './statesAndLgaSeed.ts'
 
+// paste this command `npx prisma db seed` in your terminal to run the seeder  
 const prisma = new PrismaClient()
 
 async function main() {
