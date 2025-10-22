@@ -1,7 +1,6 @@
 import type { RequestHandler } from "express";
 import { PrismaClient } from "@prisma/client";
 import z from "zod";
-import { sl } from "zod/locales";
 
 const prisma = new PrismaClient();
 
@@ -169,7 +168,7 @@ export const updateDepartment: RequestHandler = async (req, res, next) => {
 
         await prisma.department.update({
             where: { id: departmentId },
-            data: { name, slug: formattedSlug },
+            data: { name, slug: formattedSlug, updatedAt: new Date() },
         });
 
         return res.status(200).json({ message: "department updated successfully" });
@@ -195,6 +194,28 @@ export const deleteDepartment: RequestHandler = async (req, res, next) => {
         res.status(200).json({ message: "department deleted successfully" });
     } catch (error) {
         if (error instanceof Error) {
+            next({ message: error.message, status: 500 });
+        } else if (typeof error === "object" && error !== null && "status" in (error as Record<string, any>)) {
+            next(error);
+        } else {
+            next({ message: "Server Error", status: 500 });
+        }
+    }
+}
+
+export const showDepartment: RequestHandler = async (req, res, next) => {
+    try {
+        const departmentId = Number(req.params.id);
+        if(!departmentId || isNaN(departmentId))
+            throw { status: 404, message: "department not found" };
+
+        const department = await prisma.department.findUnique({ where: {id: departmentId}})
+        if(!department)
+            throw { status: 404, message: "department not found" };
+
+        res.status(200).json({ department });
+    } catch (error) {
+         if (error instanceof Error) {
             next({ message: error.message, status: 500 });
         } else if (typeof error === "object" && error !== null && "status" in (error as Record<string, any>)) {
             next(error);

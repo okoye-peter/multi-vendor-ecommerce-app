@@ -11,6 +11,7 @@ import { rollbackOnError } from "./service/fileService.ts";
 import path from "path";
 import { fileURLToPath } from "url";
 import departmentRoute from './routers/department.route.ts';
+import categoryRoute from './routers/category.route.ts'
 
 dotenv.config();
 
@@ -66,6 +67,7 @@ app.use("/uploads", express.static(path.join(__dirname, "../public/uploads")));
 
 app.use('/api/auth', authRoute);
 app.use('/api/departments', departmentRoute);
+app.use('/api/categories', categoryRoute);
 
 
 // Error Handling Middlewares
