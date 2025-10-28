@@ -12,6 +12,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import departmentRoute from './routers/department.route.ts';
 import categoryRoute from './routers/category.route.ts'
+import './workers/index.worker.ts';
 
 dotenv.config();
 

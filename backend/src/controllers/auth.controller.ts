@@ -6,6 +6,8 @@ import { sendEmailVerificationCode, sendPasswordResetToken } from "../utils/send
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { FileService } from "../service/fileService.ts";
+import { queueVerificationEmail } from "../queues/email.queue.ts";
+// import { queueVerificationEmail } from '../queues/email.queue.js';
 
 const userService = new UserService();
 const prisma = new PrismaClient();
@@ -112,11 +114,33 @@ export const register: RequestHandler = async (req, res, next) => {
             return next({ status: 400, message: errors });
         }
 
-        const { user, emailVerificationCode } = await userService.createUser(result.data);
+        const { vendor_name, vendor_address, state, ...cleanData } = result.data;
+
+        // 🧩 Use a transaction so user/vendor creation is atomic
+        const { user, emailVerificationCode } = await prisma.$transaction(async (tx) => {
+            // Create user first
+            const { user, emailVerificationCode } = await userService.createUser(cleanData, tx);
+
+            // If user is a vendor, create vendor record linked to user
+            if (result.data.type === "VENDOR" && (vendor_name || vendor_address || state)) {
+                await tx.vendor.create({
+                    data: {
+                        name: vendor_name || "",
+                        address: vendor_address || "",
+                        stateId: state ? Number(state) : null,
+                        userId: user.id,
+                    },
+                });
+            }
+
+            return { user, emailVerificationCode };
+        });
 
         generateAuthorizationTokenAndSetCookies(res, user.id);
 
-        await sendEmailVerificationCode(user.email, parseInt(emailVerificationCode));
+        // queue email to send email verification token
+        await queueVerificationEmail(user.email, parseInt(emailVerificationCode));
+        // await sendEmailVerificationCode(user.email, parseInt(emailVerificationCode));
 
         res.status(201).json({ user, message: "User registered successfully" });
     } catch (error) {
@@ -322,7 +346,8 @@ export const resendEmailVerificationCode: RequestHandler = async (req, res, next
         const emailVerificationCode = Math.floor(100000 + Math.random() * 900000).toString();
         const emailVerificationCodeExpiresAt = new Date(Date.now() + 1000 * 60 * 15);
 
-        await sendEmailVerificationCode(user.email, parseInt(emailVerificationCode));
+        await queueVerificationEmail(user.email, parseInt(emailVerificationCode));
+        // await sendEmailVerificationCode(user.email, parseInt(emailVerificationCode));
 
         await prisma.user.update({
             where: {

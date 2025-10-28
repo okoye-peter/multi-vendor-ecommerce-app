@@ -1,5 +1,5 @@
 // services/userService.js
-import { PrismaClient } from "@prisma/client";
+import { Prisma, PrismaClient } from "@prisma/client";
 import { userSchema } from "../controllers/auth.controller.ts";
 import type z from "zod";
 import bcrypt from "bcryptjs";
@@ -19,11 +19,12 @@ export default class UserService {
         return user;
     }
 
-    async createUser(data: UserData) {
+    async createUser(data: UserData, tx?: Prisma.TransactionClient) {
+        const client = tx || prisma;
 
         try {
             // Check for existing user by email or phone
-            const existingUser = await prisma.user.findFirst({
+            const existingUser = await client.user.findFirst({
                 where: {
                     OR: [{ email: data.email }, { phone: data.phone }],
                 },
@@ -52,7 +53,7 @@ export default class UserService {
             const phoneVerificationCode = Math.floor(100000 + Math.random() * 900000).toString();
             const phoneVerificationCodeExpiresAt = new Date(Date.now() + 1000 * 60 * 15);
 
-            const user = await prisma.user.create({
+            const user = await client.user.create({
                 data: {
                     ...cleanData,
                     password: hashedPassword,
