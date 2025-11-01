@@ -21,6 +21,11 @@ export interface PasswordResetData {
 }
 
 export interface BackendError {
+    status?: number | string;
+    data?: {
+        message?: Record<string, string[]> | string;
+    };
+    // Legacy support for direct response access
     response?: {
         data?: {
             message?: Record<string, string[]> | string;
@@ -32,3 +37,25 @@ export interface BackendError {
 export interface LogoutResponse {
   message: string;
 };
+
+export interface state {
+    id: number,
+    name: string
+}
+
+export interface Country {
+    id: number;
+    name: string;
+}
+
+export interface State {
+    id: number;
+    name: string;
+    countryId: number;
+}
+
+export interface LGA {
+    id: number;
+    name: string;
+    stateId: number;
+}

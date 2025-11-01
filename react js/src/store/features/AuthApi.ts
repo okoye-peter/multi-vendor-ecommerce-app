@@ -1,6 +1,6 @@
 // authApi.ts
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
-import type { loginData, PasswordResetData, registrationData, User } from "../types/Index.ts";
+import type { loginData, PasswordResetData, User } from "../types/Index.ts";
 import type { LogoutResponse } from '../../types/Index.ts';
 
 export const authApi = createApi({
@@ -8,10 +8,6 @@ export const authApi = createApi({
     baseQuery: fetchBaseQuery({
         baseUrl: import.meta.env.VITE_API_URL,
         credentials: 'include', // ✅ send cookies with every request
-        prepareHeaders: (headers) => {
-            // If you need to add auth headers, do it here
-            return headers;
-        },
     }),
     tagTypes: ['user'],
     endpoints: (builder) => ({
@@ -22,11 +18,11 @@ export const authApi = createApi({
                 body: loginData,
             }),
         }),
-        register: builder.mutation<{ user: User, message: string }, registrationData>({
-            query: (registrationData) => ({
+        register: builder.mutation<{ user: User, message: string }, FormData>({
+            query: (formData: FormData) => ({
                 url: '/auth/register',
                 method: 'POST',
-                body: registrationData
+                body: formData,
             }),
         }),
         logout: builder.mutation<LogoutResponse, void>({

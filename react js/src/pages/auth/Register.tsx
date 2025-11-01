@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import type { BackendError } from '../../types/Index.ts'
-import { useForm, type SubmitHandler } from 'react-hook-form';
+import type { BackendError, Country, State, state } from '../../types/Index.ts'
+import { useForm, type SubmitHandler, Controller } from 'react-hook-form';
 import { toast } from 'react-toastify';
 import z from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -8,6 +8,10 @@ import { useNavigate } from 'react-router';
 import { useDispatch } from 'react-redux';
 import { setUser, setShowEmailVerificationModal } from '../../store/AuthSlice.ts';
 import { useRegisterMutation } from '../../store/features/AuthApi.ts';
+import Select from 'react-select';
+import makeAnimated from 'react-select/animated';
+import { useQuery } from '@tanstack/react-query';
+import { getCountries, getStatesByCountry } from '../../libs/api.ts';
 
 const userSchema = z
     .object({
@@ -50,7 +54,7 @@ const userSchema = z
             .string()
             .min(8, "Password must be at least 8 characters")
             .max(30, "Password must not exceed 30 characters")
-            .regex(/^[a-zA-Z0-9]+$/, "Password must contain only letters and numbers"),
+            .regex(/^[a-zA-Z0-9!@#$%^&*()_\-+=]{8,30}/, "Password must contain only letters and numbers"),
 
         repeat_password: z
             .string()
@@ -59,7 +63,7 @@ const userSchema = z
 
         vendor_name: z.string().optional(),
         vendor_address: z.string().optional(),
-        state: z.string().optional(),
+        state: z.string().optional().nullable(),
     })
     .refine((data) => data.password === data.repeat_password, { // FIXED: Changed !== to ===
         message: "Passwords do not match",
@@ -81,7 +85,7 @@ const userSchema = z
                     message: "Vendor address is required for vendors",
                 });
             }
-            if (!data.state || data.state.trim() === "") {
+            if (!data.state) {
                 ctx.addIssue({
                     code: z.ZodIssueCode.custom,
                     path: ["state"],
@@ -91,47 +95,71 @@ const userSchema = z
         }
     });
 
-type registrationData = z.infer<typeof userSchema>;
+export type registrationData = z.infer<typeof userSchema>;
+
+const animatedComponents = makeAnimated();
 
 const Register = () => {
     const navigate = useNavigate();
     const dispatch = useDispatch();
+
+    const [selectedCountry, setSelectedCountry] = useState<number | null>(null);
+
+
+    // Fetch countries
+    const { data: countries } = useQuery<Country[]>({
+        queryFn: getCountries,
+        queryKey: ['countries']
+    });
+
+    // Fetch states based on selected country
+    const { data: states, isLoading: statesIsLoading } = useQuery<State[]>({
+        queryFn: () => getStatesByCountry(selectedCountry as number),
+        queryKey: ['states', selectedCountry],
+        enabled: !!selectedCountry // Only fetch when country is selected
+    });
+
     const {
         register,
         watch,
         formState: { errors },
         handleSubmit,
-        setError
-    } = useForm<registrationData>({ resolver: zodResolver(userSchema) })
+        setError,
+        setValue,
+        control
+    } = useForm<registrationData>({
+        resolver: zodResolver(userSchema),
+        defaultValues: { state: null },
+    })
     const selectedType = watch('type');
 
     const [showPassword, setShowPassword] = useState(false);
     const [showRepeatPassword, setShowRepeatPassword] = useState(false);
 
-    const [registerMutation, { isLoading:isRegistering }] = useRegisterMutation();
 
-    const onSubmit: SubmitHandler<registrationData> = async (data: registrationData) => {
+    const [registerMutation, { isLoading: isRegistering }] = useRegisterMutation();
+
+    const onSubmit: SubmitHandler<registrationData> = async (userData: registrationData) => {
         try {
-            // Create FormData for file upload
             const formData = new FormData();
 
-            formData.append('name', data.name);
-            formData.append('email', data.email);
-            formData.append('phone', data.phone);
-            formData.append('type', data.type);
-            formData.append('password', data.password);
-            formData.append('repeat_password', data.repeat_password);
+            formData.append('name', userData.name);
+            formData.append('email', userData.email);
+            formData.append('phone', userData.phone);
+            formData.append('type', userData.type);
+            formData.append('password', userData.password);
+            formData.append('repeat_password', userData.repeat_password);
 
             // Add vendor fields if type is VENDOR
-            if (data.type === 'VENDOR') {
-                if (data.vendor_name) formData.append('vendor_name', data.vendor_name);
-                if (data.vendor_address) formData.append('vendor_address', data.vendor_address);
-                if (data.state) formData.append('state', data.state);
+            if (userData.type === 'VENDOR') {
+                if (userData.vendor_name) formData.append('vendor_name', userData.vendor_name);
+                if (userData.vendor_address) formData.append('vendor_address', userData.vendor_address);
+                if (userData.state) formData.append('state', userData.state);
             }
 
             // Add picture if exists
-            if (data.picture && data.picture.length > 0) {
-                formData.append('picture', data.picture[0]);
+            if (userData.picture && userData.picture.length > 0) {
+                formData.append('picture', userData.picture[0]);
             }
 
             const res = await registerMutation(formData).unwrap();
@@ -144,19 +172,29 @@ const Register = () => {
 
         } catch (error) {
             const backendError = error as BackendError;
+            const messages = backendError?.data?.message;
+            console.log('Backend Error:', messages, backendError); // For debugging
 
-            if (backendError.response?.data?.message && typeof backendError.response.data.message === 'object') {
-                const errors = backendError.response.data.message as Record<string, string[]>;
-
-                Object.keys(errors).forEach((key) => {
-                    setError(key as keyof registrationData, {
-                        type: 'manual',
-                        message: errors[key][0]
+            if (messages && typeof messages === 'object') {
+                // Handle field-specific validation errors
+                Object.entries(messages).forEach(([field, errs]) => {
+                    const messageText = Array.isArray(errs) ? errs[0] : String(errs);
+                    const mappedField = field as keyof registrationData;
+                    console.log(`Setting error for field ${mappedField}: ${messageText}`);
+                    setError(mappedField, {
+                        type: 'server',
+                        message: messageText,
                     });
                 });
             } else {
-                setError("root", {
-                    message: backendError.response?.data?.message as string || backendError.message || 'Registration failed'
+                // Handle general error message
+                const messageText =
+                    typeof messages === 'string'
+                        ? messages
+                        : backendError.message || 'Registration failed';
+
+                toast.error(messageText, {
+                    position: 'top-right',
                 });
             }
         }
@@ -264,16 +302,83 @@ const Register = () => {
                                     {errors.vendor_address && <p className="mt-1 text-xs text-error">{errors.vendor_address.message}</p>}
                                 </div>
 
+                                {/* Country Select */}
+                                <div className="form-control">
+                                    <label className="label">
+                                        <span className="label-text">Country</span>
+                                    </label>
+                                    <Select<Country, false>
+                                        closeMenuOnSelect
+                                        components={animatedComponents}
+                                        options={countries ?? []}
+                                        getOptionLabel={(option: Country) => option.name}
+                                        getOptionValue={(option: Country) => String(option.id)}
+                                        value={countries?.find(country => country.id === selectedCountry) || null}
+                                        onChange={(val) => {
+                                            setSelectedCountry(val?.id || null);
+                                            setValue('state', null); // Reset state when country changes
+                                        }}
+                                        isClearable
+                                        placeholder="Select a country..."
+                                        classNames={{
+                                            control: () => '!bg-transparent',
+                                            menu: () => 'bg-base-100 border border-base-300',
+                                            menuList: () => 'bg-base-100',
+                                            option: (state) =>
+                                                state.isSelected
+                                                    ? 'bg-primary text-primary-content'
+                                                    : state.isFocused
+                                                        ? 'bg-base-200'
+                                                        : '',
+                                            input: () => '!text-base-content',
+                                            singleValue: () => '!text-base-content',
+                                            placeholder: () => '!text-base-content/60',
+                                            dropdownIndicator: () => '!text-base-content/60',
+                                            clearIndicator: () => '!text-base-content/60',
+                                        }}
+                                    />
+
+                                </div>
+
                                 {/* State */}
                                 <div>
                                     <label className="block mb-2 text-sm font-medium label-text">
                                         State
                                     </label>
-                                    <input
-                                        type="text"
-                                        {...register('state')}
-                                        className={`w-full input focus:outline-none focus:border-[#388bff] input-bordered ${errors.state ? 'input-error' : ''}`}
-                                        placeholder="Your state"
+                                    <Controller
+                                        name="state"
+                                        control={control}
+                                        render={({ field }) => (
+                                            <Select<state, false>
+                                                closeMenuOnSelect
+                                                components={animatedComponents}
+                                                options={states ?? []}
+                                                getOptionLabel={(option) => option.name}
+                                                getOptionValue={(option) => String(option.id)}
+                                                value={states?.find((s) => String(s.id) === field.value) || null}
+                                                onChange={(val) => field.onChange(val ? String(val.id) : '')}
+                                                onBlur={field.onBlur}
+                                                isClearable
+                                                isLoading={statesIsLoading}
+                                                placeholder="Select a state..."
+                                                classNames={{
+                                                    control: () => '!bg-transparent',
+                                                    menu: () => 'bg-base-100 border border-base-300',
+                                                    menuList: () => 'bg-base-100',
+                                                    option: (state) =>
+                                                        state.isSelected
+                                                            ? 'bg-primary text-primary-content'
+                                                            : state.isFocused
+                                                                ? 'bg-base-200'
+                                                                : '',
+                                                    input: () => '!text-base-content',
+                                                    singleValue: () => '!text-base-content',
+                                                    placeholder: () => '!text-base-content/60',
+                                                    dropdownIndicator: () => '!text-base-content/60',
+                                                    clearIndicator: () => '!text-base-content/60',
+                                                }}
+                                            />
+                                        )}
                                     />
                                     {errors.state && <p className="mt-1 text-xs text-error">{errors.state.message}</p>}
                                 </div>

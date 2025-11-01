@@ -12,21 +12,38 @@ import path from "path";
 import { fileURLToPath } from "url";
 import departmentRoute from './routers/department.route.ts';
 import categoryRoute from './routers/category.route.ts'
+import stateRoute from './routers/state.route.ts'
 import './workers/index.worker.ts';
+import { createBullBoard } from '@bull-board/api';
+import { BullMQAdapter } from '@bull-board/api/bullMQAdapter'; // ← Changed
+import { ExpressAdapter } from '@bull-board/express';
+import { emailQueue } from './queues/email.queue.ts'
+
+
 
 dotenv.config();
-
 
 const PORT = process.env.PORT || 5001;
 
 const app = express();
-
 app.use(express.json());
+
+
 // Middleware to parse URL-encoded data
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 // roll back file(s) upload is any error happens
 app.use(rollbackOnError());
+
+const serverAdapter = new ExpressAdapter();
+serverAdapter.setBasePath('/admin/queues'); // Path to access the UI
+createBullBoard({
+    queues: [
+        // Add all your queues here
+        new BullMQAdapter(emailQueue),
+    ],
+    serverAdapter: serverAdapter,
+});
 
 
 const corsConfig: CorsOptions = {
@@ -35,7 +52,7 @@ const corsConfig: CorsOptions = {
 
         if (
             process.env.NODE_ENV === "development" &&
-            ["http://localhost:5173", "http://127.0.0.1:5173"].includes(origin)
+            origin && ["http://localhost:5173", "http://127.0.0.1:5173"].includes(origin)
         ) {
             return callback(null, true);
         }
@@ -55,7 +72,7 @@ const corsConfig: CorsOptions = {
 // server.ts
 app.use(helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" },
-  }));
+}));
 app.use(cors(corsConfig));
 
 // Serve the /uploads folder publicly
@@ -65,12 +82,13 @@ const __dirname = path.dirname(__filename);
 app.use(express.static(path.join(__dirname, "../public")));
 app.use("/uploads", express.static(path.join(__dirname, "../public/uploads")));
 
-
 app.use('/api/auth', authRoute);
+app.use('/api/locations', stateRoute);
 app.use('/api/departments', departmentRoute);
 app.use('/api/categories', categoryRoute);
 
 
+app.use('/admin/queues', serverAdapter.getRouter());
 // Error Handling Middlewares
 app.use(routeNotFoundErrorHandler);
 app.use(errorHandler);

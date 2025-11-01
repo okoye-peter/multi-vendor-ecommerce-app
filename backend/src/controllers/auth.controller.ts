@@ -38,12 +38,12 @@ export const userSchema = z
             .string()
             .min(8, "Password must be at least 8 characters")
             .max(30, "Password must not exceed 30 characters")
-            .regex(/^[a-zA-Z0-9]{8,30}$/, "Password must contain only letters and numbers"),
+            .regex(/^[a-zA-Z0-9!@#$%^&*()_\-+=]{8,30}$/, "Password must contain only letters and numbers"),
         repeat_password: z
             .string()
             .min(8, "Confirm password must be at least 8 characters")
             .max(30, "Confirm password must not exceed 30 characters")
-            .regex(/^[a-zA-Z0-9]{8,30}$/, "Confirm password must contain only letters and numbers"),
+            .regex(/^[a-zA-Z0-9!@#$%^&*()_\-+=]{8,30}$/, "Confirm password must contain only letters and numbers"),
         vendor_name: z.string().optional(),
         vendor_address: z.string().optional(),
         state: z.string().optional(),
@@ -81,6 +81,7 @@ export const userSchema = z
 export const register: RequestHandler = async (req, res, next) => {
     const uploadedFile = (req as any).uploadedFile;
     const uploadedFilePath = uploadedFile?.path;
+
     try {
         const bodyData = {
             ...req.body,
