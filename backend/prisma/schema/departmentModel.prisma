@@ -8,6 +8,7 @@ model Department {
     updatedAt       DateTime @updatedAt @map("updated_at")
 
     categories Category[]
+    products   Product[]
 
     @@map("departments")
 }

@@ -36,12 +36,12 @@
         "zod": "^4.1.12"
     },
     "devDependencies": {
-        "@prisma/client": "^6.17.1",
+        "@prisma/client": "^6.18.0",
         "@types/express": "^5.0.3",
         "@types/multer": "^2.0.0",
         "@types/node": "^24.7.1",
         "nodemon": "^3.1.10",
-        "prisma": "^6.17.1",
+        "prisma": "^6.18.0",
         "ts-node": "^10.9.2",
         "typescript": "^5.9.3"
     }

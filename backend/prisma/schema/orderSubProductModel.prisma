@@ -1,0 +1,8 @@
+model orderSubProduct {
+    id           Int         @id @default(autoincrement())
+    subProductId Int?        @map("sub_product_id")
+    subProduct   subProduct? @relation(fields: [subProductId], references: [id], onDelete: SetNull)
+    orderId      Int         @map("order_id")
+    order        order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+    quantity     Int
+}

@@ -1,0 +1,14 @@
+model order {
+    id                Int        @id @default(autoincrement())
+    productId         Int?       @map("product_id")
+    product           Product?   @relation(fields: [productId], references: [id], onDelete: SetNull)
+    requestedQuantity Int        @map("requested_quantity")
+    quantity          Int
+    orderGroupId      Int        @map("order_group_id")
+    priceOnPurchase   Float      @map("price_on_purchase")
+    orderGroup        orderGroup @relation(fields: [orderGroupId], references: [id], onDelete: Cascade)
+    createdAt         DateTime   @default(now()) @map("created_at")
+    updatedAt         DateTime   @updatedAt @map("updated_at")
+
+    subProducts orderSubProduct[]
+}

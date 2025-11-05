@@ -17,6 +17,10 @@ model User {
 
     vendor             Vendor?
     passwordResetTokens PasswordResetToken[]
+    orderGroups orderGroup[]
+    orderStatusLogs orderStatusLog[]
+
+    @@index([email, phone, name])
 
     @@map("users")
 }

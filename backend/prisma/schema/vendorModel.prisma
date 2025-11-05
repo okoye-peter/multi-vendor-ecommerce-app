@@ -7,5 +7,9 @@ model Vendor {
     userId  Int?   @unique
     user    User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
 
+    products Product[]
+
+    orderGroups orderGroup[]
+
     @@map("vendors")
 }

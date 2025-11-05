@@ -1,0 +1,24 @@
+model Product {
+    id           Int         @id @default(autoincrement())
+    name         String
+    slug         String
+    description  String?
+    price        Float
+    quantity     Int
+    is_published Boolean     @default(true)
+    departmentId Int?        @map("department_id")
+    department   Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+    categoryId   Int?        @map("category_id")
+    category     Category?   @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+    vendorId     Int?        @map("vendor_id")
+    vendor       Vendor?     @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+    createdAt    DateTime    @default(now()) @map("created_at")
+    updatedAt    DateTime    @updatedAt @map("updated_at")
+
+    subProducts subProduct[]
+    orders order[]
+
+    @@index([slug, name])
+
+    @@map("products")
+}

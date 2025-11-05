@@ -9,5 +9,7 @@ model Category {
     createdAt    DateTime   @default(now()) @map("created_at")
     updatedAt    DateTime   @updatedAt @map("updated_at")
 
+    products     Product[]
+
     @@map("categories")
 }

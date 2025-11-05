@@ -15,10 +15,11 @@ import categoryRoute from './routers/category.route.ts'
 import stateRoute from './routers/state.route.ts'
 import './workers/index.worker.ts';
 import { createBullBoard } from '@bull-board/api';
-import { BullMQAdapter } from '@bull-board/api/bullMQAdapter'; // ← Changed
+import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
 import { ExpressAdapter } from '@bull-board/express';
-import { emailQueue } from './queues/email.queue.ts'
-
+import { emailQueue } from './queues/email.queue.ts';
+import productRoute from './routers/product.route.ts'
+import vendorRoutes from './routers/vendor.route.ts';
 
 
 dotenv.config();
@@ -86,6 +87,8 @@ app.use('/api/auth', authRoute);
 app.use('/api/locations', stateRoute);
 app.use('/api/departments', departmentRoute);
 app.use('/api/categories', categoryRoute);
+app.use('/api/products', productRoute);
+app.use('/api/vendors/:vendorId', vendorRoutes);
 
 
 app.use('/admin/queues', serverAdapter.getRouter());

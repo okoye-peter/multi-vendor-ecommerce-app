@@ -1,0 +1,9 @@
+model orderStatusLog {
+    id Int @id @default(autoincrement())
+    from Int
+    to Int
+    orderGroupId Int
+    orderGroup orderGroup @relation(fields: [orderGroupId], references: [id], onDelete: Cascade)
+    userId Int?
+    user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+}

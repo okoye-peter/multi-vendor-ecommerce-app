@@ -234,3 +234,39 @@ export const deleteCategory: RequestHandler = async (req, res, next) => {
         }
     }
 }
+
+export const getAllCategories: RequestHandler = async (req, res, next) => {
+    try {
+        const departmentId = Number(req.query.departmentId);
+        const search = req.query.q ? String(req.query.q).trim() : undefined;
+
+        const where: any = {};
+
+        if(departmentId && !isNaN(departmentId)) {
+            const Department = await prisma.department.findUnique({
+                where: { id: departmentId }
+            });
+            if(!Department) return res.status(200).json({});
+            else where.departmentId = departmentId;
+        }
+
+        if (search) {
+            where.name = {
+                contains: search,
+                mode: 'insensitive',
+            };
+        }
+
+        const categories = await prisma.category.findMany({ where })
+
+        res.status(200).json(categories);
+    } catch (error) {
+        if (error instanceof Error) {
+            next({ message: error.message, status: 500 });
+        } else if (typeof error === "object" && error !== null && "status" in (error as Record<string, any>)) {
+            next(error);
+        } else {
+            next({ message: "Server Error", status: 500 });
+        }
+    }
+}
