@@ -2,9 +2,32 @@ import { PrismaClient } from "@prisma/client";
 import { type RequestHandler } from "express";
 import z from "zod";
 import ProductService from "../service/productService.ts";
+import { FilterService } from "../service/filterService.ts";
+import { FileService } from "../service/fileService.ts";
 
 const productService = new ProductService;
 const prisma = new PrismaClient();
+
+const imageSchema = z.object({
+    filename: z.string(),
+    path: z.string(),
+    mimetype: z.enum(["image/jpeg", "image/png", "image/jpg", "image/webp"]),
+    size: z.number().max(2 * 1024 * 1024, "File size must not exceed 2MB"),
+});
+
+const imagesArraySchema = z
+    .array(
+        z.object({
+            default: z.boolean().optional().default(false),
+            image: imageSchema,
+        })
+    )
+    .min(1, "At least one image is required")
+    // Enforce only one default image
+    .refine(
+        (images) => images.filter((img) => img.default).length <= 1,
+        { message: "Only one image can be set as default", path: ["default"] }
+    );
 
 export const productSchema = z
     .object({
@@ -17,6 +40,7 @@ export const productSchema = z
         expiry_date: z.coerce.date().optional().nullable(),
         cost_price: z.coerce.number().nonnegative("Cost Price must be non-negative").optional().nullable(),
         status: z.coerce.boolean().default(true),
+        images: imagesArraySchema.optional().nullable(),
     })
     .refine(
         (data) => data.quantity <= 0 || !!data.expiry_date,
@@ -34,6 +58,7 @@ export const productUpdateSchema = z.object({
     categoryId: z.coerce.number().int().positive("Category ID must be a positive integer"),
     departmentId: z.coerce.number().int().positive("Department ID must be a positive integer"),
     status: z.coerce.boolean().default(true),
+    images: imagesArraySchema.optional().nullable(),
 });
 
 export const productRefillSchema = z.object({
@@ -46,27 +71,36 @@ export const productRefillSchema = z.object({
 
 
 export const createProduct: RequestHandler = async (req, res, next) => {
+    const uploadedFilePaths: string[] = (req as any).uploadedFilePaths || [];
+
     try {
         const vendor = req.vendor;
 
         const result = productSchema.safeParse(req.body);
         if (!result.success) {
             const { fieldErrors, formErrors } = result.error.flatten();
-
-            // If there are no fieldErrors (all arrays empty), use formErrors instead
             const hasFieldErrors = Object.values(fieldErrors).some(
                 (errors) => errors && errors.length > 0
             );
-
             const errors = hasFieldErrors ? fieldErrors : formErrors;
+
+            // Rollback any uploaded files
+            if (uploadedFilePaths.length > 0) {
+                await FileService.rollback(uploadedFilePaths);
+            }
 
             return next({ status: 400, message: errors });
         }
 
-        const product = await productService.create(result.data, vendor)
+        const product = await productService.create(result.data, vendor, uploadedFilePaths);
 
-        return res.status(201).json({ product, message: 'Product created successfully' });
+        return res.status(201).json({ product, message: "Product created successfully" });
     } catch (error) {
+        // Rollback uploaded files on any error
+        if (uploadedFilePaths.length > 0) {
+            await FileService.rollback(uploadedFilePaths);
+        }
+
         if (error instanceof Error) {
             next({ message: error.message, status: 500 });
         } else if (typeof error === "object" && error !== null && "status" in (error as Record<string, any>)) {
@@ -75,9 +109,11 @@ export const createProduct: RequestHandler = async (req, res, next) => {
             next({ message: "Server Error", status: 500 });
         }
     }
-}
+};
 
 export const updateProduct: RequestHandler = async (req, res, next) => {
+    const uploadedFilePaths: string[] = (req as any).uploadedFilePaths || [];
+
     try {
         const vendor = req.vendor;
         const productId = Number(req.params.productId);
@@ -98,6 +134,11 @@ export const updateProduct: RequestHandler = async (req, res, next) => {
 
             const errors = hasFieldErrors ? fieldErrors : formErrors;
 
+            // Rollback any uploaded files
+            if (uploadedFilePaths.length > 0) {
+                await FileService.rollback(uploadedFilePaths);
+            }
+
             return next({ status: 400, message: errors });
         }
 
@@ -108,6 +149,11 @@ export const updateProduct: RequestHandler = async (req, res, next) => {
 
 
     } catch (error) {
+        // Rollback uploaded files on any error
+        if (uploadedFilePaths.length > 0) {
+            await FileService.rollback(uploadedFilePaths);
+        }
+
         if (error instanceof Error) {
             next({ message: error.message, status: 500 });
         } else if (typeof error === "object" && error !== null && "status" in (error as Record<string, any>)) {
@@ -159,7 +205,7 @@ export const deleteProduct: RequestHandler = async (req, res, next) => {
             throw { message: "product not found", status: 400 }
         }
 
-        productService.delete(productId, vendor);
+        productService.delete(productId);
 
         res.status(200).json({ message: "product deleted successfully" })
     } catch (error) {
@@ -200,7 +246,7 @@ export const refillProduct: RequestHandler = async (req, res, next) => {
             throw { message: "product not found", status: 400 }
         }
 
-        const data =await productService.refill(productId, result.data, vendor);
+        const data = await productService.refill(productId, result.data, vendor);
         res.status(200).json(data);
     } catch (error) {
         if (error instanceof Error) {
@@ -212,4 +258,65 @@ export const refillProduct: RequestHandler = async (req, res, next) => {
         }
     }
 }
+
+export const getVendorProducts: RequestHandler = async (req, res, next) => {
+    try {
+        const user = req.user;
+        const { vendorId } = req.query;
+        const filterOptions = FilterService.parseQueryParams(req.query);
+        const vendors = await prisma.vendor.findMany({
+            where: {
+                userId: user.id
+            },
+            select: {
+                id: true
+            }
+        })
+
+        const vendorIds = vendors.map((v) => v.id);
+
+        const vendorFilterIds = vendorId
+            ? [Number(vendorId)]
+            : vendorIds;
+
+        // Configure filters
+        Object.assign(filterOptions, {
+            filters: [
+                ...(filterOptions.filters || []),
+                {
+                    field: "vendorId",
+                    operator: "in" as const,
+                    value: vendorFilterIds,
+                },
+            ],
+            searchFields: filterOptions.searchFields || [
+                'name',
+                'description',
+                'slug',
+                'category.name',
+                'department.name',
+                'vendor.name',
+                'vendor.address',
+            ],
+            include: {
+                category: { select: { id: true, name: true } },
+                department: { select: { id: true, name: true, slug: true } },
+                vendor: { select: { id: true, name: true, address: true } },
+            },
+        });
+
+        const result = await FilterService.executePaginatedQuery(
+            prisma.product,
+            filterOptions
+        );
+
+        res.status(200).json({ success: true, ...result });
+
+    } catch (error) {
+        next(error instanceof Error
+            ? { message: error.message, status: 500 }
+            : { message: "Server Error", status: 500 }
+        );
+    }
+};
 

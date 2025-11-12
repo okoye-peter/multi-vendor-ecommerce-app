@@ -224,3 +224,18 @@ export const showDepartment: RequestHandler = async (req, res, next) => {
         }
     }
 }
+
+export const getAllDepartments:RequestHandler = async (req, res, next) => {
+    try{
+        const departments = await prisma.department.findMany({});
+        res.status(200).json(departments)
+    } catch (error) {
+         if (error instanceof Error) {
+            next({ message: error.message, status: 500 });
+        } else if (typeof error === "object" && error !== null && "status" in (error as Record<string, any>)) {
+            next(error);
+        } else {
+            next({ message: "Server Error", status: 500 });
+        }
+    }
+}

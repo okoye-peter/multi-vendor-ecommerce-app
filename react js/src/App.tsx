@@ -17,11 +17,15 @@ import { toast, ToastContainer } from 'react-toastify'
 import AdminLayout from './components/Layouts/AdminLayout.tsx';
 import Dashboard from './pages/admin/Dashboard.tsx';
 import { Outlet, useLocation } from 'react-router-dom';
+import VendorLayout from './components/Layouts/VendorLayout.tsx';
+import VendorDashboard from './pages/vendor/Dashboard.tsx'
+import ProductsList from './pages/vendor/products/index.tsx'
 
 
 function App() {
     const location = useLocation();
     const isAdminRoute = location.pathname.startsWith('/admin');
+    // const isVendorRoute = location.pathname.startsWith('/vendor');
     const { data, isLoading, isError, error } = useGetAuthenticatedUserQuery();
     const user = useSelector((state: RootState) => state.auth.user);
     const showEmailVerificationModal = useSelector((state: RootState) => state.auth.showEmailVerificationModal);
@@ -71,6 +75,12 @@ function App() {
                 <Route path='/login' element={<Login />} />
                 <Route path='/register' element={<Register />} />
                 <Route path='/password/reset' element={<PasswordReset />} />
+
+                {/* Vendor routes - parent route with layout */}
+                <Route path='/vendor' element={<VendorLayout><Outlet /></VendorLayout>}>
+                    <Route path='dashboard' element={<VendorDashboard />} />
+                    <Route path='products' element={<ProductsList />} />
+                </Route>
 
                 {/* Admin routes - parent route with layout */}
                 <Route path='/admin' element={<AdminLayout><Outlet /></AdminLayout>}>

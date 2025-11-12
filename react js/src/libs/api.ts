@@ -52,3 +52,17 @@ export const getLGAsByState = async (stateId: number): Promise<LGA[]> => {
     const response = await axiosInstance.get(`/locations/${stateId}/lgas`);
     return response.data;
 };
+
+export const getAllCategory = async () => {
+    const response = await axiosInstance.get('/categories')
+    return response.data
+}
+
+export const getAllDepartments = async () => {
+    const response = await axiosInstance.get('/departments')
+    return response.data
+}
+
+export const createProduct = async (vendor) => {
+
+}

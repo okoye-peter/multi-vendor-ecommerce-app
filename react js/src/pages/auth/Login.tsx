@@ -40,7 +40,8 @@ const Login = () => {
             navigate('/');
         } catch (error) {
             const backendError = error as BackendError;
-
+            console.log('backendError', backendError);
+            
             if (backendError.response?.data?.message && typeof backendError.response.data.message === 'object') {
                 const errors = backendError.response.data.message as Record<string, string[]>;
 
@@ -52,7 +53,7 @@ const Login = () => {
                 });
             } else {
                 setError("root", {
-                    message: backendError.response?.data?.message as string || backendError.message || 'Registration failed'
+                    message: backendError.response?.data?.message as string || backendError?.message || backendError.data?.message ||'Login failed'
                 });
             }
         }
@@ -84,6 +85,7 @@ const Login = () => {
                     />
                     {/* email error */}
                     {errors.email && <p className="mt-1 text-xs text-error">{errors.email.message}</p>}
+                    {errors.root && <p className="mt-1 text-xs text-error">{errors.root.message}</p>}
                 </div>
 
                 {/* Password Input */}

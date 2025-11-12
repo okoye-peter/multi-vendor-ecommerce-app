@@ -184,6 +184,9 @@ export const Navbar = () => {
                                 </div>
                                 <ul tabIndex={-1} className="p-2 mt-3 shadow menu menu-sm dropdown-content bg-base-100 rounded-box z-1 w-52">
                                     <li><a className="justify-between">Profile<span className="badge">New</span></a></li>
+                                    
+                                    {user && user.type?.toUpperCase() == 'VENDOR' && <li><Link to="/vendor/dashboard">Vendor</Link></li>}
+                                    
                                     <li><a>Settings</a></li>
                                     <li><a onClick={handleLogout}>Logout</a></li>
                                 </ul>

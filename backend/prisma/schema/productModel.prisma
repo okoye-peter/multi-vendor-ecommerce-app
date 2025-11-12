@@ -17,6 +17,7 @@ model Product {
 
     subProducts subProduct[]
     orders order[]
+    images ProductImage[]
 
     @@index([slug, name])
 
