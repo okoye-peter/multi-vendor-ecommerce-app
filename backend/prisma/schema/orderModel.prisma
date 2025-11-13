@@ -11,4 +11,6 @@ model order {
     updatedAt         DateTime   @updatedAt @map("updated_at")
 
     subProducts orderSubProduct[]
+
+    @@map("orders")
 }

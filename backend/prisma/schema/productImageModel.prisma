@@ -5,4 +5,6 @@ model ProductImage {
     productId Int
     product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
     createdAt DateTime @default(now()) @map("created_at")
+
+    @@map("product_images")
 }

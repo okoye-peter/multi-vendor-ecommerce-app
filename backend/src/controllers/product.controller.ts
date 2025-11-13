@@ -8,26 +8,10 @@ import { FileService } from "../service/fileService.ts";
 const productService = new ProductService;
 const prisma = new PrismaClient();
 
-const imageSchema = z.object({
-    filename: z.string(),
-    path: z.string(),
-    mimetype: z.enum(["image/jpeg", "image/png", "image/jpg", "image/webp"]),
-    size: z.number().max(2 * 1024 * 1024, "File size must not exceed 2MB"),
+const imageItemSchema = z.object({
+    url: z.string(),
+    availableSizes: z.array(z.string()),
 });
-
-const imagesArraySchema = z
-    .array(
-        z.object({
-            default: z.boolean().optional().default(false),
-            image: imageSchema,
-        })
-    )
-    .min(1, "At least one image is required")
-    // Enforce only one default image
-    .refine(
-        (images) => images.filter((img) => img.default).length <= 1,
-        { message: "Only one image can be set as default", path: ["default"] }
-    );
 
 export const productSchema = z
     .object({
@@ -40,15 +24,17 @@ export const productSchema = z
         expiry_date: z.coerce.date().optional().nullable(),
         cost_price: z.coerce.number().nonnegative("Cost Price must be non-negative").optional().nullable(),
         status: z.coerce.boolean().default(true),
-        images: imagesArraySchema.optional().nullable(),
+        images: imageItemSchema,
+        productImages: z.array(z.string()).min(1, "At least one product image is required"),
+        defaultImageIndex: z.coerce.number().int().min(0, "Default image index must be non-negative")
     })
-    .refine(
-        (data) => data.quantity <= 0 || !!data.expiry_date,
-        { message: "Expiry date is required when quantity is greater than 0", path: ["expiry_date"] }
-    )
     .refine(
         (data) => data.quantity <= 0 || (data.cost_price !== null && data.cost_price !== undefined),
         { message: "Cost price is required when quantity is greater than 0", path: ["cost_price"] }
+    )
+    .refine(
+        (data) => data.defaultImageIndex < data.productImages.length,
+        { message: "Default image index is out of range", path: ["defaultImageIndex"] }
     );
 
 export const productUpdateSchema = z.object({
@@ -58,62 +44,102 @@ export const productUpdateSchema = z.object({
     categoryId: z.coerce.number().int().positive("Category ID must be a positive integer"),
     departmentId: z.coerce.number().int().positive("Department ID must be a positive integer"),
     status: z.coerce.boolean().default(true),
-    images: imagesArraySchema.optional().nullable(),
+    images: imageItemSchema.optional().nullable(),
+    productImages: z.array(z.string()),
+    defaultImageIndex: z.number().optional().nullable()
 });
 
 export const productRefillSchema = z.object({
-    expiry_date: z.coerce.date(),
+    expiry_date: z.coerce.date().optional().nullable(),
     quantity: z.coerce.number().int().min(0).default(0),
     cost_price: z.coerce.number().nonnegative("Cost Price must be non-negative"),
     price: z.coerce.number().nonnegative("Price must be non-negative"),
     status: z.coerce.boolean().default(true)
 });
+export interface ProductImage {
+    url: string;
+    availableSizes: Array<"thumb" | "small" | "medium" | "large" | "xlarge" | "original">;
+}
 
 
 export const createProduct: RequestHandler = async (req, res, next) => {
-    const uploadedFilePaths: string[] = (req as any).uploadedFilePaths || [];
+    const uploadedFields = (req as any).uploadedFields as Record<string, ProductImage[]>;
+    const allUploadedImages = (req as any).uploadedProductImages as ProductImage[];
 
     try {
         const vendor = req.vendor;
 
-        const result = productSchema.safeParse(req.body);
+        if (!uploadedFields) {
+            return res.status(400).json({ error: 'No files uploaded' });
+        }
+
+        // Get all product images from images[]
+        const productImages = uploadedFields['images[]'] || [];
+
+        if (productImages.length === 0) {
+            return res.status(400).json({ error: 'At least one product image is required' });
+        }
+
+        // Parse defaultImageIndex from request body
+        const defaultImageIndex = req.body.defaultImageIndex 
+            ? parseInt(req.body.defaultImageIndex) 
+            : 0; // Default to first image
+
+        // Validate defaultImageIndex is within range
+        if (defaultImageIndex < 0 || defaultImageIndex >= productImages.length) {
+            if (allUploadedImages && allUploadedImages.length > 0) {
+                await FileService.rollback(allUploadedImages);
+            }
+            return res.status(400).json({ 
+                error: `Invalid defaultImageIndex. Must be between 0 and ${productImages.length - 1}` 
+            });
+        }
+
+        // Get the default/main image based on index
+        const mainImage = productImages[defaultImageIndex];
+
+        // Validate other form data
+        const result = productSchema.safeParse({
+            ...req.body,
+            images: mainImage, // The main/default image
+            productImages: productImages.map(img => img.url), // All images URLs
+            defaultImageIndex: defaultImageIndex
+        });
+
         if (!result.success) {
             const { fieldErrors, formErrors } = result.error.flatten();
-            const hasFieldErrors = Object.values(fieldErrors).some(
-                (errors) => errors && errors.length > 0
-            );
-            const errors = hasFieldErrors ? fieldErrors : formErrors;
+            const errors = Object.values(fieldErrors).some(arr => arr && arr.length > 0) 
+                ? fieldErrors 
+                : formErrors;
 
-            // Rollback any uploaded files
-            if (uploadedFilePaths.length > 0) {
-                await FileService.rollback(uploadedFilePaths);
+            // Rollback uploaded images on validation failure
+            if (allUploadedImages && allUploadedImages.length > 0) {
+                await FileService.rollback(allUploadedImages);
             }
 
             return next({ status: 400, message: errors });
         }
 
-        const product = await productService.create(result.data, vendor, uploadedFilePaths);
+        const product = await productService.create(result.data, vendor);
 
         return res.status(201).json({ product, message: "Product created successfully" });
     } catch (error) {
-        // Rollback uploaded files on any error
-        if (uploadedFilePaths.length > 0) {
-            await FileService.rollback(uploadedFilePaths);
+        // Rollback all uploaded images on error
+        if (allUploadedImages && allUploadedImages.length > 0) {
+            await FileService.rollback(allUploadedImages);
         }
-
-        if (error instanceof Error) {
-            next({ message: error.message, status: 500 });
-        } else if (typeof error === "object" && error !== null && "status" in (error as Record<string, any>)) {
-            throw error;
-        } else {
-            next({ message: "Server Error", status: 500 });
-        }
+        console.log('error', error)
+        next({ 
+            message: error instanceof Error ? error.message : "Server Error", 
+            status: 500 
+        });
     }
 };
 
 export const updateProduct: RequestHandler = async (req, res, next) => {
-    const uploadedFilePaths: string[] = (req as any).uploadedFilePaths || [];
-
+    const uploadedFields = (req as any).uploadedFields as Record<string, ProductImage[]>;
+    const allUploadedImages = (req as any).uploadedProductImages as ProductImage[];
+    console.log('this is who I am');
     try {
         const vendor = req.vendor;
         const productId = Number(req.params.productId);
@@ -121,8 +147,35 @@ export const updateProduct: RequestHandler = async (req, res, next) => {
         const product = await prisma.product.findUnique({ where: { id: productId, vendorId: vendor.id } })
 
         if (!product) return next({ status: 400, message: "product not found" })
+        
+        // Get all product images from images[]
+        const productImages = uploadedFields['images[]'] || [];
 
-        const result = productUpdateSchema.safeParse(req.body);
+         const defaultImageIndex = req.body.defaultImageIndex 
+            ? parseInt(req.body.defaultImageIndex) 
+            : 0; 
+
+         // Validate defaultImageIndex is within range
+        if (productImages.length  && (defaultImageIndex < 0 || defaultImageIndex >= productImages.length)) {
+            if (allUploadedImages && allUploadedImages.length > 0) {
+                await FileService.rollback(allUploadedImages);
+            }
+            return res.status(400).json({ 
+                error: `Invalid defaultImageIndex. Must be between 0 and ${productImages.length - 1}` 
+            });
+        }
+
+        // Get the default/main image based on index
+        const mainImage = productImages[defaultImageIndex];
+
+        // Validate other form data
+        const result = productUpdateSchema.safeParse({
+            ...req.body,
+            images: mainImage, // The main/default image
+            productImages: productImages.map(img => img.url), // All images URLs
+            defaultImageIndex: defaultImageIndex
+        });
+
 
         if (!result.success) {
             const { fieldErrors, formErrors } = result.error.flatten();
@@ -134,24 +187,24 @@ export const updateProduct: RequestHandler = async (req, res, next) => {
 
             const errors = hasFieldErrors ? fieldErrors : formErrors;
 
-            // Rollback any uploaded files
-            if (uploadedFilePaths.length > 0) {
-                await FileService.rollback(uploadedFilePaths);
+            // Rollback uploaded images on validation failure
+            if (allUploadedImages && allUploadedImages.length > 0) {
+                await FileService.rollback(allUploadedImages);
             }
 
             return next({ status: 400, message: errors });
         }
 
-        const updatedProduct = productService.update(productId, result.data, vendor)
+        const updatedProduct = await productService.update(productId, result.data, vendor)
 
 
         res.status(200).json({ message: "product updated successfully", product: updatedProduct })
 
 
     } catch (error) {
-        // Rollback uploaded files on any error
-        if (uploadedFilePaths.length > 0) {
-            await FileService.rollback(uploadedFilePaths);
+        // Rollback all uploaded images on error
+        if (allUploadedImages && allUploadedImages.length > 0) {
+            await FileService.rollback(allUploadedImages);
         }
 
         if (error instanceof Error) {
@@ -178,6 +231,7 @@ export const getProduct: RequestHandler = async (req, res, next) => {
             include: {
                 category: true,
                 department: true,
+                images: true,
             }
         })
         res.status(200).json(product);

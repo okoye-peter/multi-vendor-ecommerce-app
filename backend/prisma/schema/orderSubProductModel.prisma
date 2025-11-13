@@ -5,4 +5,6 @@ model orderSubProduct {
     orderId      Int         @map("order_id")
     order        order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
     quantity     Int
+
+    @@map("order_sub_products")
 }

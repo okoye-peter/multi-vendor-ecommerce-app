@@ -1,5 +1,9 @@
 backend/node_modules
 backend/.env
+backend/prisma/src
+.vscode/extensions.json
+backend/prisma/schema/migrations
+backend/public/uploads
 
 react js/logs
 react js/*.log

@@ -15,7 +15,7 @@ const prisma = new PrismaClient();
 export const userSchema = z
     .object({
         name: z.string().min(3, "Name must be at least 3 characters").max(50, "Name must not exceed 50 characters"),
-        email: z.string().email("Invalid email address"),
+        email: z.email("Invalid email address"),
         phone: z
             .string()
             .min(7, "Phone number is too short")
@@ -161,7 +161,7 @@ export const register: RequestHandler = async (req, res, next) => {
 
 export const login: RequestHandler = async (req, res, next) => {
     const schema = z.object({
-        email: z.string().email(),
+        email: z.email(),
         password: z.string(),
     });
     try {
@@ -218,7 +218,7 @@ export const logout: RequestHandler = async (req, res, next) => {
 
 export const sendPasswordResetCode: RequestHandler = async (req, res, next) => {
     const schema = z.object({
-        email: z.string().email(),
+        email: z.email(),
     });
     try {
         const result = schema.safeParse(req.body);
@@ -274,7 +274,7 @@ export const sendPasswordResetCode: RequestHandler = async (req, res, next) => {
 
 export const resetPassword: RequestHandler = async (req, res, next) => {
     const schema = z.object({
-        email: z.string().email(),
+        email: z.email(),
         resetAuthorizationCode: z.string().length(6).regex(/^[0-9]+$/),
         newPassword: z.string().min(8).max(30).regex(/^[a-zA-Z0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]+$/, {
             message: "Password may include letters, numbers, and special characters",

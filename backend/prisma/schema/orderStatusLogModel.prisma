@@ -6,4 +6,6 @@ model orderStatusLog {
     orderGroup orderGroup @relation(fields: [orderGroupId], references: [id], onDelete: Cascade)
     userId Int?
     user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+    @@map("order_status_logs")
 }

@@ -7,7 +7,7 @@ import errorHandler from "./middleware/errorHandler.middleware.ts";
 import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
 import routeNotFoundErrorHandler from "./middleware/routeNotFound.middleware.ts";
-import { rollbackOnError } from "./service/fileService.ts";
+import { rollbackOnError, serveResponsiveImages } from "./service/fileService.ts";
 import path from "path";
 import { fileURLToPath } from "url";
 import departmentRoute from './routers/department.route.ts';
@@ -20,6 +20,8 @@ import { ExpressAdapter } from '@bull-board/express';
 import { emailQueue } from './queues/email.queue.ts';
 import productRoute from './routers/product.route.ts'
 import vendorRoutes from './routers/vendor.route.ts';
+import { isAuthenticated } from "./middleware/auth.middleware.ts";
+import { express as useragent } from 'express-useragent';
 
 
 dotenv.config();
@@ -75,20 +77,24 @@ app.use(helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" },
 }));
 app.use(cors(corsConfig));
+app.use(useragent());
 
 // Serve the /uploads folder publicly
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 // Serve static files from /public
 app.use(express.static(path.join(__dirname, "../public")));
-app.use("/uploads", express.static(path.join(__dirname, "../public/uploads")));
+// "original", "thumb", "small", "medium", "large", "xlarge"
+// image_url?size=large for images
+app.use('/uploads', serveResponsiveImages(), express.static(path.join(__dirname, '../public/uploads')));
+// app.use("/uploads", express.static(path.join(__dirname, "../public/uploads")));
 
 app.use('/api/auth', authRoute);
 app.use('/api/locations', stateRoute);
 app.use('/api/departments', departmentRoute);
 app.use('/api/categories', categoryRoute);
 app.use('/api/products', productRoute);
-app.use('/api/vendors/:vendorId', vendorRoutes);
+app.use('/api/vendors', isAuthenticated, vendorRoutes);
 
 
 app.use('/admin/queues', serverAdapter.getRouter());

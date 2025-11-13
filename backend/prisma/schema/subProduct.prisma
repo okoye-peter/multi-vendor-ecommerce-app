@@ -3,7 +3,7 @@ model subProduct {
     batch_no           String   @unique
     purchased_quantity Int
     quantity_sold      Int      @default(0)
-    expiry_date        DateTime
+    expiry_date        DateTime?
     cost_price         Float
     status             Boolean  @default(true)
     productId          Int?
