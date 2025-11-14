@@ -2,8 +2,9 @@ import { PrismaClient } from "@prisma/client";
 import { type RequestHandler } from "express";
 import z from "zod";
 import ProductService from "../service/productService.ts";
-import { FilterService } from "../service/filterService.ts";
 import { FileService } from "../service/fileService.ts";
+import { FilterService } from "../service/filterService.ts";
+import { PRODUCT_FILTER_CONFIG } from "../config/filterConfig.ts";
 
 const productService = new ProductService;
 const prisma = new PrismaClient();
@@ -313,51 +314,10 @@ export const refillProduct: RequestHandler = async (req, res, next) => {
     }
 }
 
-export const getVendorProducts: RequestHandler = async (req, res, next) => {
+export const getAllProducts: RequestHandler = async (req, res, next) => {
     try {
-        const user = req.user;
-        const { vendorId } = req.query;
         const filterOptions = FilterService.parseQueryParams(req.query);
-        const vendors = await prisma.vendor.findMany({
-            where: {
-                userId: user.id
-            },
-            select: {
-                id: true
-            }
-        })
-
-        const vendorIds = vendors.map((v) => v.id);
-
-        const vendorFilterIds = vendorId
-            ? [Number(vendorId)]
-            : vendorIds;
-
-        // Configure filters
-        Object.assign(filterOptions, {
-            filters: [
-                ...(filterOptions.filters || []),
-                {
-                    field: "vendorId",
-                    operator: "in" as const,
-                    value: vendorFilterIds,
-                },
-            ],
-            searchFields: filterOptions.searchFields || [
-                'name',
-                'description',
-                'slug',
-                'category.name',
-                'department.name',
-                'vendor.name',
-                'vendor.address',
-            ],
-            include: {
-                category: { select: { id: true, name: true } },
-                department: { select: { id: true, name: true, slug: true } },
-                vendor: { select: { id: true, name: true, address: true } },
-            },
-        });
+        Object.assign(filterOptions, PRODUCT_FILTER_CONFIG);
 
         const result = await FilterService.executePaginatedQuery(
             prisma.product,
@@ -365,12 +325,7 @@ export const getVendorProducts: RequestHandler = async (req, res, next) => {
         );
 
         res.status(200).json({ success: true, ...result });
-
     } catch (error) {
-        next(error instanceof Error
-            ? { message: error.message, status: 500 }
-            : { message: "Server Error", status: 500 }
-        );
+        next(error);
     }
 };
-

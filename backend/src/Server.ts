@@ -105,3 +105,56 @@ app.use(errorHandler);
 app.listen(PORT, () => {
     console.log(`App is running on port ${PORT}`);
 });
+
+
+
+// # Search globally
+// GET /api/products?search=laptop
+
+// # Filter by category name
+// GET /api/products?category.name=Electronics
+
+// # Filter by department name
+// GET /api/products?department.name=Tech
+
+// # Filter by vendor name
+// GET /api/products?vendor.name=Apple
+
+// # Multiple filters (AND logic)
+// GET /api/products?category.name=Electronics&status=active&price[gte]=100
+
+// # Sort by nested field
+// GET /api/products?sortBy=category.name&sortOrder=asc
+
+// # Complex query
+// GET /api/products?search=phone&category.name=Electronics&price[lte]=1000&sortBy=price&sortOrder=desc&page=1&limit=20
+
+// # Search orders
+// GET /api/orders?search=john
+
+// # Filter by user name
+// GET /api/orders?user.name=John Doe
+
+// # Filter by vendor
+// GET /api/orders?vendor.name=Amazon
+
+// # Filter by status and date
+// GET /api/orders?status=completed&createdAt[gte]=2024-01-01
+
+// # Multiple filters
+// GET /api/orders?user.email=john@example.com&status=pending&sortBy=createdAt&sortOrder=desc
+
+// # Search users
+// GET /api/users?search=john
+
+// # Filter by role
+// GET /api/users?role=admin
+
+// # Filter by vendor
+// GET /api/users?vendor.name=TechCorp
+
+// # Search vendors
+// GET /api/vendors?search=tech
+
+// # Filter by user email
+// GET /api/vendors?user.email=admin@example.com

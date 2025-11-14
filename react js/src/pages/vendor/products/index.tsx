@@ -1,5 +1,4 @@
-import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable } from "../../../components/DataTable";
+import { DataTable, type SearchableColumnDef } from "../../../components/DataTable";
 import type { Category, Department, Filter, Product } from "../../../types/Index";
 import { useQuery } from "@tanstack/react-query";
 import { getAllCategory, getAllDepartments } from "../../../libs/api";
@@ -20,70 +19,80 @@ import PageLoader from "../../../components/PageLoader";
 // Example 1: Products Table
 const ProductsTable = () => {
 
-    const { data: categories, isLoading: categoriesIsLoading } = useQuery({
+    const { data: categories, isLoading: categoriesIsLoading } = useQuery<Category[]>({
         queryKey: ['allCategories'],
         queryFn: getAllCategory
     })
 
-    const { data: departments, isLoading: departmentsIsLoading } = useQuery({
+    const { data: departments, isLoading: departmentsIsLoading } = useQuery<Department[]>({
         queryKey: ['allDepartments'],
         queryFn: getAllDepartments
     })
 
-    const dataTableColumns: ColumnDef<Product>[] = [
+    const dataTableColumns: SearchableColumnDef<Product>[] = [
         {
+            id: 'id',
+            accessorKey: 'id',
+            header: 'ID',
+        },
+        {
+            id: 'name',
             accessorKey: 'name',
             header: 'Product Name',
-            cell: info => <span className="font-medium">{info.getValue() as string}</span>,
+            searchable: true,
         },
         {
+            id: 'category',
             accessorKey: 'category.name',
             header: 'Category',
-            cell: info => (
-                <span className="badge badge-primary badge-outline">{info.getValue() as string}</span>
-            ),
+            searchable: true,
+            cell: ({ row }) => row.original.category?.name || 'N/A',
         },
         {
+            id: 'department',
             accessorKey: 'department.name',
             header: 'Department',
-            cell: info => (
-                <span className="badge badge-secondary badge-outline">{info.getValue() as string}</span>
-            ),
+            searchable: true,
+            cell: ({ row }) => row.original.department?.name || 'N/A',
         },
         {
+            id: 'price',
             accessorKey: 'price',
             header: 'Price',
-            cell: info => <span className="font-semibold text-success">{info.getValue() as string}</span>,
+            cell: ({ getValue }) => `$${(getValue() as number).toFixed(2)}`,
         },
-        // {
-        //     accessorKey: 'stock',
-        //     header: 'Stock',
-        //     cell: info => {
-        //         const stock = info.getValue() as number;
-        //         const badgeColor = stock > 50 ? 'badge-success' : stock > 20 ? 'badge-warning' : 'badge-error';
-        //         return <span className={`badge ${badgeColor}`}>{stock}</span>;
-        //     },
-        // },
     ];
 
+    // ✅ Define filters with dynamic options
     const dataTableFilters: Filter[] = [
         {
-            column: 'category',
+            column: 'categoryId',
             label: 'Category',
             type: 'select',
             options: categories?.map((cat: Category) => ({
-                value: cat.id,
+                value: String(cat.id),
                 label: cat.name
             })),
         },
         {
-            column: 'department',
+            column: 'departmentId',
             label: 'Department',
             type: 'select',
             options: departments?.map((dept: Department) => ({
-                value: dept.id,
+                value: String(dept.id),
                 label: dept.name
             })),
+        },
+        {
+            column: 'price',
+            label: 'Min Price',
+            type: 'text',
+            placeholder: 'Enter minimum price',
+        },
+        {
+            column: 'createdAt',
+            label: 'Created Date',
+            type: 'dateRange',
         },
     ];
 
@@ -98,11 +107,11 @@ const ProductsTable = () => {
 
     return (
         <DataTable<Product>
-            url={import.meta.env.VITE_API_URL + `products/vendors`}
+            url={import.meta.env.VITE_API_URL + `vendors/products`}
             columns={dataTableColumns}
             filters={dataTableFilters}
             title="Products"
-            defaultPageSize={5}
+            defaultPageSize={10}
             onRowClick={handleRowClick}
             headerActions={
                 <button className="btn btn-primary">

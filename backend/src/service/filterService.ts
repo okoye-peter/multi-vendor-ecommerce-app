@@ -67,7 +67,7 @@ export class FilterService {
     static buildWhereClause(options: FilterOptions): Record<string, unknown> {
         const where: Record<string, unknown> = {};
 
-        // Global search across multiple fields
+        // Global search across multiple fields (always uses OR)
         if (options.search && options.searchFields && options.searchFields.length > 0) {
             where.OR = options.searchFields.map(field => {
                 // Handle nested fields (e.g., "category.name")
@@ -98,7 +98,7 @@ export class FilterService {
             });
         }
 
-        // Apply specific filters
+        // Apply specific filters (always uses AND)
         if (options.filters && options.filters.length > 0) {
             options.filters.forEach(filter => {
                 const { field, operator, value } = filter;
@@ -114,11 +114,17 @@ export class FilterService {
 
                     if (!relation || !nestedField) return;
 
-                    if (!where[relation]) {
-                        where[relation] = {};
-                    }
+                    // Special handling: if filtering by relation.id, convert to relationId
+                    if (nestedField === 'id' && typeof value === 'number') {
+                        const relationIdField = `${relation}Id`;
+                        where[relationIdField] = this.getOperatorClause(operator, value);
+                    } else {
+                        if (!where[relation]) {
+                            where[relation] = {};
+                        }
 
-                    (where[relation] as Record<string, unknown>)[nestedField] = this.getOperatorClause(operator, value);
+                        (where[relation] as Record<string, unknown>)[nestedField] = this.getOperatorClause(operator, value);
+                    }
                 } else {
                     // Handle regular fields
                     where[field] = this.getOperatorClause(operator, value);
@@ -132,7 +138,10 @@ export class FilterService {
     /**
      * Get Prisma operator clause based on filter operator
      */
-    private static getOperatorClause(operator: FilterOperator, value: string | number | boolean | string[] | number[] | Date | null): Record<string, unknown> {
+    private static getOperatorClause(
+        operator: FilterOperator,
+        value: string | number | boolean | string[] | number[] | Date | null
+    ): Record<string, unknown> | string | number | boolean | Date | null {
         switch (operator) {
             case 'equals':
                 return { equals: value };
@@ -292,16 +301,17 @@ export class FilterService {
         const filters: FilterCondition[] = [];
 
         Object.keys(query).forEach(key => {
-            // Skip pagination and sorting params
+            // Skip pagination, sorting, and special params
             if (['page', 'limit', 'sortBy', 'sortOrder', 'search', 'searchFields'].includes(key)) {
                 return;
             }
 
             // Handle filter syntax: field[operator]=value
-            const match = key.match(/^(.+)\[(.+)\]$/);
-            if (match) {
-                const field = match[1];
-                const operator = match[2];
+            const operatorMatch = key.match(/^(.+)\[(.+)\]$/);
+            
+            if (operatorMatch) {
+                const field = operatorMatch[1];
+                const operator = operatorMatch[2];
 
                 if (field && operator) {
                     filters.push({
@@ -311,11 +321,54 @@ export class FilterService {
                     });
                 }
             } else {
-                // Default to 'equals' operator
+                const value = this.parseValue(query[key]);
+                
+                // Handle nested field filtering intelligently
+                if (key.includes('.')) {
+                    const parts = key.split('.');
+                    if (parts.length === 2) {
+                        const [relation, field] = parts;
+                        
+                        // If value is numeric and field is 'id', use direct foreign key
+                        if (field === 'id' && typeof value === 'number') {
+                            filters.push({
+                                field: `${relation}Id`,
+                                operator: 'equals',
+                                value: value,
+                            });
+                        } else {
+                            // For other nested fields (like name), use the nested path
+                            // Determine operator based on field type
+                            const operator = field === 'name' || typeof value === 'string' 
+                                ? 'contains' 
+                                : 'equals';
+                            
+                            filters.push({
+                                field: key,
+                                operator: operator as FilterOperator,
+                                value: value,
+                            });
+                        }
+                        return;
+                    }
+                }
+                
+                // Handle direct ID fields (categoryId, departmentId, etc.)
+                if (key.endsWith('Id') && typeof value === 'number') {
+                    filters.push({
+                        field: key,
+                        operator: 'equals',
+                        value: value,
+                    });
+                    return;
+                }
+                
+                // Default: use 'equals' for numbers/booleans, 'contains' for strings
+                const operator = typeof value === 'string' ? 'contains' : 'equals';
                 filters.push({
                     field: key,
-                    operator: 'equals',
-                    value: this.parseValue(query[key]),
+                    operator: operator as FilterOperator,
+                    value: value,
                 });
             }
         });
@@ -338,7 +391,12 @@ export class FilterService {
         if (typeof value === 'string') {
             // Check if it's a comma-separated list
             if (value.includes(',')) {
-                return value.split(',').map(v => v.trim());
+                const items = value.split(',').map(v => v.trim());
+                // Try to convert to numbers if all items are numeric
+                if (items.every(item => !isNaN(Number(item)) && item !== '')) {
+                    return items.map(item => Number(item));
+                }
+                return items;
             }
 
             // Check if it's a number
