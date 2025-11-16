@@ -128,3 +128,8 @@ export interface Product {
     stock: number;
     [key: string]: unknown; 
 }
+
+export interface Vendor {
+    id: number,
+    name: string
+}

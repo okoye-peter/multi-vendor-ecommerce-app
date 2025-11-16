@@ -19,7 +19,7 @@ import Dashboard from './pages/admin/Dashboard.tsx';
 import { Outlet, useLocation } from 'react-router-dom';
 import VendorLayout from './components/Layouts/VendorLayout.tsx';
 import VendorDashboard from './pages/vendor/Dashboard.tsx'
-import ProductsList from './pages/vendor/products/index.tsx'
+import ProductsList from './pages/vendor/products/Index.tsx'
 
 
 function App() {

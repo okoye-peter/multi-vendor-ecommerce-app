@@ -100,16 +100,13 @@ export function DataTable<T extends Record<string, unknown>>({
 
     // ✅ Auto-build searchFields from columns marked as searchable
     const autoSearchFields = React.useMemo(() => {
-        console.log('Building searchFields from columns:', columns);
         
         if (searchFields) {
-            console.log('Using manual searchFields:', searchFields);
             return searchFields;
         }
         
         const fields = columns
             .filter(col => {
-                console.log('Column:', col.id || col.accessorKey, 'searchable:', col.searchable);
                 return col.searchable;
             })
             .map(col => {
@@ -117,17 +114,16 @@ export function DataTable<T extends Record<string, unknown>>({
                 if ('accessorKey' in col && col.accessorKey) {
                     return String(col.accessorKey);
                 }
-                if (col.id) return col.id;
+                if (col.id) return String(col.id);
                 return null;
             })
             .filter((field): field is string => field !== null);
         
-        console.log('Generated searchFields:', fields);
         return fields;
     }, [columns, searchFields]);
 
     // Fetch data from API
-    const fetchData = useCallback(async (searchTerm: string, appliedFilters: ColumnFiltersState) => {
+    const fetchData = useCallback(async (searchTerm: string, appliedFilters: ColumnFiltersState, autoSearchFields: string[] = []) => {
         try {
             setLoading(true);
             
@@ -137,6 +133,7 @@ export function DataTable<T extends Record<string, unknown>>({
             // Add search parameter
             if (searchTerm) {
                 urlObj.searchParams.set('search', searchTerm);
+                if(autoSearchFields)urlObj.searchParams.set('searchFields', autoSearchFields.join(','));
             }
             
             // Add filter parameters
@@ -481,7 +478,7 @@ export function DataTable<T extends Record<string, unknown>>({
                                             onClick={() => onRowClick?.(row.original)}
                                         >
                                             {row.getVisibleCells().map(cell => (
-                                                <td key={cell.id}>
+                                                <td key={cell.id} className='relative'>
                                                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                                                 </td>
                                             ))}

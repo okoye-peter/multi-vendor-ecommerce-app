@@ -8,7 +8,6 @@ export const PRODUCT_FILTER_CONFIG = {
         'name',
         'description',
         'slug',
-        'sku',
         'category.name',
         'department.name',
         'vendor.name',

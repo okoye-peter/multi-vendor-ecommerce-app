@@ -1,4 +1,5 @@
-import type { Country, LGA, State, loginData, PasswordResetData } from "../types/Index.ts";
+import type { ProductData } from "../pages/vendor/products/modals/Create.tsx";
+import type { Country, LGA, State, loginData, PasswordResetData, Vendor } from "../types/Index.ts";
 import axiosInstance from "./axios.ts";
 // import { AxiosError } from "axios";
 
@@ -63,6 +64,16 @@ export const getAllDepartments = async () => {
     return response.data
 }
 
-export const createProduct = async (vendor) => {
+export const getUserVendors = async () => {
+    const response = await axiosInstance.get('/vendors/');
+    return response.data
+}
 
+export const createProduct = async (vendorId: number, productData: FormData) => {
+    const response = await axiosInstance.post(`/vendors/${vendorId}/products`, productData, {
+        headers: {
+            'Content-Type': 'multipart/form-data'
+        }
+    })
+    return response.data
 }

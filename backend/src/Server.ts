@@ -87,7 +87,6 @@ app.use(express.static(path.join(__dirname, "../public")));
 // "original", "thumb", "small", "medium", "large", "xlarge"
 // image_url?size=large for images
 app.use('/uploads', serveResponsiveImages(), express.static(path.join(__dirname, '../public/uploads')));
-// app.use("/uploads", express.static(path.join(__dirname, "../public/uploads")));
 
 app.use('/api/auth', authRoute);
 app.use('/api/locations', stateRoute);

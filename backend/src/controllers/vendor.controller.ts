@@ -5,7 +5,7 @@ import { PRODUCT_FILTER_CONFIG } from "../config/filterConfig.ts";
 
 const prisma = new PrismaClient();
 
-export const getAuthUserVendors:RequestHandler = async (req, res, next) =>  {
+export const getAuthUserVendors: RequestHandler = async (req, res, next) => {
     try {
         const user = req.user;
 
@@ -34,11 +34,9 @@ export const getVendorProducts: RequestHandler = async (req, res, next) => {
     try {
         const user = req.user;
         const { vendorId } = req.query;
-        
-        // Parse query params automatically
+
         const filterOptions = FilterService.parseQueryParams(req.query);
-        
-        // Get user's vendor IDs
+
         const vendors = await prisma.vendor.findMany({
             where: { userId: user.id },
             select: { id: true }
@@ -46,9 +44,10 @@ export const getVendorProducts: RequestHandler = async (req, res, next) => {
         const vendorIds = vendors.map((v) => v.id);
         const vendorFilterIds = vendorId ? [Number(vendorId)] : vendorIds;
 
-        // Apply configuration and vendor filter
+        // ✅ Always use config searchFields (most comprehensive)
         Object.assign(filterOptions, {
-            ...PRODUCT_FILTER_CONFIG,
+            searchFields: PRODUCT_FILTER_CONFIG.searchFields,
+            include: PRODUCT_FILTER_CONFIG.include,
             filters: [
                 ...(filterOptions.filters || []),
                 {
