@@ -1,23 +1,50 @@
-import React, { useState } from "react";
-import ImageUploading, { ImageListType } from "react-images-uploading";
+import React, { useState, useEffect } from "react";
+import ImageUploading, { type ImageListType } from "react-images-uploading";
 
 export type UploadedImage = {
     file: File | null;
     dataURL: string | undefined;
+    existingUrl?: string; // ✅ Add this for existing images
 };
 
 type Props = {
     onChange?: (images: UploadedImage[], defaultIndex: number | null) => void;
+    initialImages?: { url: string; isDefault: boolean }[]; // ✅ Add this prop
 };
 
-const MultiImageUploader: React.FC<Props> = ({ onChange }) => {
+const MultiImageUploader: React.FC<Props> = ({ onChange, initialImages = [] }) => {
     const [images, setImages] = useState<ImageListType>([]);
     const [defaultIndex, setDefaultIndex] = useState<number | null>(null);
+
+    // ✅ Load initial images when component mounts or initialImages change
+    useEffect(() => {
+        if (initialImages.length > 0) {
+            const convertedImages = initialImages.map(img => ({
+                dataURL: `${import.meta.env.VITE_API_BASE_URL || ''}/${img.url}`, // Adjust base URL as needed
+                file: undefined,
+            }));
+            
+            setImages(convertedImages);
+            
+            // Set default index
+            const defaultIdx = initialImages.findIndex(img => img.isDefault);
+            setDefaultIndex(defaultIdx >= 0 ? defaultIdx : null);
+
+            // Notify parent
+            if (onChange) {
+                const mapped = convertedImages.map((img, idx) => ({
+                    file: null,
+                    dataURL: img.dataURL,
+                    existingUrl: initialImages[idx].url,
+                }));
+                onChange(mapped, defaultIdx >= 0 ? defaultIdx : null);
+            }
+        }
+    }, [initialImages]);
 
     const onChangeImages = (imageList: ImageListType) => {
         setImages(imageList);
 
-        // Reset default if it was removed or if no images
         let newDefaultIndex = defaultIndex;
         if (imageList.length === 0) {
             newDefaultIndex = null;
@@ -25,16 +52,16 @@ const MultiImageUploader: React.FC<Props> = ({ onChange }) => {
             newDefaultIndex = null;
         }
 
-        // Update default index state if changed
         if (newDefaultIndex !== defaultIndex) {
             setDefaultIndex(newDefaultIndex);
         }
 
-        // Send data to parent component
         if (onChange) {
-            const mapped = imageList.map(img => ({
+            const mapped = imageList.map((img, idx) => ({
                 file: img.file ?? null,
                 dataURL: img.dataURL,
+                // Preserve existing URL if this was an initial image that wasn't replaced
+                existingUrl: initialImages[idx]?.url && !img.file ? initialImages[idx].url : undefined,
             }));
 
             onChange(mapped, newDefaultIndex);
@@ -44,11 +71,11 @@ const MultiImageUploader: React.FC<Props> = ({ onChange }) => {
     const handleSetDefault = (index: number) => {
         setDefaultIndex(index);
 
-        // Notify parent immediately with updated default
         if (onChange) {
-            const mapped = images.map(img => ({
+            const mapped = images.map((img, idx) => ({
                 file: img.file ?? null,
                 dataURL: img.dataURL,
+                existingUrl: initialImages[idx]?.url && !img.file ? initialImages[idx].url : undefined,
             }));
 
             onChange(mapped, index);
@@ -64,16 +91,14 @@ const MultiImageUploader: React.FC<Props> = ({ onChange }) => {
         >
             {({ imageList, onImageUpload }) => (
                 <div className="space-y-4">
-                    {/* Upload Button */}
                     <button 
                         type="button"
                         className="btn btn-primary" 
                         onClick={onImageUpload}
                     >
-                        Upload Images
+                        {images.length > 0 ? 'Add More Images' : 'Upload Images'}
                     </button>
 
-                    {/* Image Grid */}
                     <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
                         {imageList.map((image, index) => (
                             <div key={index} className="relative shadow-xl card bg-base-200">

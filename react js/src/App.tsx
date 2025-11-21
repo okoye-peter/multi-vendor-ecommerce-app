@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { Navbar } from './components/Navbar'
-import { Routes, Route } from 'react-router'
+import { Routes, Route, Navigate } from 'react-router'
 import Home from './pages/Home'
 import Login from './pages/auth/Login'
 import Register from './pages/auth/Register'
@@ -37,6 +37,7 @@ function App() {
             position: 'top-center'
         })
     };
+    const isAuthenticated = Boolean(user);
 
     useEffect(() => {
         if (data && !isError && !isLoading) {
@@ -72,9 +73,9 @@ function App() {
             {!isAdminRoute && <Navbar />}
             <Routes>
                 <Route path='/' element={<Home />} />
-                <Route path='/login' element={<Login />} />
-                <Route path='/register' element={<Register />} />
-                <Route path='/password/reset' element={<PasswordReset />} />
+                <Route path='/login' element={isAuthenticated ? <Navigate to='/' /> : <Login />} />
+                <Route path='/register' element={isAuthenticated ? <Navigate to='/' /> : <Register />} />
+                <Route path='/password/reset' element={isAuthenticated ? <Navigate to='/' /> : <PasswordReset />} />
 
                 {/* Vendor routes - parent route with layout */}
                 <Route path='/vendor' element={<VendorLayout><Outlet /></VendorLayout>}>

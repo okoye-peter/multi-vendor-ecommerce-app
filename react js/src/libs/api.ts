@@ -77,3 +77,22 @@ export const createProduct = async (vendorId: number, productData: FormData) => 
     })
     return response.data
 }
+
+export const updateProduct = async (vendorId: number, productId: number, productData: FormData) => {
+    const response = await axiosInstance.put(`/vendors/${vendorId}/products/${productId}`, productData, {
+        headers: {
+            'Content-Type': 'multipart/form-data'
+        }
+    })
+    return response.data
+}
+
+export const getProductForEdit = async (vendorId: number, productId: number) => {
+    const response = await axiosInstance.get(`vendors/${vendorId}/products/${productId}`);
+    return response.data
+}
+
+export const deleteProduct = async (vendorId: number, productId: number) => {
+    const response = await axiosInstance.delete(`/vendors/${vendorId}/products/${productId}`)
+    return response.data
+}

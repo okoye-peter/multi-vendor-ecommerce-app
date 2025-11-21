@@ -6,9 +6,14 @@ import PageLoader from "../../../components/PageLoader";
 import CreateProduct from './modals/Create.tsx';
 import { useState } from "react";
 import ActionDropdown from "../../../components/DataTableActionDropDown.tsx";
+import DeleteProductModal from "./modals/Delete.tsx";
+import EditProductModal from "./modals/Edit.tsx";
 
 
 const ProductsTable = () => {
+    const [productToDelete, setProductToDelete] = useState<Product | null>(null)
+    const [productIdToEdit, setProductIdToEdit] = useState<number | null>(null)
+    const [productVendorIdIdToEdit, setProductVendorIdIdToEdit] = useState<number | null>(null)
     const [dataTableKey, setDataTableKey] = useState<number>(1111)
     const { data: categories, isLoading: categoriesIsLoading } = useQuery<Category[]>({
         queryKey: ['allCategories'],
@@ -68,7 +73,7 @@ const ProductsTable = () => {
                         </a>
                     </li>
                     <li>
-                        <a onClick={() => console.log('Edit', row.original)}>
+                        <a onClick={showEditModal(row.original)}>
                             <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                             </svg>
@@ -77,7 +82,7 @@ const ProductsTable = () => {
                     </li>
                     <div className="my-0 divider"></div>
                     <li>
-                        <a onClick={() => console.log('Delete', row.original)} className="text-error">
+                        <a onClick={() => showDeleteWarningModal(row.original)} className="text-error">
                             <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                             </svg>
@@ -127,6 +132,16 @@ const ProductsTable = () => {
         // Handle row click - navigate to detail page, open modal, etc.
     };
 
+    const showDeleteWarningModal = (product: Product) => {
+        setProductToDelete(product);
+        (document.getElementById('deleteProductWarningModal') as HTMLDialogElement)?.showModal()
+    }
+
+    const showEditModal = (product: Partial<Product>) => {
+        setProductIdToEdit(Number(product.id))
+        setProductVendorIdIdToEdit(Number(product.vendorId))
+    }
+
     if (departmentsIsLoading || categoriesIsLoading) {
         return <PageLoader />;
     }
@@ -142,7 +157,7 @@ const ProductsTable = () => {
                 onRowClick={handleRowClick}
                 key={dataTableKey}
                 headerActions={
-                    <button className="btn btn-primary" onClick={() => document.getElementById('createProductModal')?.showModal()}>
+                    <button className="btn btn-primary" onClick={() => (document.getElementById('createProductModal') as HTMLDialogElement)?.showModal()}>
                         <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
                         </svg>
@@ -153,6 +168,13 @@ const ProductsTable = () => {
 
             {/* create product modal */}
             <CreateProduct categories={categories!} departments={departments!} onProductCreated={() => { setDataTableKey(prev => prev + 1) }} />
+                
+            {/* edit product modal */}
+            <EditProductModal productId={productIdToEdit} vendorId={productVendorIdIdToEdit} onProductUpdated={() => { setDataTableKey(prev => prev + 1) }} />
+            
+            {/* delete product modal */}
+            <DeleteProductModal product={productToDelete} onProductDeleted={() => { setDataTableKey(prev => prev + 1) }} />
+
         </>
     );
 }
