@@ -7,6 +7,7 @@ import { useLogoutMutation } from '../store/features/AuthApi';
 import { setUser } from '../store/AuthSlice';
 import FullscreenLoader from './FullPageLoader.tsx';
 import type { BackendError } from '../types/Index.ts';
+import { useNavigate } from "react-router-dom";
 
 
 
@@ -15,7 +16,8 @@ export const Navbar = () => {
     const [showSearch, setShowSearch] = useState(false);
     const dispatch = useDispatch();
     const [searchQuery, setSearchQuery] = useState('');
-    const [logoutMutation, { isLoading:isLoggingOut }] = useLogoutMutation();
+    const [logoutMutation, { isLoading: isLoggingOut }] = useLogoutMutation();
+    const navigate = useNavigate();
 
     const handleLogout = async (e: React.FormEvent<HTMLAnchorElement>) => {
         e.preventDefault();
@@ -26,13 +28,14 @@ export const Navbar = () => {
             });
             dispatch(setUser(null));
             
+            navigate('/login')
         } catch (error) {
             const backendError = error as BackendError;
             toast.error(backendError.response?.data?.message as string || backendError.message || 'Registration failed', {
                 position: 'top-right',
             });
         }
-        
+
     };
 
 
@@ -184,9 +187,9 @@ export const Navbar = () => {
                                 </div>
                                 <ul tabIndex={-1} className="p-2 mt-3 shadow menu menu-sm dropdown-content bg-base-100 rounded-box z-1 w-52">
                                     <li><a className="justify-between">Profile<span className="badge">New</span></a></li>
-                                    
+
                                     {user && user.type?.toUpperCase() == 'VENDOR' && <li><Link to="/vendor/dashboard">Vendor</Link></li>}
-                                    
+
                                     <li><a>Settings</a></li>
                                     <li><a onClick={handleLogout}>Logout</a></li>
                                 </ul>

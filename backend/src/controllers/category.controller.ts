@@ -1,8 +1,7 @@
-import { PrismaClient } from "@prisma/client";
+import prisma from "../libs/prisma.ts";
 import type { RequestHandler } from "express";
 import z from 'zod';
 
-const prisma = new PrismaClient();
 
 export const categorySchema = z.object({
     name: z

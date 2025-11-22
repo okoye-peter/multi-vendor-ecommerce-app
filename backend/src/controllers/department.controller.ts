@@ -1,8 +1,6 @@
 import type { RequestHandler } from "express";
-import { PrismaClient } from "@prisma/client";
+import prisma from "../libs/prisma.ts";
 import z from "zod";
-
-const prisma = new PrismaClient();
 
 const departmentSchema = z.object({
     name: z.string(),

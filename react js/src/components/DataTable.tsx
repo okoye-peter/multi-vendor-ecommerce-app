@@ -12,23 +12,24 @@ import {
     type Row,
 } from '@tanstack/react-table';
 import axiosInstance from '../libs/axios';
+import type { Filter } from '../types/Index';
 
 // ============================================
 // TYPE DEFINITIONS
 // ============================================
 
-export interface FilterOption {
-    value: string | number;
-    label: string;
-}
+// export interface FilterOption {
+//     value: string | number;
+//     label: string;
+// }
 
-export interface Filter {
-    column: string;
-    label: string;
-    type: 'select' | 'date' | 'dateRange' | 'text';
-    options?: FilterOption[];
-    placeholder?: string;
-}
+// export interface Filter {
+//     column: string;
+//     label: string;
+//     type: 'select' | 'date' | 'dateRange' | 'text';
+//     options?: FilterOption[];
+//     placeholder?: string;
+// }
 
 // ✅ Extended column definition with searchable property
 export type SearchableColumnDef<T> = ColumnDef<T, unknown> & {
@@ -341,7 +342,7 @@ export function DataTable<T extends Record<string, unknown>>({
                                                                 >
                                                                     <option value="">All</option>
                                                                     {filter.options?.map(option => (
-                                                                        <option key={option.value} value={option.value}>
+                                                                        <option key={option.value.toString()} value={option.value.toString()}>
                                                                             {option.label}
                                                                         </option>
                                                                     ))}
@@ -478,7 +479,7 @@ export function DataTable<T extends Record<string, unknown>>({
                                             onClick={() => onRowClick?.(row.original)}
                                         >
                                             {row.getVisibleCells().map(cell => (
-                                                <td key={cell.id} className='relative'>
+                                                <td key={cell.id} className='relative text-xs'>
                                                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                                                 </td>
                                             ))}

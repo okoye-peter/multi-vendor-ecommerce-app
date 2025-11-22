@@ -1,13 +1,16 @@
 import { DataTable, type SearchableColumnDef } from "../../../components/DataTable";
 import type { Category, Department, Filter, Product } from "../../../types/Index";
-import { useQuery } from "@tanstack/react-query";
-import { getAllCategory, getAllDepartments } from "../../../libs/api";
-import PageLoader from "../../../components/PageLoader";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { getAllCategory, getAllDepartments, toggleProductPublicity } from "../../../libs/api";
 import CreateProduct from './modals/Create.tsx';
 import { useState } from "react";
 import ActionDropdown from "../../../components/DataTableActionDropDown.tsx";
 import DeleteProductModal from "./modals/Delete.tsx";
 import EditProductModal from "./modals/Edit.tsx";
+import { Rss } from "lucide-react";
+import { toast } from "react-toastify";
+import FullPageLoader from "../../../components/FullPageLoader.tsx";
+import { Link } from "react-router";
 
 
 const ProductsTable = () => {
@@ -58,22 +61,49 @@ const ProductsTable = () => {
             cell: ({ getValue }) => `₦${(getValue() as number).toFixed(2)}`,
         },
         {
+            id: 'quantity_available',
+            accessorKey: 'quantity',
+            header: 'Qty Available',
+        },
+        {
+            id: 'vendor',
+            accessorKey: 'vendor.name',
+            header: 'Vendor',
+        },
+        {
+            id: 'published',
+            accessorKey: 'is_published',
+            header: 'Published',
+            cell: ({ getValue }) => (
+                <>
+                    {getValue() && <span className="px-3 py-1 text-xs text-green-900 bg-green-100 rounded">Published</span>}
+                    {!getValue() && <span className="px-3 py-1 text-xs text-red-900 bg-red-100 rounded">Unpublished</span>}
+                </>
+            ),
+        },
+        {
             id: 'Actions',
             accessorKey: 'action',
             header: 'Actions',
             cell: ({ row }) => (
                 <ActionDropdown>
                     <li>
-                        <a onClick={() => console.log('View', row.original)}>
+                        <Link to={`/vendor/${row.original.vendorId}/products/${row.original.id}`}>
                             <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                             </svg>
                             View Details
+                        </Link>
+                    </li>
+                    <li>
+                        <a onClick={() => togglePublicity({vendorId: row.original.vendorId as number, productId: row.original.id as number})}>
+                            <Rss className="w-4 h-4" />
+                            { row.original.is_published ? 'Unpublish' : 'Publish' }
                         </a>
                     </li>
                     <li>
-                        <a onClick={showEditModal(row.original)}>
+                        <a onClick={() => showEditModal(row.original)}>
                             <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                             </svg>
@@ -115,16 +145,25 @@ const ProductsTable = () => {
             })),
         },
         {
-            column: 'price',
-            label: 'Min Price',
-            type: 'text',
-            placeholder: 'Enter minimum price',
+            column: 'is_published',
+            label: 'Published',
+            type: 'select',
+            options: [
+                {
+                    label: 'Published',
+                    value: true
+                },
+                {
+                    label: 'Unpublished',
+                    value: false
+                },
+            ],
         },
-        {
-            column: 'createdAt',
-            label: 'Created Date',
-            type: 'dateRange',
-        },
+        // {
+        //     column: 'createdAt',
+        //     label: 'Created Date',
+        //     type: 'dateRange',
+        // },
     ];
 
     const handleRowClick = (product: Product) => {
@@ -142,8 +181,25 @@ const ProductsTable = () => {
         setProductVendorIdIdToEdit(Number(product.vendorId))
     }
 
-    if (departmentsIsLoading || categoriesIsLoading) {
-        return <PageLoader />;
+    const resetDataOnProductUpdate = () => {
+        setDataTableKey(prev => prev + 1);
+        setProductIdToEdit(0);
+        setProductVendorIdIdToEdit(0)
+    }
+
+    const { mutate: togglePublicity, isPending:productPublicityIsPending} = useMutation({
+        mutationFn: ({vendorId , productId}: {vendorId: number, productId:number}) => toggleProductPublicity(vendorId, productId),
+        onError: (error) => {
+            toast.error(error.message)
+        },
+        onSuccess: (data) => {
+            toast.success(data.message)
+            setDataTableKey((prev) => prev + 1)
+        }
+    })
+
+    if (departmentsIsLoading || categoriesIsLoading || productPublicityIsPending) {
+        return <FullPageLoader />;
     }
 
     return (
@@ -170,10 +226,10 @@ const ProductsTable = () => {
             <CreateProduct categories={categories!} departments={departments!} onProductCreated={() => { setDataTableKey(prev => prev + 1) }} />
                 
             {/* edit product modal */}
-            <EditProductModal productId={productIdToEdit} vendorId={productVendorIdIdToEdit} onProductUpdated={() => { setDataTableKey(prev => prev + 1) }} />
+            <EditProductModal categories={categories!} departments={departments!} productId={productIdToEdit} vendorId={productVendorIdIdToEdit} onProductUpdated={resetDataOnProductUpdate} />
             
             {/* delete product modal */}
-            <DeleteProductModal product={productToDelete} onProductDeleted={() => { setDataTableKey(prev => prev + 1) }} />
+            <DeleteProductModal product={productToDelete} onProductDeleted={() => { setDataTableKey(prev => prev + 1); }} />
 
         </>
     );

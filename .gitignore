@@ -4,6 +4,7 @@ backend/prisma/src
 .vscode/extensions.json
 backend/prisma/schema/migrations
 backend/public/uploads
+backend/prisma/generated-schema.prisma
 
 react js/logs
 react js/*.log

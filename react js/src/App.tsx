@@ -20,6 +20,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import VendorLayout from './components/Layouts/VendorLayout.tsx';
 import VendorDashboard from './pages/vendor/Dashboard.tsx'
 import ProductsList from './pages/vendor/products/Index.tsx'
+import ViewProductRecords from './pages/vendor/products/Show.tsx'
 
 
 function App() {
@@ -78,9 +79,10 @@ function App() {
                 <Route path='/password/reset' element={isAuthenticated ? <Navigate to='/' /> : <PasswordReset />} />
 
                 {/* Vendor routes - parent route with layout */}
-                <Route path='/vendor' element={<VendorLayout><Outlet /></VendorLayout>}>
+                <Route path='/vendor' element={<VendorLayout>{isAuthenticated ? <Outlet /> : <Navigate to='/login' />}</VendorLayout>}>
                     <Route path='dashboard' element={<VendorDashboard />} />
                     <Route path='products' element={<ProductsList />} />
+                    <Route path=':vendorId/products/:productId/' element={<ViewProductRecords />} />
                 </Route>
 
                 {/* Admin routes - parent route with layout */}

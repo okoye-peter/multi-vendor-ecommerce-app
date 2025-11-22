@@ -1,4 +1,3 @@
-import React, { useState } from 'react';
 import { LayoutDashboard, Package, ShoppingCart, AlertCircle, RotateCcw, Menu, X } from 'lucide-react';
 import type { VendorSidebarProps } from '../types/Index';
 
@@ -47,7 +46,7 @@ const VendorSidebar = ({ sidebarOpen, setSidebarOpen }: VendorSidebarProps) => {
                     </ul>
                 </nav>
 
-                {sidebarOpen && (
+                {/* {sidebarOpen && (
                     <div className="p-4 border-t border-base-300">
                         <div className="flex items-center gap-3">
                             <div className="avatar placeholder">
@@ -61,7 +60,7 @@ const VendorSidebar = ({ sidebarOpen, setSidebarOpen }: VendorSidebarProps) => {
                             </div>
                         </div>
                     </div>
-                )}
+                )} */}
             </div>
         </aside>
     );

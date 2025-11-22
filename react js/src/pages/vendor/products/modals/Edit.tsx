@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { getProductForEdit, getUserVendors, updateProduct } from '../../../../libs/api'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import FullPageLoader from '../../../../components/FullPageLoader'
 import type { Category, Department, Vendor } from '../../../../types/Index'
+import makeAnimated from 'react-select/animated';
 import z from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import Select from 'react-select';
@@ -27,16 +28,35 @@ const productUpdateSchema = z.object({
     departmentId: z.coerce.number().int().positive("Department ID must be a positive integer"),
     vendorId: z.coerce.number().int().positive("Vendor ID must be a positive integer"),
     status: z.coerce.boolean().default(true),
-    images: z.array(z.instanceof(File)).min(1, "At least one product image is required"),
-    defaultImageIndex: z.number().int().min(0, "Default image index must be non-negative")
+    images: z.array(z.instanceof(File)).optional().nullable(),
+    defaultImageIndex: z.number().int().min(0, "Default image index must be non-negative").optional().nullable()
 })
     .refine(
-        (data) => data.defaultImageIndex < data.images.length,
-        { message: "Default image index is out of range", path: ["defaultImageIndex"] }
+        (data) => {
+            // Skip validation if no images provided (optional update)
+            if (!data.images || data.images.length === 0) return true;
+
+            // If images exist, defaultImageIndex must be valid
+            return data.defaultImageIndex !== null &&
+                data.defaultImageIndex !== undefined &&
+                data.defaultImageIndex < data.images.length;
+        },
+        {
+            message: "Default image index is out of range",
+            path: ["defaultImageIndex"]
+        }
     )
     .refine(
-        (data) => data.images.length > 0 && data.defaultImageIndex !== null,
-        { message: "Please select a default image", path: ["defaultImageIndex"] }
+        (data) => {
+            // Skip validation if no images provided (optional update)
+            if (!data.images || data.images.length === 0) return true;
+
+            return data.defaultImageIndex !== null && data.defaultImageIndex !== undefined;
+        },
+        {
+            message: "Please select a default image when uploading new images",
+            path: ["defaultImageIndex"]
+        }
     );
 
 export type ProductUpdateData = z.infer<typeof productUpdateSchema>;
@@ -62,12 +82,12 @@ const EditProduct = ({ productId, vendorId, onProductUpdated, categories, depart
     const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
     const [selectedVendor, setSelectedVendor] = useState<number | null>(null);
 
-    const { data: vendors, isLoading: vendorIsLoading, error } = useQuery({
+    const { data: vendors, isLoading: vendorIsLoading } = useQuery({
         queryKey: ['getVendors'],
         queryFn: getUserVendors
     });
 
-    const { data: product, isLoading } = useQuery({
+    const { data: product, isLoading, isSuccess } = useQuery({
         queryKey: [`vendorProductToEdit`, vendorId, productId],
         queryFn: () => getProductForEdit(vendorId!, productId!),
         enabled: !!vendorId && !!productId,
@@ -108,33 +128,38 @@ const EditProduct = ({ productId, vendorId, onProductUpdated, categories, depart
             // ✅ Notify parent component to reload
             onProductUpdated?.();
 
-            // Optional: Show success toast
             toast.success('Product updated successfully!');
         },
         onError: (error: AxiosError<{ message: string }>) => {
             console.error('Error updating product:', error);
-            // Optional: Show error toast
             toast.error(error?.response?.data?.message || 'Failed to update product');
         }
     });
 
 
-    // Sync images and defaultImageIndex with react-hook-form
-    // useEffect(() => {
-    //     setValue('images', images);
-    //     if (images.length > 0) {
-    //         // Clear any previous image errors when images are added
-    //         trigger('images');
-    //     }
-    // }, [images, setValue, trigger]);
+    useEffect(() => {
+        if (isSuccess && product) {
+            (document.getElementById('updateProductModal') as HTMLDialogElement)?.showModal()
+        }
+    }, [isSuccess, product])
 
-    // useEffect(() => {
-    //     if (defaultImageIndex !== null) {
-    //         setValue('defaultImageIndex', defaultImageIndex);
-    //         // Clear any previous defaultImageIndex errors
-    //         trigger('defaultImageIndex');
-    //     }
-    // }, [defaultImageIndex, setValue, trigger]);
+    // Sync images and defaultImageIndex with react-hook-form
+    useEffect(() => {
+        setValue('images', images);
+        if (images.length > 0) {
+            // Clear any previous image errors when images are added
+            trigger('images');
+        }
+    }, [images, setValue, trigger]);
+
+    useEffect(() => {
+        if (defaultImageIndex && !isNaN(Number(defaultImageIndex))) {
+            setValue('defaultImageIndex', defaultImageIndex);
+            // Clear any previous defaultImageIndex errors
+            trigger('defaultImageIndex');
+        }
+        
+    }, [defaultImageIndex, setValue, trigger]);
 
     // ✅ NEW: Populate form when product data loads
     useEffect(() => {
@@ -143,51 +168,26 @@ const EditProduct = ({ productId, vendorId, onProductUpdated, categories, depart
             setValue('name', product.name);
             setValue('description', product.description || '');
             setValue('price', product.price);
-            setValue('status', product.status);
+            setValue('status', product.is_published ? true : false);
+            setSelectedStatus(product.is_published ? true : false);
             setValue('departmentId', product.departmentId);
-            setValue('categoryId', product.categoryId);
-            setValue('vendorId', product.vendorId);
-
-            // Set select states
-            setSelectedStatus(product.status);
             setSelectedDepartment(product.departmentId);
+            setValue('categoryId', product.categoryId);
             setSelectedCategory(product.categoryId);
+            setValue('vendorId', product.vendorId);
             setSelectedVendor(product.vendorId);
-
-            // Handle existing images if your API returns them
-            // You might need to convert existing image URLs to File objects
-            // or handle them differently based on your backend structure
         }
     }, [product, setValue]);
 
     const onSubmit: SubmitHandler<ProductUpdateData> = async (formData: ProductUpdateData) => {
-        // Only require new images if there are no existing images
-        if (images.length === 0 && (!product?.images || product.images.length === 0)) {
-            setError('images', { message: 'At least one product image is required' });
-            return;
-        }
         
-        // Validate that images are uploaded
-        if (images.length === 0) {
-            setError('images', { message: 'At least one product image is required' });
-            return;
-        }
-
-        if (defaultImageIndex === null) {
-            setError('defaultImageIndex', { message: 'Please select a default image' });
-            return;
-        }
-
-        // Validate vendorId is selected
         if (!formData.vendorId) {
             setError('vendorId', { message: 'Please select a vendor' });
             return;
         }
 
-        // Create FormData for file upload
         const submitData = new FormData();
 
-        // Append regular fields
         submitData.append('name', formData.name);
         submitData.append('description', formData.description);
         submitData.append('price', formData.price.toString());
@@ -196,15 +196,13 @@ const EditProduct = ({ productId, vendorId, onProductUpdated, categories, depart
         if (formData.categoryId) submitData.append('categoryId', formData.categoryId.toString());
         if (formData.departmentId) submitData.append('departmentId', formData.departmentId.toString());
 
-        // Only append new images if there are any
         if (images.length > 0) {
             images.forEach((file) => {
                 submitData.append('images[]', file);
             });
-            submitData.append('defaultImageIndex', defaultImageIndex!.toString());
+            submitData.append('defaultImageIndex', defaultImageIndex!.toString() ?? 0);
         }
-
-        // Call mutation with vendorId and formData
+        
         await updateProductMutation({
             vendorId: vendorId!,
             productId: productId!,
@@ -405,7 +403,7 @@ const EditProduct = ({ productId, vendorId, onProductUpdated, categories, depart
                                     </div>
 
                                     {/* Vendor Select */}
-                                    <div className="form-control md:col-span-2">
+                                    <div className="form-control">
                                         <label className="block mb-2 text-sm font-medium label-text">
                                             <span className="label-text">Vendor</span>
                                         </label>
@@ -467,10 +465,11 @@ const EditProduct = ({ productId, vendorId, onProductUpdated, categories, depart
                                             Product Images <span className="text-error">*</span>
                                         </label>
                                         <MultiImageUploader
-                                            initialImages={product?.images?.map((img: {url:string, default: boolean}) => ({
-                                                url: img.url,
+                                            initialImages={product?.images?.map((img: { url: string, default: boolean }) => ({
+                                                url: (import.meta.env.VITE_API_URL as string).replace('api/', '') + img.url,
                                                 isDefault: img.default
                                             })) || []}
+
                                             onChange={(imgs, defaultIdx) => {
                                                 const files = imgs.map(i => i.file!).filter(Boolean);
                                                 setImages(files);
@@ -511,8 +510,4 @@ const EditProduct = ({ productId, vendorId, onProductUpdated, categories, depart
     )
 }
 
-export default EditProduct
-
-function makeAnimated() {
-    throw new Error('Function not implemented.')
-}
+export default EditProduct;

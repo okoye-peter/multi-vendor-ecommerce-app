@@ -20,6 +20,12 @@ export const PRODUCT_FILTER_CONFIG = {
     },
 };
 
+export const SUB_PRODUCT_FILTER_CONFIG = {
+    searchFields: [
+        'batch_no'
+    ]
+}
+
 /**
  * Order Filter Configuration
  */

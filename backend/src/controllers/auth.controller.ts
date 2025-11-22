@@ -3,14 +3,13 @@ import type { RequestHandler } from "express";
 import UserService from "../service/userService.ts";
 import generateAuthorizationTokenAndSetCookies from "../utils/generateAuthorizationTokenAndSetCookies.ts";
 import { sendEmailVerificationCode, sendPasswordResetToken } from "../utils/sendEmail.ts";
-import { PrismaClient } from "@prisma/client";
+import prisma from "../libs/prisma.ts";
 import bcrypt from "bcryptjs";
 import { FileService } from "../service/fileService.ts";
 import { queueVerificationEmail } from "../queues/email.queue.ts";
 // import { queueVerificationEmail } from '../queues/email.queue.js';
 
 const userService = new UserService();
-const prisma = new PrismaClient();
 
 export const userSchema = z
     .object({

@@ -1,8 +1,6 @@
 import type { RequestHandler } from "express";
 import { Role } from "@prisma/client";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import prisma from "../libs/prisma.ts";
 
 /**
  * Middleware to restrict access to admin users only.

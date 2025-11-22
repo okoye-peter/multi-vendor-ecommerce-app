@@ -4,33 +4,34 @@ import ImageUploading, { type ImageListType } from "react-images-uploading";
 export type UploadedImage = {
     file: File | null;
     dataURL: string | undefined;
-    existingUrl?: string; // ✅ Add this for existing images
+    existingUrl?: string;
 };
 
 type Props = {
     onChange?: (images: UploadedImage[], defaultIndex: number | null) => void;
-    initialImages?: { url: string; isDefault: boolean }[]; // ✅ Add this prop
+    initialImages?: { url: string; isDefault: boolean }[];
 };
 
 const MultiImageUploader: React.FC<Props> = ({ onChange, initialImages = [] }) => {
     const [images, setImages] = useState<ImageListType>([]);
     const [defaultIndex, setDefaultIndex] = useState<number | null>(null);
+    const [isInitialized, setIsInitialized] = useState(false);
 
-    // ✅ Load initial images when component mounts or initialImages change
+    const initialImagesKey = JSON.stringify(initialImages);
+    
+    // Load initial images when component mounts or initialImages change
     useEffect(() => {
-        if (initialImages.length > 0) {
+        if (initialImages.length > 0 && !isInitialized) {
             const convertedImages = initialImages.map(img => ({
-                dataURL: `${import.meta.env.VITE_API_BASE_URL || ''}/${img.url}`, // Adjust base URL as needed
+                dataURL: img.url,
                 file: undefined,
             }));
             
             setImages(convertedImages);
             
-            // Set default index
             const defaultIdx = initialImages.findIndex(img => img.isDefault);
             setDefaultIndex(defaultIdx >= 0 ? defaultIdx : null);
 
-            // Notify parent
             if (onChange) {
                 const mapped = convertedImages.map((img, idx) => ({
                     file: null,
@@ -39,8 +40,10 @@ const MultiImageUploader: React.FC<Props> = ({ onChange, initialImages = [] }) =
                 }));
                 onChange(mapped, defaultIdx >= 0 ? defaultIdx : null);
             }
+
+            setIsInitialized(true);
         }
-    }, [initialImages]);
+    }, [initialImagesKey, isInitialized, onChange]); 
 
     const onChangeImages = (imageList: ImageListType) => {
         setImages(imageList);
@@ -60,7 +63,6 @@ const MultiImageUploader: React.FC<Props> = ({ onChange, initialImages = [] }) =
             const mapped = imageList.map((img, idx) => ({
                 file: img.file ?? null,
                 dataURL: img.dataURL,
-                // Preserve existing URL if this was an initial image that wasn't replaced
                 existingUrl: initialImages[idx]?.url && !img.file ? initialImages[idx].url : undefined,
             }));
 
@@ -80,6 +82,35 @@ const MultiImageUploader: React.FC<Props> = ({ onChange, initialImages = [] }) =
 
             onChange(mapped, index);
         }
+    };
+
+    // Manual remove handler
+    const handleRemove = (index: number) => {
+        const newImages = images.filter((_, idx) => idx !== index);
+        onChangeImages(newImages);
+    };
+
+    // Manual update/replace handler
+    const handleReplace = (index: number) => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.onchange = (e) => {
+            const file = (e.target as HTMLInputElement).files?.[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const newImages = [...images];
+                    newImages[index] = {
+                        dataURL: reader.result as string,
+                        file: file,
+                    };
+                    onChangeImages(newImages);
+                };
+                reader.readAsDataURL(file);
+            }
+        };
+        input.click();
     };
 
     return (
@@ -120,7 +151,7 @@ const MultiImageUploader: React.FC<Props> = ({ onChange, initialImages = [] }) =
                                     <button
                                         type="button"
                                         className="w-full btn btn-xs btn-info"
-                                        onClick={image.onUpdate}
+                                        onClick={() => handleReplace(index)}
                                     >
                                         Replace
                                     </button>
@@ -137,7 +168,7 @@ const MultiImageUploader: React.FC<Props> = ({ onChange, initialImages = [] }) =
                                     <button
                                         type="button"
                                         className="w-full btn btn-xs btn-error"
-                                        onClick={image.onRemove}
+                                        onClick={() => handleRemove(index)}
                                     >
                                         Remove
                                     </button>

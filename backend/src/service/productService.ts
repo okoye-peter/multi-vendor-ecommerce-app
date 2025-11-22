@@ -1,10 +1,9 @@
-import { Prisma, PrismaClient, type Product, type Vendor } from "@prisma/client";
+import { Prisma, type Product, type Vendor } from "@prisma/client";
+import prisma from "../libs/prisma.ts";
 import { productSchema, productUpdateSchema, productRefillSchema } from "../controllers/product.controller.ts";
 import generateBatchNumber from "../utils/generateSubProductBatchNumber.ts";
 import z from "zod";
 import { FileService } from './fileService.ts';
-
-const prisma = new PrismaClient();
 
 type createProductData = z.infer<typeof productSchema>;
 type updateProductData = z.infer<typeof productUpdateSchema>;
@@ -77,7 +76,7 @@ export default class ProductService {
                     await tx.subProduct.create({
                         data: {
                             batch_no,
-                            purchased_quantity: quantity,
+                            quantity,
                             expiry_date: expiry_date ? new Date(expiry_date) : null,
                             cost_price,
                             status,
@@ -313,7 +312,7 @@ export default class ProductService {
                     data: {
                         batch_no,
                         productId,
-                        purchased_quantity: quantity,
+                        quantity,
                         expiry_date: expiry_date ? new Date(expiry_date) : null,
                         cost_price,
                         status,
@@ -337,6 +336,29 @@ export default class ProductService {
                 product: updatedProduct,
                 subProduct,
             };
+        } catch (error) {
+            if (error instanceof Error) {
+                throw { status: 500, message: error.message };
+            } else if (typeof error === "object" && error !== null && "status" in (error as Record<string, any>)) {
+                throw error;
+            } else {
+                // ✅ Fallback
+                throw { status: 500, message: "An unexpected error occurred" };
+            }
+        }
+    }
+
+    async toggleIsPublished (product: Product, vendorId: number) {
+        try {
+            await prisma.product.update({
+                where: {
+                    id: product.id,
+                    vendorId: vendorId
+                },
+                data: {
+                    is_published: !product.is_published
+                }
+            })
         } catch (error) {
             if (error instanceof Error) {
                 throw { status: 500, message: error.message };

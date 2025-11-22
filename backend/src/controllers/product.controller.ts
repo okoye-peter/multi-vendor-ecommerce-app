@@ -1,13 +1,12 @@
-import { PrismaClient } from "@prisma/client";
+import prisma from "../libs/prisma.ts";
 import { type RequestHandler } from "express";
 import z from "zod";
 import ProductService from "../service/productService.ts";
 import { FileService } from "../service/fileService.ts";
 import { FilterService } from "../service/filterService.ts";
-import { PRODUCT_FILTER_CONFIG } from "../config/filterConfig.ts";
+import { PRODUCT_FILTER_CONFIG, SUB_PRODUCT_FILTER_CONFIG } from "../config/filterConfig.ts";
 
 const productService = new ProductService;
-const prisma = new PrismaClient();
 
 const imageItemSchema = z.object({
     url: z.string(),
@@ -233,6 +232,7 @@ export const getProduct: RequestHandler = async (req, res, next) => {
                 category: true,
                 department: true,
                 images: true,
+                vendor: true
             }
         })
         res.status(200).json(product);
@@ -327,5 +327,88 @@ export const getAllProducts: RequestHandler = async (req, res, next) => {
         res.status(200).json({ success: true, ...result });
     } catch (error) {
         next(error);
+    }
+};
+
+export const toggleProductIsPublished: RequestHandler = async (req, res, next) => {
+    try {
+        const vendor = req.vendor;
+        const productId = Number(req.params.productId);
+
+        const [product] = await Promise.all([
+            prisma.product.findUnique({ where: { id: productId, vendorId: vendor.id } })
+        ]);
+
+        if (!product) {
+            throw { message: "product not found", status: 400 }
+        }
+
+        await productService.toggleIsPublished(product, vendor.id)
+
+        
+        res.status(200).json({ message: `product ${product.is_published ? 'unpublished' : 'published'} successfully`});
+    } catch (error) {
+        if (error instanceof Error) {
+            next({ message: error.message, status: 500 });
+        } else if (typeof error === "object" && error !== null && "status" in (error as Record<string, any>)) {
+            throw error;
+        } else {
+            next({ message: "Server Error", status: 500 });
+        }
+    }
+}
+
+export const getProductBatches: RequestHandler = async (req, res, next) => {
+    try {
+        const productId = Number(req.params.productId);
+        const vendorId = Number(req.params.vendorId);
+        
+        if (isNaN(productId)) {
+            return next({ message: "Invalid product ID", status: 400 });
+        }
+        if (isNaN(vendorId)) {
+            return next({ message: "Invalid vendor ID", status: 400 });
+        }
+
+        // Verify product exists and belongs to vendor
+        const product = await prisma.product.findFirst({
+            where: {
+                id: productId,
+                vendorId: vendorId
+            }
+        });
+
+        if (!product) {
+            return next({ status: 404, message: 'Product not found' });
+        }
+
+        const filterOptions = FilterService.parseQueryParams(req.query);
+        Object.assign(filterOptions, SUB_PRODUCT_FILTER_CONFIG);
+        
+        // Add productId filter to the filters array
+        if (!filterOptions.filters) {
+            filterOptions.filters = [];
+        }
+        
+        filterOptions.filters.push({
+            field: 'productId',
+            operator: 'equals',
+            value: productId
+        });
+
+        const result = await FilterService.executePaginatedQuery(
+            prisma.subProduct,
+            filterOptions
+        );
+        
+        res.status(200).json({ success: true, ...result });
+    } catch (error) {
+        if (error instanceof Error) {
+            next({ message: error.message, status: 500 });
+        } else if (typeof error === "object" && error !== null && "status" in (error as Record<string, any>)) {
+            next(error);
+        } else {
+            next({ message: "Server Error", status: 500 });
+        }
     }
 };

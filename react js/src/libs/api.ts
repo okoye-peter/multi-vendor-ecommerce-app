@@ -96,3 +96,13 @@ export const deleteProduct = async (vendorId: number, productId: number) => {
     const response = await axiosInstance.delete(`/vendors/${vendorId}/products/${productId}`)
     return response.data
 }
+
+export const toggleProductPublicity = async (vendorId: number, productId: number) => {
+    const response = await axiosInstance.put(`/vendors/${vendorId}/products/${productId}/publish`)
+    return response.data
+}
+
+export const getProduct = async (vendorId: number, productId: number) => {
+    const response = await axiosInstance.get(`/vendors/${vendorId}/products/${productId}`);
+    return response.data;
+}

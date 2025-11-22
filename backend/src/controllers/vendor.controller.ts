@@ -1,9 +1,8 @@
 import type { RequestHandler } from "express";
-import { PrismaClient } from "@prisma/client";
+import prisma from "../libs/prisma.ts";
 import { FilterService } from "../service/filterService.ts";
 import { PRODUCT_FILTER_CONFIG } from "../config/filterConfig.ts";
 
-const prisma = new PrismaClient();
 
 export const getAuthUserVendors: RequestHandler = async (req, res, next) => {
     try {

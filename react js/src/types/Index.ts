@@ -1,4 +1,3 @@
-import { department } from './Index';
 import type { ColumnDef } from "@tanstack/react-table";
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
@@ -81,7 +80,7 @@ export interface MenuItem {
     path: string;
 }
 export interface FilterOption {
-    value: string;
+    value: string | number | boolean;
     label: string;
 }
 
@@ -110,13 +109,13 @@ export interface Category {
     id: number;
     name: string;
     departmentId?: number;
-    [key: string]: unknown; 
+    [key: string]: unknown;
 }
 
 export interface Department {
     id: number;
     name: string;
-    [key: string]: unknown; 
+    [key: string]: unknown;
 };
 
 export interface Product {
@@ -125,11 +124,22 @@ export interface Product {
     category: Category;
     department: Department;
     price: string;
-    stock: number;
-    [key: string]: unknown; 
+    quantity: number;
+    [key: string]: unknown;
 }
 
 export interface Vendor {
     id: number,
     name: string
 }
+
+export interface SubProduct {
+    id: number;
+    batch_no: string;
+    quantity: number;
+    quantity_sold: number;
+    expiry_date: string;
+    cost_price: number;
+    createdAt: string;
+    [key: string]: unknown;
+};
