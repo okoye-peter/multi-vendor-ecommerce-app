@@ -4,7 +4,7 @@ import prisma from "../libs/prisma.ts";
 import { userSchema } from "../controllers/auth.controller.ts";
 import type z from "zod";
 import bcrypt from "bcryptjs";
-import { FileService, type UploadedFile } from "../service/fileService.ts";
+import { FileService } from "../middleware/fileUpload.ts";
 
 
 type UserData = z.infer<typeof userSchema>;
@@ -32,6 +32,9 @@ export default class UserService {
             });
 
             if (existingUser) {
+                if(data.picture_url){
+                    await FileService.deleteSingle(data.picture_url);
+                }
                 if (existingUser.email === data.email) {
                     throw { status: 400, message: "User with this email already exists" };
                 }
@@ -48,7 +51,7 @@ export default class UserService {
             // generate email verification code
             const emailVerificationCode = Math.floor(100000 + Math.random() * 900000).toString();
             const emailVerificationCodeExpiresAt = new Date(Date.now() + 1000 * 60 * 15);
-            const { repeat_password, picture, picture_url, ...cleanData } = data; // Exclude repeat_password from being saved
+            const { repeat_password, picture_url, ...cleanData } = data; // Exclude repeat_password from being saved
 
             // generate phone verification code
             const phoneVerificationCode = Math.floor(100000 + Math.random() * 900000).toString();
@@ -77,11 +80,10 @@ export default class UserService {
             return { user, emailVerificationCode }
 
         } catch (err) {
-            if (data.picture_url) {
-                await FileService.deleteSingle(data.picture_url).catch((deleteErr) => {
-                    console.error('Failed to rollback uploaded picture:', deleteErr);
-                });
+            if(data.picture_url){
+                await FileService.deleteSingle(data.picture_url);
             }
+
             if (err instanceof Error) {
                 throw { status: 500, message: err.message };
             } else if (typeof err === "object" && err !== null && "status" in (err as Record<string, any>)) {
@@ -93,7 +95,7 @@ export default class UserService {
         }
     }
 
-    async deleteUser(id) {
+    async deleteUser(id: number) {
         return prisma.user.delete({ where: { id: Number(id) } });
     }
 

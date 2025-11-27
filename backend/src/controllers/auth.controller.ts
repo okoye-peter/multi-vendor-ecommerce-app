@@ -2,14 +2,33 @@ import * as z from "zod";
 import type { RequestHandler } from "express";
 import UserService from "../service/userService.ts";
 import generateAuthorizationTokenAndSetCookies from "../utils/generateAuthorizationTokenAndSetCookies.ts";
-import { sendEmailVerificationCode, sendPasswordResetToken } from "../utils/sendEmail.ts";
+import { sendPasswordResetToken } from "../utils/sendEmail.ts";
 import prisma from "../libs/prisma.ts";
 import bcrypt from "bcryptjs";
-import { FileService } from "../service/fileService.ts";
 import { queueVerificationEmail } from "../queues/email.queue.ts";
-// import { queueVerificationEmail } from '../queues/email.queue.js';
+import { FileService, type RequestWithUploadedFile } from "../middleware/fileUpload.ts";
 
 const userService = new UserService();
+
+// ✅ File validation schema
+const fileSchema = z.object({
+    fieldname: z.string(),
+    originalname: z.string(),
+    encoding: z.string(),
+    mimetype: z.enum([
+        "image/jpeg",
+        "image/png",
+        "image/jpg",
+        "image/webp",
+        "image/gif",
+    ], {
+        message: "Only JPEG, PNG, JPG, WEBP, and GIF images are allowed"
+    }),
+    size: z.number()
+        .max(1.5 * 1024 * 1024, "File size must not exceed 1.5MB")
+        .positive("File size must be greater than 0"),
+    buffer: z.instanceof(Buffer),
+}).optional();
 
 export const userSchema = z
     .object({
@@ -20,19 +39,16 @@ export const userSchema = z
             .min(7, "Phone number is too short")
             .max(15, "Phone number is too long")
             .regex(/^[0-9]+$/, "Phone number must contain only digits"),
-        picture: z
-            .object({
-                filename: z.string(),
-                path: z.string(),
-                mimetype: z.enum(["image/jpeg", "image/png", "image/jpg", "image/webp"]),
-                size: z.number().max(2 * 1024 * 1024, "File size must not exceed 2MB"),
-            })
-            .nullable()
-            .optional(),
-        picture_url: z.string().nullable().optional(),
-        type: z.enum(["CUSTOMER", "ADMIN", "VENDOR"], {
-            errorMap: () => ({ message: "Type must be CUSTOMER, ADMIN, or VENDOR" })
-        }),
+        // ✅ Cloudinary URL (stored in database)
+        picture_url: z.url("Invalid picture URL").nullable().optional(),
+
+        // ✅ File validation (not stored in DB, just validated)
+        picture: fileSchema,
+
+        type: z.enum(["CUSTOMER", "ADMIN", "VENDOR"]).refine(
+            val => ["CUSTOMER", "ADMIN", "VENDOR"].includes(val),
+            { message: "Type must be CUSTOMER, ADMIN, or VENDOR" }
+        ),
         password: z
             .string()
             .min(8, "Password must be at least 8 characters")
@@ -78,33 +94,28 @@ export const userSchema = z
     });
 
 export const register: RequestHandler = async (req, res, next) => {
-    const uploadedFile = (req as any).uploadedFile;
-    const uploadedFilePath = uploadedFile?.path;
+    // ✅ Access uploaded file info (added by handleSingleFileUpload middleware)
+    const reqWithUpload = req as RequestWithUploadedFile;
+    const cloudinaryUpload = reqWithUpload.cloudinaryUpload;
 
     try {
         const bodyData = {
             ...req.body,
-            picture_url: uploadedFile?.path || null,
-            ...(uploadedFile && {
-                picture: {
-                    filename: uploadedFile.filename || uploadedFile.originalname,
-                    path: uploadedFile.path,
-                    mimetype: uploadedFile.mimetype,
-                    size: uploadedFile.size,
-                }
-            })
+            picture_url: cloudinaryUpload?.url || null,
+            picture: cloudinaryUpload?.file || undefined,
         };
 
+        // ✅ Validate with Zod (validates both body data and uploaded file)
         const result = userSchema.safeParse(bodyData);
+
         if (!result.success) {
             // Rollback uploaded file if validation fails
-            if (uploadedFilePath) {
-                await FileService.rollback(uploadedFilePath);
+            if (cloudinaryUpload?.url) {
+                await FileService.rollback(cloudinaryUpload.url);
             }
 
             const { fieldErrors, formErrors } = result.error.flatten();
 
-            // If there are no fieldErrors (all arrays empty), use formErrors instead
             const hasFieldErrors = Object.values(fieldErrors).some(
                 (errors) => errors && errors.length > 0
             );
@@ -114,11 +125,12 @@ export const register: RequestHandler = async (req, res, next) => {
             return next({ status: 400, message: errors });
         }
 
-        const { vendor_name, vendor_address, state, ...cleanData } = result.data;
+        // ✅ Remove picture from data before saving to DB (we only save picture_url)
+        const { vendor_name, vendor_address, state, picture, ...cleanData } = result.data;
 
         // 🧩 Use a transaction so user/vendor creation is atomic
         const { user, emailVerificationCode } = await prisma.$transaction(async (tx) => {
-            // Create user first
+            // Create user first (cleanData includes picture_url but not picture)
             const { user, emailVerificationCode } = await userService.createUser(cleanData, tx);
 
             // If user is a vendor, create vendor record linked to user
@@ -138,14 +150,17 @@ export const register: RequestHandler = async (req, res, next) => {
 
         generateAuthorizationTokenAndSetCookies(res, user.id);
 
-        // queue email to send email verification token
+        // Queue email to send email verification token
         await queueVerificationEmail(user.email, parseInt(emailVerificationCode));
-        // await sendEmailVerificationCode(user.email, parseInt(emailVerificationCode));
 
-        res.status(201).json({ user, message: "User registered successfully" });
+        res.status(201).json({
+            user,
+            message: "User registered successfully"
+        });
     } catch (error) {
-        if (uploadedFilePath) {
-            await FileService.rollback(uploadedFilePath);
+        // ✅ Rollback from Cloudinary on error
+        if (cloudinaryUpload?.url) {
+            await FileService.rollback(cloudinaryUpload.url);
         }
 
         if (error instanceof Error) {
@@ -454,5 +469,107 @@ export const getAuthenticatedUser: RequestHandler = async (req, res, next) => {
 
         // Catch-all for any unexpected errors
         return res.status(500).json({ message: "Server error" });
+    }
+};
+
+// ✅ Update user profile with new picture
+export const updateProfile: RequestHandler = async (req, res, next) => {
+    const uploadedFile = req.uploadedFile;
+    const newPictureUrl = uploadedFile?.path;
+
+    try {
+        const userId = req.user?.id; // Assuming you have auth middleware
+
+        if (!userId) {
+            return res.status(401).json({ message: "Unauthorized" });
+        }
+
+        // Get current user to check if they have an existing picture
+        const currentUser = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { picture_url: true, publicId: true }
+        });
+
+        const newPublicId = newPictureUrl ? extractPublicIdFromUrl(newPictureUrl) : null;
+
+        const bodyData = {
+            ...req.body,
+            ...(newPictureUrl && {
+                picture_url: newPictureUrl,
+                publicId: newPublicId,
+            })
+        };
+
+        // Validate and update user
+        const updatedUser = await prisma.user.update({
+            where: { id: userId },
+            data: {
+                name: bodyData.name,
+                phone: bodyData.phone,
+                ...(newPictureUrl && {
+                    picture_url: newPictureUrl,
+                    publicId: newPublicId,
+                })
+            }
+        });
+
+        // ✅ Delete old picture from Cloudinary if exists and new picture uploaded
+        if (newPictureUrl && currentUser?.publicId) {
+            await FileService.deleteSingle(currentUser.publicId);
+        }
+
+        res.status(200).json({
+            user: updatedUser,
+            message: "Profile updated successfully"
+        });
+    } catch (error) {
+        // Rollback new picture on error
+        if (newPictureUrl) {
+            const publicId = extractPublicIdFromUrl(newPictureUrl);
+            if (publicId) {
+                await FileService.rollback(publicId);
+            }
+        }
+
+        if (error instanceof Error) {
+            res.status(500).json({ message: error.message });
+        } else {
+            res.status(500).json({ message: "Server Error" });
+        }
+    }
+};
+
+// ✅ Delete user account (and profile picture)
+export const deleteAccount: RequestHandler = async (req, res, next) => {
+    try {
+        const userId = req.user?.id;
+
+        if (!userId) {
+            return res.status(401).json({ message: "Unauthorized" });
+        }
+
+        // Get user to check if they have a profile picture
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { publicId: true }
+        });
+
+        // Delete profile picture from Cloudinary if exists
+        if (user?.publicId) {
+            await FileService.deleteSingle(user.publicId);
+        }
+
+        // Delete user from database
+        await prisma.user.delete({
+            where: { id: userId }
+        });
+
+        res.status(200).json({ message: "Account deleted successfully" });
+    } catch (error) {
+        if (error instanceof Error) {
+            res.status(500).json({ message: error.message });
+        } else {
+            res.status(500).json({ message: "Server Error" });
+        }
     }
 };

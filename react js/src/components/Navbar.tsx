@@ -38,6 +38,10 @@ export const Navbar = () => {
 
     };
 
+    const getNameInitials = (name: string) => {
+        name.split(' ').map(a => a.trim().toUpperCase().charAt(0)).join('');
+    }
+
 
     const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -179,8 +183,8 @@ export const Navbar = () => {
                                             alt="User avatar"
                                             src={
                                                 user?.pictureUrl
-                                                    ? import.meta.env.VITE_APP_URL + user.pictureUrl
-                                                    : `https://eu.ui-avatars.com/api/?name=${encodeURIComponent(user?.name || '')}&background=random`
+                                                    ? user.pictureUrl
+                                                    : `https://eu.ui-avatars.com/api/?name=${getNameInitials(user?.name || '')}&background=random`
                                             }
                                         />
                                     </div>

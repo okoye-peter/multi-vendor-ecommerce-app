@@ -303,7 +303,7 @@ const EditProduct = ({ productId, vendorId, onProductUpdated, categories, depart
                                             className={`w-full input text-sm h-[38px] pl-6 focus:outline-none focus:border-[#388bff] input-bordered ${errors.price ? 'input-error' : ''}`}
                                             placeholder="product selling price"
                                         />
-                                        <span className="absolute left-1.5 top-[35px] text-[17px] text-gray-600 ">₦</span>
+                                        <span className="absolute left-1.5 top-[35px] text-[17px] text-gray-600 z-10">₦</span>
                                         {errors.price && <p className="mt-1 text-xs text-error">{errors.price.message}</p>}
                                     </div>
 
@@ -466,7 +466,7 @@ const EditProduct = ({ productId, vendorId, onProductUpdated, categories, depart
                                         </label>
                                         <MultiImageUploader
                                             initialImages={product?.images?.map((img: { url: string, default: boolean }) => ({
-                                                url: (import.meta.env.VITE_API_URL as string).replace('api/', '') + img.url,
+                                                url: img.url,
                                                 isDefault: img.default
                                             })) || []}
 

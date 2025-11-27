@@ -1,17 +1,25 @@
 import { Prisma, type Product, type Vendor } from "@prisma/client";
 import prisma from "../libs/prisma.ts";
-import { productSchema, productUpdateSchema, productRefillSchema } from "../controllers/product.controller.ts";
+import { productSchema, productRefillSchema, updateProductSchema } from "../controllers/product.controller.ts";
 import generateBatchNumber from "../utils/generateSubProductBatchNumber.ts";
 import z from "zod";
-import { FileService } from './fileService.ts';
+// import { FileService } from './fileService.ts';
+import { FileService } from "../middleware/fileUpload.ts";
 
 type createProductData = z.infer<typeof productSchema>;
-type updateProductData = z.infer<typeof productUpdateSchema>;
+type updateProductData = z.infer<typeof updateProductSchema>;
 type refillProductData = z.infer<typeof productRefillSchema>;
+
+interface ProductImageRecord {
+    url: string;
+    default: boolean;
+    productId: number;
+    createdAt: Date;
+}
 
 
 export default class ProductService {
-    async create(productData: createProductData, vendor: Vendor) {
+    async create(productData: createProductData, vendor: Vendor): Promise<Product> {
         try {
             const {
                 name,
@@ -87,13 +95,13 @@ export default class ProductService {
                     });
                 }
 
-                // ✅ Handle uploaded images (if any)
+                // Handle uploaded images with Cloudinary URLs and publicIds
                 if (productImages && productImages.length > 0) {
-                    const imageRecords = productImages.map((path, index) => {
+                    const imageRecords: ProductImageRecord[] = productImages.map((image, index) => {
                         const isDefault = defaultImageIndex === index;
 
                         return {
-                            url: path,
+                            url: image,
                             default: isDefault,
                             productId: product!.id,
                             createdAt: new Date()
@@ -120,9 +128,11 @@ export default class ProductService {
 
             return product!;
         } catch (error) {
-            if (productData.productImages?.length > 0) {
+            // Rollback newly uploaded images from Cloudinary
+            if (productData && Array.isArray(productData.productImages) && productData.productImages?.length > 0) {
                 await FileService.rollback(productData.productImages);
             }
+
             if (error instanceof Error) {
                 throw { status: 500, message: error.message };
             } else if (typeof error === "object" && error !== null && "status" in (error as Record<string, any>)) {
@@ -134,7 +144,7 @@ export default class ProductService {
         }
     }
 
-    async update(productId: number, productData: updateProductData, vendor: Vendor) {
+    async update(productId: number, productData: updateProductData, vendor: Vendor): Promise<Product> {
         try {
             const {
                 name,
@@ -148,6 +158,7 @@ export default class ProductService {
             } = productData;
 
             const slug = name.replaceAll(' ', '-') + '-' + vendor.id;
+
             const [category, department, existingProduct] = await Promise.all([
                 prisma.category.findUnique({ where: { id: categoryId } }),
                 prisma.department.findUnique({ where: { id: departmentId } }),
@@ -182,21 +193,27 @@ export default class ProductService {
                 });
 
                 if (productImages && productImages.length > 0) {
-                    // Delete old images
+                    // Fetch old images with publicIds
                     const oldImages = await tx.productImage.findMany({
                         where: { productId: product.id },
+                        select: { id: true, url: true }
                     });
 
                     if (oldImages.length > 0) {
-                        await FileService.deleteMultiple(oldImages.map(img => img.url));
+                        // Delete from Cloudinary using publicIds
+                        const imagesToDelete: ProductImage[] = oldImages.map(img => img.url);
+
+                        await FileService.deleteMultiple(imagesToDelete);
+
+                        // Delete from database
                         await tx.productImage.deleteMany({
                             where: { id: { in: oldImages.map(img => img.id) } },
                         });
                     }
 
-                    // Insert new images
-                    const imageRecords = productImages.map((path, index) => ({
-                        url: path,
+                    // Insert new images with Cloudinary data
+                    const imageRecords: ProductImageRecord[] = productImages.map((image, index) => ({
+                        url: image,
                         default: index === defaultImageIndex,
                         productId: product.id,
                         createdAt: new Date(),
@@ -210,13 +227,13 @@ export default class ProductService {
                     await tx.productImage.createMany({ data: imageRecords });
                 }
 
-                return product; // ✅ Return the updated product
+                return product;
             });
 
             return updatedProduct;
         } catch (error) {
-            // Ensure uploaded files are rolled back if something failed
-            if (productData && productData.productImages.length > 0) {
+            // Rollback newly uploaded images from Cloudinary
+            if (productData && Array.isArray(productData.productImages) && productData.productImages?.length > 0) {
                 await FileService.rollback(productData.productImages);
             }
 
@@ -225,7 +242,6 @@ export default class ProductService {
             } else if (typeof error === "object" && error !== null && "status" in (error as Record<string, any>)) {
                 throw error;
             } else {
-                // ✅ Fallback
                 throw { status: 500, message: "An unexpected error occurred" };
             }
         }
@@ -234,6 +250,19 @@ export default class ProductService {
     async delete(productId: number) {
         try {
             await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+                const product = await tx.product.findUnique({
+                    where: { id: productId },
+                    include: {
+                        images: {
+                            select: { url: true }
+                        }
+                    }
+                });
+
+                if (!product) {
+                    throw { status: 404, message: "Product not found" };
+                }
+
                 // Delete subProducts that don't have any orderSubProducts
                 await tx.subProduct.deleteMany({
                     where: {
@@ -244,19 +273,10 @@ export default class ProductService {
                     }
                 });
 
-                const images = await tx.productImage.findMany({
-                    where: {
-                        productId
-                    }
-                })
-
-                if (images.length > 0) {
-                    await FileService.deleteMultiple(images.map(img => img.url));
-                    await tx.productImage.deleteMany({
-                        where: {
-                            id: { in: images.map(img => img.id) }
-                        }
-                    })
+                // Delete images from Cloudinary
+                if (product.images?.length > 0) {
+                    const imagesToDelete: string[] = product.images.map(img => img.url);
+                    await FileService.deleteMultiple(imagesToDelete);
                 }
 
                 // Delete the product
@@ -348,7 +368,7 @@ export default class ProductService {
         }
     }
 
-    async toggleIsPublished (product: Product, vendorId: number) {
+    async toggleIsPublished(product: Product, vendorId: number) {
         try {
             await prisma.product.update({
                 where: {

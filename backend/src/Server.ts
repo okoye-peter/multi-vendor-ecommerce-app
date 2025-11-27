@@ -7,7 +7,6 @@ import errorHandler from "./middleware/errorHandler.middleware.ts";
 import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
 import routeNotFoundErrorHandler from "./middleware/routeNotFound.middleware.ts";
-import { rollbackOnError, serveResponsiveImages } from "./service/fileService.ts";
 import path from "path";
 import { fileURLToPath } from "url";
 import departmentRoute from './routers/department.route.ts';
@@ -22,7 +21,7 @@ import productRoute from './routers/product.route.ts'
 import vendorRoutes from './routers/vendor.route.ts';
 import { isAuthenticated } from "./middleware/auth.middleware.ts";
 import { express as useragent } from 'express-useragent';
-
+import ErrorRoutes from './routers/errorLogs.route.ts'
 
 dotenv.config();
 
@@ -35,8 +34,6 @@ app.use(express.json());
 // Middleware to parse URL-encoded data
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
-// roll back file(s) upload is any error happens
-app.use(rollbackOnError());
 
 const serverAdapter = new ExpressAdapter();
 serverAdapter.setBasePath('/admin/queues'); // Path to access the UI
@@ -84,9 +81,6 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 // Serve static files from /public
 app.use(express.static(path.join(__dirname, "../public")));
-// "original", "thumb", "small", "medium", "large", "xlarge"
-// image_url?size=large for images
-app.use('/uploads', serveResponsiveImages(), express.static(path.join(__dirname, '../public/uploads')));
 
 app.use('/api/auth', authRoute);
 app.use('/api/locations', stateRoute);
@@ -94,6 +88,7 @@ app.use('/api/departments', departmentRoute);
 app.use('/api/categories', categoryRoute);
 app.use('/api/products', productRoute);
 app.use('/api/vendors', isAuthenticated, vendorRoutes);
+app.use('/errors', ErrorRoutes);
 
 
 app.use('/admin/queues', serverAdapter.getRouter());

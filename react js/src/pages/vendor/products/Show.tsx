@@ -139,7 +139,7 @@ const Show = () => {
                                     <div>
                                         <div className="relative mb-4 overflow-hidden rounded-lg bg-base-200 aspect-square">
                                             <img
-                                                src={import.meta.env.VITE_APP_URL + sortedImages[selectedImage]?.url}
+                                                src={sortedImages[selectedImage]?.url}
                                                 alt={product?.name}
                                                 className="object-cover w-full h-full"
                                             />
@@ -157,7 +157,7 @@ const Show = () => {
                                                     className={`rounded-lg overflow-hidden border-2 transition-all relative ${selectedImage === idx ? 'border-primary' : 'border-transparent'
                                                         }`}
                                                 >
-                                                    <img src={import.meta.env.VITE_APP_URL + img.url} alt={`${product?.name} ${idx + 1}`} className="object-cover w-full h-24" />
+                                                    <img src={img.url} alt={`${product?.name} ${idx + 1}`} className="object-cover w-full h-24" />
                                                     {img.default && (
                                                         <div className="absolute top-1 left-1">
                                                             <div className="badge badge-primary badge-xs">Default</div>

@@ -54,7 +54,11 @@ const createProductSchema = z.object({
         z.number().nonnegative("Cost Price must be non-negative").nullable().optional()
     ),
     status: z.boolean().default(true),
-    images: z.array(z.instanceof(File)).min(1, "At least one product image is required"),
+    images: z.array(z.instanceof(File)).min(1, "At least one product image is required")
+    .refine(
+        files => files.every(file => file.type.startsWith("image/")),
+        { message: "Only image files are allowed" }
+    ),
     defaultImageIndex: z.number().int().min(0, "Default image index must be non-negative")
 }).refine(
     (data) => data.quantity <= 0 || (data.cost_price !== null && data.cost_price !== undefined),
@@ -303,7 +307,7 @@ const Create = ({ categories, departments, onProductCreated }: Props) => {
                                             className={`w-full input text-sm h-[38px] pl-6 focus:outline-none focus:border-[#388bff] input-bordered ${errors.price ? 'input-error' : ''}`}
                                             placeholder="product selling price"
                                         />
-                                        <span className="absolute left-1.5 top-[35px] text-[17px] text-gray-600 ">₦</span>
+                                        <span className="absolute left-1.5 top-[35px] text-[17px] text-gray-600 z-10">₦</span>
                                         {errors.price && <p className="mt-1 text-xs text-error">{errors.price.message}</p>}
                                     </div>
                                     <div className='relative'>
@@ -317,7 +321,7 @@ const Create = ({ categories, departments, onProductCreated }: Props) => {
                                             className={`w-full input text-sm h-[38px] pl-6 focus:outline-none focus:border-[#388bff] input-bordered ${errors.cost_price ? 'input-error' : ''}`}
                                             placeholder="product cost price"
                                         />
-                                        <span className="absolute left-1.5 top-[35px] text-[17px] text-gray-600 ">₦</span>
+                                        <span className="absolute left-1.5 top-[35px] text-[17px] text-gray-600 z-10">₦</span>
                                         {errors.cost_price && <p className="mt-1 text-xs text-error">{errors.cost_price.message}</p>}
                                     </div>
                                     <div className='relative'>
