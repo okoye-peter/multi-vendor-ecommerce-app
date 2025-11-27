@@ -169,6 +169,20 @@ router.get('/view', (req, res) => {
         .toggle-stack:hover {
             background: #1565c0;
         }
+        .clear-btn {
+            background: #f44336;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+        .clear-btn:hover {
+            background: #d32f2f;
+        }
         .hidden { display: none; }
     </style>
 </head>
@@ -178,6 +192,7 @@ router.get('/view', (req, res) => {
         <div class="stats">
             <strong>Total Errors:</strong> ${logs.length}
         </div>
+        <button class="clear-btn" id="clearLogsBtn">Clear All Logs</button>
         ${logs.map((log, index) => `
             <div class="error-card">
                 <div class="error-header">
@@ -204,7 +219,7 @@ router.get('/view', (req, res) => {
                     </div>
                 </div>
                 ${log.stack ? `
-                    <button class="toggle-stack" onclick="toggleStack(${index})">
+                    <button class="toggle-stack" data-index="${index}">
                         Show Stack Trace
                     </button>
                     <div id="stack-${index}" class="stack-trace hidden">
@@ -214,19 +229,7 @@ router.get('/view', (req, res) => {
             </div>
         `).join('')}
     </div>
-    <script>
-        function toggleStack(index) {
-            const stackEl = document.getElementById('stack-' + index);
-            const btn = event.target;
-            if (stackEl.classList.contains('hidden')) {
-                stackEl.classList.remove('hidden');
-                btn.textContent = 'Hide Stack Trace';
-            } else {
-                stackEl.classList.add('hidden');
-                btn.textContent = 'Show Stack Trace';
-            }
-        }
-    </script>
+    <script src="/errors/view.js"></script>
 </body>
 </html>
         `;
@@ -235,6 +238,56 @@ router.get('/view', (req, res) => {
     } catch (error) {
         res.status(500).send('<h1>Failed to read error logs</h1>');
     }
+});
+
+router.get('/view.js', (req, res) => {
+    res.setHeader('Content-Type', 'application/javascript');
+    res.send(`
+        // Handle toggle stack traces
+        document.addEventListener('DOMContentLoaded', function() {
+            const toggleButtons = document.querySelectorAll('.toggle-stack');
+            toggleButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const index = this.getAttribute('data-index');
+                    const stackEl = document.getElementById('stack-' + index);
+                    if (stackEl.classList.contains('hidden')) {
+                        stackEl.classList.remove('hidden');
+                        this.textContent = 'Hide Stack Trace';
+                    } else {
+                        stackEl.classList.add('hidden');
+                        this.textContent = 'Show Stack Trace';
+                    }
+                });
+            });
+
+            // Handle clear logs button
+            const clearBtn = document.getElementById('clearLogsBtn');
+            if (clearBtn) {
+                clearBtn.addEventListener('click', async function() {
+                    if (!confirm('Are you sure you want to clear all error logs? This action cannot be undone.')) {
+                        return;
+                    }
+                    
+                    try {
+                        const response = await fetch('/errors', {
+                            method: 'DELETE'
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (response.ok) {
+                            alert(data.message);
+                            location.reload();
+                        } else {
+                            alert('Error: ' + data.message);
+                        }
+                    } catch (error) {
+                        alert('Failed to clear logs: ' + error.message);
+                    }
+                });
+            }
+        });
+    `);
 });
 
 export default router;

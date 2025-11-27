@@ -229,7 +229,7 @@ const ProductsTable = () => {
             <EditProductModal categories={categories!} departments={departments!} productId={productIdToEdit} vendorId={productVendorIdIdToEdit} onProductUpdated={resetDataOnProductUpdate} />
             
             {/* delete product modal */}
-            <DeleteProductModal product={productToDelete} onProductDeleted={() => { setDataTableKey(prev => prev + 1); }} />
+            <DeleteProductModal product={productToDelete} onProductDeleted={() => { setDataTableKey((prev) => prev + 1); console.log('product deleted') }} />
 
         </>
     );

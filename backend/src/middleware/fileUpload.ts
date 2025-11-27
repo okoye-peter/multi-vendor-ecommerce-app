@@ -312,7 +312,7 @@ export const handleSingleFileUpload = (folderName: string) => {
 export const handleMultipleFilesUpload = (folderName: string) => {
     return async (req: Request, res: Response, next: NextFunction) => {
         try {
-            if (!req.files || !Array.isArray(req.files)) return next();
+            if (!req.files || !Array.isArray(req.files) || (Array.isArray(req.files) && !req.files.length)) return next();
 
             const urls = await FileService.uploadMultiple(req.files, folderName);
 

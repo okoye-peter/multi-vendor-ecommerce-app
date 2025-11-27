@@ -91,6 +91,7 @@ const Create = ({ categories, departments, onProductCreated }: Props) => {
 
     const [images, setImages] = useState<File[]>([]);
     const [defaultImageIndex, setDefaultImageIndex] = useState<number | null>(null);
+    const [imageUploaderKey, setImageUploaderKey] = useState(0); // Add key to force reset
 
     const { data: vendors, isLoading: vendorIsLoading, error } = useQuery({
         queryKey: ['getVendors'],
@@ -109,13 +110,23 @@ const Create = ({ categories, departments, onProductCreated }: Props) => {
         setError,
         setValue,
         control,
-        trigger
+        trigger,
+        reset
     } = useForm({
         resolver: zodResolver(createProductSchema),
         defaultValues: {
-            status: true,
+            name: "",
+            description: "",
+            price: undefined,
+            categoryId: null,
+            departmentId: null,
+            vendorId: null,
             quantity: 0,
-            description: ""
+            expiry_date: null,
+            cost_price: null,
+            status: true,
+            images: [],
+            defaultImageIndex: 0
         },
     })
 
@@ -123,27 +134,32 @@ const Create = ({ categories, departments, onProductCreated }: Props) => {
         mutationFn: ({ vendorId, formData }: { vendorId: number, formData: FormData }) =>
             createProduct(vendorId, formData),
         onSuccess: () => {
-            // ✅ Close modal on success
-            const modal = document.getElementById('createProductModal') as HTMLDialogElement;
-            modal?.close();
+            // ✅ Reset react-hook-form
+            reset();
 
-            // Reset form
+            // ✅ Reset all state variables
             setImages([]);
             setDefaultImageIndex(null);
             setSelectedStatus(true);
             setSelectedDepartment(null);
             setSelectedCategory(null);
             setSelectedVendor(null);
+            
+            // ✅ Force MultiImageUploader to reset by changing key
+            setImageUploaderKey(prev => prev + 1);
+
+            // ✅ Close modal
+            const modal = document.getElementById('createProductModal') as HTMLDialogElement;
+            modal?.close();
 
             // ✅ Notify parent component to reload
             onProductCreated?.();
 
-            // Optional: Show success toast
+            // ✅ Show success toast
             toast.success('Product created successfully!');
         },
         onError: (error: AxiosError<{ message: string }>) => {
             console.error('Error creating product:', error);
-            // Optional: Show error toast
             toast.error(error?.response?.data?.message || 'Failed to create product');
         }
     });
@@ -152,7 +168,6 @@ const Create = ({ categories, departments, onProductCreated }: Props) => {
     useEffect(() => {
         setValue('images', images);
         if (images.length > 0) {
-            // Clear any previous image errors when images are added
             trigger('images');
         }
     }, [images, setValue, trigger]);
@@ -160,7 +175,6 @@ const Create = ({ categories, departments, onProductCreated }: Props) => {
     useEffect(() => {
         if (defaultImageIndex !== null) {
             setValue('defaultImageIndex', defaultImageIndex);
-            // Clear any previous defaultImageIndex errors
             trigger('defaultImageIndex');
         }
     }, [defaultImageIndex, setValue, trigger]);
@@ -507,6 +521,7 @@ const Create = ({ categories, departments, onProductCreated }: Props) => {
                                             Product Images <span className="text-error">*</span>
                                         </label>
                                         <MultiImageUploader
+                                            key={imageUploaderKey}
                                             onChange={(imgs, defaultIdx) => {
                                                 const files = imgs.map(i => i.file!).filter(Boolean);
                                                 setImages(files);

@@ -52,7 +52,7 @@ const corsConfig: CorsOptions = {
 
         if (
             process.env.NODE_ENV === "development" &&
-            origin && ["http://localhost:5173", "http://127.0.0.1:5173"].includes(origin)
+            origin && ["http://localhost:5173", "http://127.0.0.1:5173", 'http://localhost:5004'].includes(origin)
         ) {
             return callback(null, true);
         }

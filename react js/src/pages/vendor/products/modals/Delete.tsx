@@ -21,8 +21,8 @@ const DeleteProductModal = ({ product, onProductDeleted }: Props) => {
         if(isError){
             toast.error(error.message);
         }else{
+            onProductDeleted?.();
             toast.success('product deleted successfully')
-            onProductDeleted?.()
         }
             
     }
