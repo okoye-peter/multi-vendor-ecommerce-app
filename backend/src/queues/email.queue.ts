@@ -1,5 +1,5 @@
 import { Queue } from 'bullmq';
-import redisConnection from '../config/redis.config.ts';
+import redisConnection from '../config/redis.config.js';
 
 // Define the structure of email job data
 export interface EmailJobData {

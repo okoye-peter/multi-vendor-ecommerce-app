@@ -1,5 +1,5 @@
 import type { RequestHandler } from "express";
-import prisma from "../libs/prisma.ts";
+import prisma from "../libs/prisma.js";
 import z from "zod";
 
 const departmentSchema = z.object({

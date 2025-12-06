@@ -1,8 +1,8 @@
 import { Worker, Job } from 'bullmq';
-import redisConnection from '../config/redis.config.ts';
-// import { sendEmailVerificationCode } from '../services/email.service.ts';
-import type { EmailJobData } from '../queues/email.queue.ts';
-import { sendEmailVerificationCode, sendPasswordResetToken } from '../utils/sendEmail.ts';
+import redisConnection from '../config/redis.config.js';
+// import { sendEmailVerificationCode } from '../services/email.service.js';
+import type { EmailJobData } from '../queues/email.queue.js';
+import { sendEmailVerificationCode, sendPasswordResetToken } from '../utils/sendEmail.js';
 
 // Create worker to process email jobs
 export const emailWorker = new Worker<EmailJobData>(

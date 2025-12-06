@@ -3,8 +3,9 @@ import seedDepartments from './departmentSeed.ts'
 import seedCategories from './categorySeed.ts'
 import seedStatesAndLgas from './statesAndLgaSeed.ts'
 
-// paste this command `npx prisma db seed` in your terminal to run the seeder  
+// paste this command `npm run prisma:seed` in your terminal to run the seeder  
 import prisma from '../../src/libs/prisma.ts'
+
 
 async function main() {
     console.log('🌱 Starting database seeding...')

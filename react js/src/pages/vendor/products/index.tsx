@@ -1,7 +1,7 @@
-import { DataTable, type SearchableColumnDef } from "../../../components/DataTable";
-import type { Category, Department, Filter, Product } from "../../../types/Index";
+import { DataTable, type SearchableColumnDef } from "../../../components/DataTable.tsx";
+import type { Category, Department, Filter, Product } from "../../../types/Index.ts";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { getAllCategory, getAllDepartments, toggleProductPublicity } from "../../../libs/api";
+import { getAllCategory, getAllDepartments, toggleProductPublicity } from "../../../libs/api.ts";
 import CreateProduct from './modals/Create.tsx';
 import { useState } from "react";
 import ActionDropdown from "../../../components/DataTableActionDropDown.tsx";
@@ -223,10 +223,10 @@ const ProductsTable = () => {
             />
 
             {/* create product modal */}
-            <CreateProduct categories={categories!} departments={departments!} onProductCreated={() => { setDataTableKey(prev => prev + 1) }} />
+            <CreateProduct categories={categories!} departments={departments!} onProductCreated={() => { setDataTableKey(prev => prev + 1); console.log('product created') }} />
                 
             {/* edit product modal */}
-            <EditProductModal categories={categories!} departments={departments!} productId={productIdToEdit} vendorId={productVendorIdIdToEdit} onProductUpdated={resetDataOnProductUpdate} />
+            <EditProductModal categories={categories!} departments={departments!} productId={productIdToEdit} vendorId={productVendorIdIdToEdit} onProductUpdated={() => { resetDataOnProductUpdate(); console.log('product updated') }} />
             
             {/* delete product modal */}
             <DeleteProductModal product={productToDelete} onProductDeleted={() => { setDataTableKey((prev) => prev + 1); console.log('product deleted') }} />
@@ -236,57 +236,3 @@ const ProductsTable = () => {
 }
 
 export default ProductsTable;
-
-// Example 2: Orders Table
-// export function OrdersTableExample() {
-//     const columns: ColumnDef<Order>[] = [
-//         {
-//             accessorKey: 'id',
-//             header: 'Order ID',
-//             cell: info => <span className="font-mono text-sm">#{info.getValue() as number}</span>,
-//         },
-//         {
-//             accessorKey: 'name',
-//             header: 'Customer',
-//             cell: info => <span className="font-medium">{info.getValue() as string}</span>,
-//         },
-//         {
-//             accessorKey: 'email',
-//             header: 'Email',
-//         },
-//         {
-//             accessorKey: 'username',
-//             header: 'Status',
-//             cell: () => <span className="badge badge-success">Active</span>,
-//         },
-//     ];
-
-//     const filters: Filter[] = [
-//         {
-//             column: 'orderDate',
-//             label: 'Order Date',
-//             type: 'dateRange',
-//         },
-//         {
-//             column: 'status',
-//             label: 'Status',
-//             type: 'select',
-//             options: [
-//                 { value: 'pending', label: 'Pending' },
-//                 { value: 'shipped', label: 'Shipped' },
-//                 { value: 'delivered', label: 'Delivered' },
-//                 { value: 'cancelled', label: 'Cancelled' },
-//             ],
-//         },
-//     ];
-
-//     return (
-//         <DataTable<Order>
-//             url="https://jsonplaceholder.typicode.com/users"
-//             columns={columns}
-//             filters={filters}
-//             title="Orders Management"
-//             defaultPageSize={10}
-//         />
-//     );
-// }

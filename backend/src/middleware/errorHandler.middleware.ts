@@ -1,5 +1,5 @@
 import type { ErrorRequestHandler } from 'express';
-import logger from '../libs/logger.ts';
+import logger from '../libs/logger.js';
 
 const errorHandler: ErrorRequestHandler = (err, req, res, next) => {
     console.log('errorHandler', err);

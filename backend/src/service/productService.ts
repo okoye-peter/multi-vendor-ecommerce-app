@@ -1,10 +1,10 @@
-import { Prisma, type Product, type Vendor } from "@prisma/client";
-import prisma from "../libs/prisma.ts";
-import { productSchema, productRefillSchema, updateProductSchema } from "../controllers/product.controller.ts";
-import generateBatchNumber from "../utils/generateSubProductBatchNumber.ts";
+import { Prisma, type Product, type SubProduct, type Vendor} from "@prisma/client";
+import prisma from "../libs/prisma.js";
+import { productSchema, productRefillSchema, updateProductSchema } from "../controllers/product.controller.js";
+import generateBatchNumber from "../utils/generateSubProductBatchNumber.js";
 import z from "zod";
-// import { FileService } from './fileService.ts';
-import { FileService } from "../middleware/fileUpload.ts";
+// import { FileService } from './fileService.js';
+import { FileService } from "../middleware/fileUpload.js";
 
 type createProductData = z.infer<typeof productSchema>;
 type updateProductData = z.infer<typeof updateProductSchema>;
@@ -201,7 +201,7 @@ export default class ProductService {
 
                     if (oldImages.length > 0) {
                         // Delete from Cloudinary using publicIds
-                        const imagesToDelete: ProductImage[] = oldImages.map(img => img.url);
+                        const imagesToDelete: string[] = oldImages.map(img => img.url);
 
                         await FileService.deleteMultiple(imagesToDelete);
 
@@ -298,23 +298,14 @@ export default class ProductService {
         }
     }
 
-    async refill(productId: number, refillData: refillProductData, vendor: Vendor) {
+    async refill(product: Product, refillData: refillProductData) {
         try {
             const {
                 expiry_date,
                 quantity,
                 cost_price,
-                status,
-                price
+                status
             } = refillData;
-
-            const product = await prisma.product.findUnique({
-                where: { id: productId, vendorId: vendor.id },
-            });
-
-            if (!product) {
-                throw { status: 404, message: "Product not found or not owned by vendor" };
-            }
 
             let batch_no = '';
             let existingBatch;
@@ -331,7 +322,7 @@ export default class ProductService {
                 prisma.subProduct.create({
                     data: {
                         batch_no,
-                        productId,
+                        productId: product.id,
                         quantity,
                         expiry_date: expiry_date ? new Date(expiry_date) : null,
                         cost_price,
@@ -340,11 +331,10 @@ export default class ProductService {
                 }),
                 prisma.product.update({
                     where: {
-                        id: productId,
-                        vendorId: vendor.id,
+                        id: product.id,
+                        vendorId: product.vendorId,
                     },
                     data: {
-                        price: price ?? product.price,
                         quantity: product.quantity + quantity,
                         updatedAt: new Date(),
                     },
@@ -368,6 +358,59 @@ export default class ProductService {
         }
     }
 
+    async updateProductBatch(product: Product, subProduct: SubProduct, subProductData: refillProductData) {
+        try {
+            const {
+                expiry_date,
+                quantity,
+                cost_price,
+                status
+            } = subProductData;
+
+
+            const prevQty = subProduct.quantity;
+            // Use transaction to ensure consistency
+            const [updatedSubProduct, updatedProduct] = await prisma.$transaction([
+                prisma.subProduct.update({
+                    where: {
+                        id: subProduct.id
+                    },
+                    data: {
+                        quantity,
+                        expiry_date: expiry_date ? new Date(expiry_date) : null,
+                        cost_price,
+                        status,
+                    },
+                }),
+
+                prisma.product.update({
+                    where: {
+                        id: subProduct.productId!,
+                    },
+                    data: {
+                        quantity: (product.quantity + (quantity - prevQty))
+                    },
+                }),
+            ]);
+
+            return {
+                message: "Product Batch updated successfully",
+                subProduct: updatedSubProduct,
+                product: updatedProduct
+            };
+        } catch (error) {
+            if (error instanceof Error) {
+                throw { status: 500, message: error.message };
+            } else if (typeof error === "object" && error !== null && "status" in (error as Record<string, any>)) {
+                throw error;
+            } else {
+                // ✅ Fallback
+                throw { status: 500, message: "An unexpected error occurred" };
+            }
+        }
+    }
+
+    // disable or enable products
     async toggleIsPublished(product: Product, vendorId: number) {
         try {
             await prisma.product.update({
@@ -379,6 +422,76 @@ export default class ProductService {
                     is_published: !product.is_published
                 }
             })
+        } catch (error) {
+            if (error instanceof Error) {
+                throw { status: 500, message: error.message };
+            } else if (typeof error === "object" && error !== null && "status" in (error as Record<string, any>)) {
+                throw error;
+            } else {
+                // ✅ Fallback
+                throw { status: 500, message: "An unexpected error occurred" };
+            }
+        }
+    }
+
+    // disable or enabled product batches
+    async toggleBatchVisibility(subProduct: SubProduct, product: Product) {
+        try {
+
+            await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+
+                await tx.subProduct.update({
+                    where: {
+                        id: subProduct.id,
+                        productId: product.id
+                    },
+                    data: {
+                        status: !subProduct.status
+                    }
+                })
+
+                await tx.product.update({
+                    where: {
+                        id: product.id
+                    },
+                    data: {
+                        quantity: subProduct.status ? (product.quantity - subProduct.quantity) : (product.quantity + subProduct.quantity),
+                        updatedAt: new Date()
+                    }
+                })
+            });
+        } catch (error) {
+            if (error instanceof Error) {
+                throw { status: 500, message: error.message };
+            } else if (typeof error === "object" && error !== null && "status" in (error as Record<string, any>)) {
+                throw error;
+            } else {
+                // ✅ Fallback
+                throw { status: 500, message: "An unexpected error occurred" };
+            }
+        }
+    }
+
+    async deleteBatch(subProduct: SubProduct, product: Product) {
+        try {
+            await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+                await tx.product.update({
+                    where: {
+                        id: product.id
+                    },
+                    data: {
+                        quantity: subProduct.status ? (product.quantity - subProduct.quantity) : product.quantity,
+                        updatedAt: new Date()
+                    }
+                })
+
+                await tx.subProduct.delete({
+                    where: {
+                        id: subProduct.id,
+                        productId: product.id
+                    }
+                })
+            });
         } catch (error) {
             if (error instanceof Error) {
                 throw { status: 500, message: error.message };

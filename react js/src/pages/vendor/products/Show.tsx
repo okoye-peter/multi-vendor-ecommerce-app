@@ -3,7 +3,7 @@ import { AlertCircle, CheckCircle, Clock, Layers, Package, ShoppingCart, Tag, Us
 import { useState } from 'react';
 import { useParams } from "react-router-dom";
 import { getProduct } from '../../../libs/api';
-import type { Category, Department, Product } from '../../../types/Index';
+import type { Category, Department } from '../../../types/Index';
 import FullPageLoader from '../../../components/FullPageLoader';
 import SubProducts from './components/SubProducts';
 
@@ -43,7 +43,7 @@ const Show = () => {
     const { productId, vendorId } = useParams();
 
     const { data: product, isLoading: productIsLoading } = useQuery<Partial<Product>>({
-        queryKey: ['getProductDetail', productId, vendorId],
+        queryKey: ['getProductDetail', Number(productId), Number(vendorId)],
         queryFn: ({ queryKey }) => {
             const [, productId, vendorId] = queryKey;
             return getProduct(vendorId as number, productId as number);
@@ -171,11 +171,20 @@ const Show = () => {
                                     {/* Quick Info */}
                                     <div>
                                         <div className="flex items-baseline gap-2 mb-4">
-                                            <span className="text-4xl font-bold text-primary">${((product?.price ?? 0) / 100).toFixed(2)}</span>
+                                            <span className="text-4xl font-bold text-primary">₦{(product?.price ?? 0).toFixed(2)}</span>
                                             <span className="text-sm text-base-content/60">per unit</span>
                                         </div>
 
                                         <div className="space-y-4">
+
+                                            <div className="flex items-center gap-3">
+                                                <Package className="w-5 h-5 text-base-content/60" />
+                                                <div>
+                                                    <p className="text-sm text-base-content/60">Department</p>
+                                                    <p className="font-semibold">{product?.department?.name}</p>
+                                                </div>
+                                            </div>
+                                            
                                             <div className="flex items-center gap-3">
                                                 <Tag className="w-5 h-5 text-base-content/60" />
                                                 <div>
@@ -185,17 +194,9 @@ const Show = () => {
                                             </div>
 
                                             <div className="flex items-center gap-3">
-                                                <Package className="w-5 h-5 text-base-content/60" />
-                                                <div>
-                                                    <p className="text-sm text-base-content/60">Department</p>
-                                                    <p className="font-semibold">{product?.department?.name}</p>
-                                                </div>
-                                            </div>
-
-                                            <div className="flex items-center gap-3">
                                                 <User className="w-5 h-5 text-base-content/60" />
                                                 <div>
-                                                    <p className="text-sm text-base-content/60">Vendor ID</p>
+                                                    <p className="text-sm text-base-content/60">Vendor</p>
                                                     <p className="font-semibold">#{product?.vendor?.name}</p>
                                                 </div>
                                             </div>

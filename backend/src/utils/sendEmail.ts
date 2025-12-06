@@ -1,5 +1,5 @@
-import transporter from "../config/mail.config.ts";
-import { PASSWORD_RESET_REQUEST_TEMPLATE, VERIFICATION_EMAIL_TEMPLATE } from "../templates/emailTemplate.ts";
+import transporter from "../config/mail.config.js";
+import { PASSWORD_RESET_REQUEST_TEMPLATE, VERIFICATION_EMAIL_TEMPLATE } from "../templates/emailTemplate.js";
 
 
 export const sendEmailVerificationCode = async (recipientEmail: string, token: number) => {

@@ -1,8 +1,8 @@
 // controllers/userController.ts
-import { RequestHandler } from 'express';
-import { FilterService } from '../services/filterService';
-import { USER_FILTER_CONFIG } from '../config/filterConfigs';
-import prisma from '../libs/prisma';
+import type { RequestHandler } from 'express';
+import { FilterService } from '../service/filterService.js';
+import { USER_FILTER_CONFIG } from '../config/filter.config.js';
+import prisma from '../libs/prisma.js';
 
 export const getAllUsers: RequestHandler = async (req, res, next) => {
     try {

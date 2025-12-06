@@ -1,7 +1,7 @@
 import type { RequestHandler } from "express";
-import prisma from "../libs/prisma.ts";
-import { FilterService } from "../service/filterService.ts";
-import { PRODUCT_FILTER_CONFIG } from "../config/filterConfig.ts";
+import prisma from "../libs/prisma.js";
+import { FilterService } from "../service/filterService.js";
+import { PRODUCT_FILTER_CONFIG } from "../config/filter.config.js";
 
 
 export const getAuthUserVendors: RequestHandler = async (req, res, next) => {

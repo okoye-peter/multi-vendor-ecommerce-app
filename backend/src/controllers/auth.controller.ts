@@ -1,12 +1,12 @@
 import * as z from "zod";
 import type { RequestHandler } from "express";
-import UserService from "../service/userService.ts";
-import generateAuthorizationTokenAndSetCookies from "../utils/generateAuthorizationTokenAndSetCookies.ts";
-import { sendPasswordResetToken } from "../utils/sendEmail.ts";
-import prisma from "../libs/prisma.ts";
+import UserService from "../service/userService.js";
+import generateAuthorizationTokenAndSetCookies from "../utils/generateAuthorizationTokenAndSetCookies.js";
+import { sendPasswordResetToken } from "../utils/sendEmail.js";
+import prisma from "../libs/prisma.js";
 import bcrypt from "bcryptjs";
-import { queueVerificationEmail } from "../queues/email.queue.ts";
-import { FileService, type RequestWithUploadedFile } from "../middleware/fileUpload.ts";
+import { queueVerificationEmail } from "../queues/email.queue.js";
+import { FileService, type RequestWithUploadedFile } from "../middleware/fileUpload.js";
 
 const userService = new UserService();
 

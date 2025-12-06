@@ -33,6 +33,7 @@ const Login = () => {
     const onSubmit: SubmitHandler<loginData> = async (data: loginData) => {
         try {
             const res = await loginMutation(data).unwrap();
+            console.log('Login successful:', res);
             dispatch(setUser(res.user))
             if(!res.user.emailVerifiedAt){
                 dispatch(setShowEmailVerificationModal(true));
@@ -53,7 +54,7 @@ const Login = () => {
                 });
             } else {
                 setError("root", {
-                    message: backendError.response?.data?.message as string || backendError?.message || backendError.data?.message ||'Login failed'
+                    message: backendError.response?.data?.message as string || backendError?.message as string || backendError.data?.message as string ||'Login failed'
                 });
             }
         }

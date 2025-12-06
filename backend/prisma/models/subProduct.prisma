@@ -1,4 +1,4 @@
-model subProduct {
+model SubProduct {
     id            Int       @id @default(autoincrement())
     batch_no      String    @unique
     quantity      Int       @default(0)

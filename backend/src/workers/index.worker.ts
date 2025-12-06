@@ -1,4 +1,4 @@
-import emailWorker from './email.worker.ts';
+import emailWorker from './email.worker.js';
 
 console.log('🚀 Starting workers...');
 

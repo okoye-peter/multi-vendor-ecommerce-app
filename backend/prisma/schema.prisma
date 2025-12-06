@@ -1,0 +1,283 @@
+generator client {
+    provider = "prisma-client-js"
+}
+
+datasource db {
+    provider  = "postgresql"
+}
+
+
+// ===== categoryModel.prisma =====
+model Category {
+    id           Int        @id @default(autoincrement())
+    name         String     @unique
+    categoryId   Int?
+    parent       Category?  @relation("CategoryToSubcategories", fields: [categoryId], references: [id])
+    children     Category[] @relation("CategoryToSubcategories")
+    departmentId Int
+    department   Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+    createdAt    DateTime   @default(now()) @map("created_at")
+    updatedAt    DateTime   @updatedAt @map("updated_at")
+
+    products     Product[]
+
+    @@map("categories")
+}
+
+
+// ===== countryModel.prisma =====
+model Country {
+    id        Int      @id @default(autoincrement())
+    name      String
+    createdAt DateTime @default(now()) @map("created_at")
+    updatedAt DateTime @updatedAt @map("updated_at")
+
+    // 👇 Relation back to Vendor
+    states State[]
+
+    @@map("countries")
+}
+
+
+// ===== departmentModel.prisma =====
+model Department {
+    id              Int      @id @default(autoincrement())
+    name            String   
+    slug            String   @unique
+    metaTitle       String?  @map("meta_title")
+    metaDescription String?  @map("meta_description")
+    createdAt       DateTime @default(now()) @map("created_at")
+    updatedAt       DateTime @updatedAt @map("updated_at")
+
+    categories Category[]
+    products   Product[]
+
+    @@map("departments")
+}
+
+
+// ===== lgaModel.prisma =====
+model LGA {
+    id      Int    @id @default(autoincrement())
+    name    String
+    stateId Int    @map("state_id")
+    states  State  @relation(fields: [stateId], references: [id], onDelete: Cascade)
+
+    @@map("l_g_a_s")
+}
+
+
+// ===== orderGroupModel.prisma =====
+model orderGroup {
+    id          Int       @id @default(autoincrement())
+    ref_no      String    @unique
+    status      Int       @default(0) // PENDING
+    userId      Int?      @map("user_id")
+    user        User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+    vendorId    Int?      @map("vendor_id")
+    vendor      Vendor?   @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+    deliveredAt DateTime? @map("delivered_at")
+    totalAmount Float     @default(0)
+    createdAt   DateTime  @default(now()) @map("created_at")
+    updatedAt   DateTime  @updatedAt @map("updated_at")
+
+    orders order[]
+    orderStatusLogs orderStatusLog[]
+
+    @@map("order_groups")
+}
+
+
+// ===== orderModel.prisma =====
+model order {
+    id                Int        @id @default(autoincrement())
+    productId         Int?       @map("product_id")
+    product           Product?   @relation(fields: [productId], references: [id], onDelete: SetNull)
+    requestedQuantity Int        @map("requested_quantity")
+    quantity          Int
+    orderGroupId      Int        @map("order_group_id")
+    priceOnPurchase   Float      @map("price_on_purchase")
+    orderGroup        orderGroup @relation(fields: [orderGroupId], references: [id], onDelete: Cascade)
+    createdAt         DateTime   @default(now()) @map("created_at")
+    updatedAt         DateTime   @updatedAt @map("updated_at")
+
+    subProducts orderSubProduct[]
+
+    @@map("orders")
+}
+
+
+// ===== orderStatusLogModel.prisma =====
+model orderStatusLog {
+    id Int @id @default(autoincrement())
+    from Int
+    to Int
+    orderGroupId Int
+    orderGroup orderGroup @relation(fields: [orderGroupId], references: [id], onDelete: Cascade)
+    userId Int?
+    user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+    createdAt DateTime @default(now()) @map("created_at")
+    updatedAt DateTime @updatedAt @map("updated_at")
+
+    @@map("order_status_logs")
+}
+
+
+// ===== orderSubProductModel.prisma =====
+model orderSubProduct {
+    id           Int         @id @default(autoincrement())
+    subProductId Int?        @map("sub_product_id")
+    subProduct   SubProduct? @relation(fields: [subProductId], references: [id], onDelete: SetNull)
+    orderId      Int         @map("order_id")
+    order        order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+    quantity     Int
+    createdAt    DateTime    @default(now()) @map("created_at")
+    updatedAt    DateTime    @updatedAt @map("updated_at")
+
+    @@map("order_sub_products")
+}
+
+
+// ===== passwordResetTokenModel.prisma =====
+model PasswordResetToken {
+    id        Int      @id @default(autoincrement())
+    token     String
+    userId    Int
+    user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+    expiresAt DateTime @map("expires_at")
+    createdAt DateTime @default(now()) @map("created_at")
+    updatedAt DateTime @updatedAt @map("updated_at")
+
+    @@map("password_reset_tokens")
+}
+
+
+// ===== productImageModel.prisma =====
+model ProductImage {
+    id        Int      @id @default(autoincrement())
+    url       String
+    default   Boolean  @default(false)
+    productId Int
+    product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+    createdAt DateTime @default(now()) @map("created_at")
+    updatedAt DateTime @updatedAt @map("updated_at")
+
+    @@map("product_images")
+}
+
+
+// ===== productModel.prisma =====
+model Product {
+    id           Int         @id @default(autoincrement())
+    name         String
+    slug         String
+    description  String?
+    price        Float
+    quantity     Int
+    is_published Boolean     @default(true)
+    departmentId Int?        @map("department_id")
+    department   Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+    categoryId   Int?        @map("category_id")
+    category     Category?   @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+    vendorId     Int?        @map("vendor_id")
+    vendor       Vendor?     @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+    createdAt    DateTime    @default(now()) @map("created_at")
+    updatedAt    DateTime    @updatedAt @map("updated_at")
+
+    subProducts SubProduct[]
+    orders order[]
+    images ProductImage[]
+
+    @@index([slug, name])
+
+    @@map("products")
+}
+
+
+// ===== stateModel.prisma =====
+model State {
+    id        Int     @id @default(autoincrement())
+    name      String
+    countryId Int     @map("country_id")
+    country   Country @relation(fields: [countryId], references: [id], onDelete: Cascade)
+
+    lga LGA[]
+    vendors Vendor[]
+
+    @@map("states")
+}
+
+
+// ===== subProduct.prisma =====
+model SubProduct {
+    id            Int       @id @default(autoincrement())
+    batch_no      String    @unique
+    quantity      Int       @default(0)
+    quantity_sold Int       @default(0)
+    expiry_date   DateTime?
+    cost_price    Float
+    status        Boolean   @default(true)
+    productId     Int?
+    product       Product?  @relation(fields: [productId], references: [id], onDelete: SetNull)
+    createdAt     DateTime  @default(now()) @map("created_at")
+    updatedAt     DateTime  @updatedAt @map("updated_at")
+
+    orderSubProducts orderSubProduct[]
+
+    @@index([batch_no, expiry_date])
+    @@map("sub_products")
+}
+
+
+// ===== userModel.prisma =====
+model User {
+    id                             Int       @id @default(autoincrement())
+    name                           String
+    email                          String    @unique
+    emailVerificationCode          String?   @map("email_verification_code")
+    emailVerificationCodeExpiresAt DateTime? @map("email_verification_code_expires_at")
+    emailVerifiedAt                DateTime? @map("email_verified_at")
+    phone                          String    @unique
+    phoneVerificationCode          String?   @map("phone_verification_code")
+    phoneVerificationCodeExpiresAt DateTime? @map("phone_verification_code_expires_at")
+    phoneVerifiedAt                DateTime? @map("phone_verified_at")
+    type                           Role      @default(CUSTOMER)
+    pictureUrl                     String?   @map("picture_url")
+    password                       String
+    createdAt                      DateTime  @default(now()) @map("created_at")
+    updatedAt                      DateTime  @updatedAt @map("updated_at")
+
+    vendor              Vendor?
+    passwordResetTokens PasswordResetToken[]
+    orderGroups         orderGroup[]
+    orderStatusLogs     orderStatusLog[]
+
+    @@index([email, phone, name])
+    @@map("users")
+}
+
+enum Role {
+    CUSTOMER
+    ADMIN
+    VENDOR
+}
+
+
+// ===== vendorModel.prisma =====
+model Vendor {
+    id      Int    @id @default(autoincrement())
+    name    String
+    address String
+    stateId Int?
+    state   State? @relation(fields: [stateId], references: [id], onDelete: SetNull)
+    userId  Int?   @unique
+    user    User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+    createdAt DateTime @default(now()) @map("created_at")
+    updatedAt DateTime @updatedAt @map("updated_at")
+
+    products Product[]
+
+    orderGroups orderGroup[]
+
+    @@map("vendors")
+}

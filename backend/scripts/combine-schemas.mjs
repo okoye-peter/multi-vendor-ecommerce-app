@@ -1,25 +1,48 @@
-import { readFileSync, writeFileSync, readdirSync } from "fs";
-import { join } from "path";
+import fs from "fs";
+import path from "path";
 
-const schemaDir = "./prisma/schema";
-const outputFile = "./prisma/generated-schema.prisma";
+const ROOT = process.cwd();
+const PRISMA_DIR = path.join(ROOT, "prisma");
+const MODELS_DIR = path.join(PRISMA_DIR, "models");
 
-// Read the main schema (with generator and datasource)
-const mainSchemaPath = join(schemaDir, "schema.prisma");
-let combinedSchema = readFileSync(mainSchemaPath, "utf-8");
+const BASE_SCHEMA = path.join(PRISMA_DIR, "base.prisma");
+const OUTPUT_SCHEMA = path.join(PRISMA_DIR, "schema.prisma");
 
-// Read all other .prisma files in the schema directory
-const files = readdirSync(schemaDir)
-  .filter((file) => file.endsWith(".prisma") && file !== "schema.prisma")
-  .sort(); // Sort for consistent ordering
+function combineSchemas() {
+  if (!fs.existsSync(BASE_SCHEMA)) {
+    throw new Error("❌ prisma/base.prisma not found");
+  }
 
-// Append each model file
-for (const file of files) {
-  const filePath = join(schemaDir, file);
-  const content = readFileSync(filePath, "utf-8");
-  combinedSchema += "\n\n// From " + file + "\n" + content;
+  const baseSchema = fs.readFileSync(BASE_SCHEMA, "utf-8");
+
+  if (!fs.existsSync(MODELS_DIR)) {
+    throw new Error("❌ prisma/models directory not found");
+  }
+
+  const modelFiles = fs
+    .readdirSync(MODELS_DIR)
+    .filter((file) => file.endsWith(".prisma"));
+
+  if (modelFiles.length === 0) {
+    throw new Error("❌ No model files found in prisma/models");
+  }
+
+  const models = modelFiles
+    .map((file) => {
+      const content = fs.readFileSync(
+        path.join(MODELS_DIR, file),
+        "utf-8"
+      );
+
+      return `\n// ===== ${file} =====\n${content.trim()}\n`;
+    })
+    .join("\n");
+
+  const finalSchema = `${baseSchema.trim()}\n\n${models}`;
+
+  fs.writeFileSync(OUTPUT_SCHEMA, finalSchema);
+
+  console.log("✅ Prisma schema successfully combined!");
 }
 
-// Write the combined schema
-writeFileSync(outputFile, combinedSchema);
-console.log(`✅ Combined ${files.length + 1} schema files into ${outputFile}`);
+combineSchemas();

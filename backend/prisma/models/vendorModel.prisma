@@ -6,6 +6,8 @@ model Vendor {
     state   State? @relation(fields: [stateId], references: [id], onDelete: SetNull)
     userId  Int?   @unique
     user    User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+    createdAt DateTime @default(now()) @map("created_at")
+    updatedAt DateTime @updatedAt @map("updated_at")
 
     products Product[]
 

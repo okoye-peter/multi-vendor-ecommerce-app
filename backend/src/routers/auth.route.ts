@@ -1,8 +1,8 @@
 import express from 'express';
-import { register, login, sendPasswordResetCode, resetPassword, verifyEmail, logout, getAuthenticatedUser, resendEmailVerificationCode } from '../controllers/auth.controller.ts';
-import { isAuthenticated } from '../middleware/auth.middleware.ts';
-import { guestOnly } from '../middleware/guest.middleware.ts';
-import { handleSingleFileUpload, rollbackOnError, uploadSingleFile } from '../middleware/fileUpload.ts';
+import { register, login, sendPasswordResetCode, resetPassword, verifyEmail, logout, getAuthenticatedUser, resendEmailVerificationCode } from '../controllers/auth.controller.js';
+import { isAuthenticated } from '../middleware/auth.middleware.js';
+import { guestOnly } from '../middleware/guest.middleware.js';
+import { handleSingleFileUpload, rollbackOnError, uploadSingleFile } from '../middleware/fileUpload.js';
 
 
 const router = express.Router();

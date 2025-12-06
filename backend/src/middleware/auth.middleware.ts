@@ -1,6 +1,6 @@
 import jwt from "jsonwebtoken";
 import type { JwtPayload } from "jsonwebtoken";
-import prisma from "../libs/prisma.ts";
+import prisma from "../libs/prisma.js";
 import type { RequestHandler } from "express";
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {

@@ -1,9 +1,9 @@
 import express from 'express';
-import { isAuthenticated } from '../middleware/auth.middleware.ts';
-import { requireVendorAuthorization } from '../middleware/vendorOnly.middleware.ts';
-import { createProduct, deleteProduct, getProduct, getProductBatches, refillProduct, toggleProductIsPublished, updateProduct } from '../controllers/product.controller.ts';
-import { getAuthUserVendors, getVendorProducts } from '../controllers/vendor.controller.ts';
-import { handleMultipleFilesUpload, rollbackOnError, uploadMultipleFiles } from '../middleware/fileUpload.ts';
+import { isAuthenticated } from '../middleware/auth.middleware.js';
+import { requireVendorAuthorization } from '../middleware/vendorOnly.middleware.js';
+import { createProduct, deleteProduct, getProduct, getProductBatches, refillProduct, toggleProductBatchPublicity, toggleProductIsPublished, updateProduct, updateProductBatch } from '../controllers/product.controller.js';
+import { getAuthUserVendors, getVendorProducts } from '../controllers/vendor.controller.js';
+import { handleMultipleFilesUpload, rollbackOnError, uploadMultipleFiles } from '../middleware/fileUpload.js';
 
 const router = express.Router();
 router.get('/', getAuthUserVendors);
@@ -14,6 +14,10 @@ router.put('/:vendorId/products/:productId/publish', isAuthenticated, requireVen
 router.get('/:vendorId/products/:productId', isAuthenticated, requireVendorAuthorization, getProduct);
 router.get('/:vendorId/products/:productId/batches', isAuthenticated, requireVendorAuthorization, getProductBatches);
 router.delete('/:vendorId/products/:productId', isAuthenticated, requireVendorAuthorization, deleteProduct);
+// sub product / batches routes
 router.post('/:vendorId/products/:productId/refill', isAuthenticated, requireVendorAuthorization, refillProduct);
+router.patch('/:vendorId/products/:productId/batches/:subProductId', isAuthenticated, requireVendorAuthorization, updateProductBatch);
+router.put('/:vendorId/products/:productId/batches/:subProductId', isAuthenticated, requireVendorAuthorization, toggleProductBatchPublicity);
+router.delete('/:vendorId/products/:productId/batches/:subProductId', isAuthenticated, requireVendorAuthorization, toggleProductBatchPublicity);
 
 export default router;

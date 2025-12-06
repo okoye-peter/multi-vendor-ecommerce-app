@@ -1,10 +1,10 @@
-import prisma from "../libs/prisma.ts";
+import prisma from "../libs/prisma.js";
 import { type RequestHandler } from "express";
 import z from "zod";
-import ProductService from "../service/productService.ts";
-import { FilterService } from "../service/filterService.ts";
-import { PRODUCT_FILTER_CONFIG, SUB_PRODUCT_FILTER_CONFIG } from "../config/filterConfig.ts";
-import { FileService, type RequestWithUploadedFiles } from "../middleware/fileUpload.ts";
+import ProductService from "../service/productService.js";
+import { FilterService } from "../service/filterService.js";
+import { PRODUCT_FILTER_CONFIG, SUB_PRODUCT_FILTER_CONFIG } from "../config/filter.config.js";
+import { FileService, type RequestWithUploadedFields, type RequestWithUploadedFiles } from "../middleware/fileUpload.js";
 
 const productService = new ProductService;
 
@@ -77,7 +77,7 @@ export const productRefillSchema = z.object({
     expiry_date: z.coerce.date().optional().nullable(),
     quantity: z.coerce.number().int().min(0).default(0),
     cost_price: z.coerce.number().nonnegative("Cost Price must be non-negative"),
-    price: z.coerce.number().nonnegative("Price must be non-negative"),
+    // price: z.coerce.number().nonnegative("Price must be non-negative"),
     status: z.coerce.boolean().default(true)
 });
 
@@ -166,8 +166,8 @@ export const updateProduct: RequestHandler = async (req, res, next) => {
         const vendor = req.vendor;
         const productId = Number(req.params.productId);
 
-        const product = await prisma.product.findUnique({ 
-            where: { id: productId, vendorId: vendor.id } 
+        const product = await prisma.product.findUnique({
+            where: { id: productId, vendorId: vendor?.id! }
         });
 
         if (!product) {
@@ -180,7 +180,7 @@ export const updateProduct: RequestHandler = async (req, res, next) => {
         const productImageFiles = productImagesField?.files || [];
 
         let defaultImageIndex = 0;
-        
+
         if (productImageUrls.length > 0) {
             defaultImageIndex = req.body.defaultImageIndex
                 ? parseInt(req.body.defaultImageIndex)
@@ -230,11 +230,11 @@ export const updateProduct: RequestHandler = async (req, res, next) => {
         // ✅ Remove images array before passing to service
         const { images, ...dataForDB } = result.data;
 
-        const updatedProduct = await productService.update(productId, dataForDB, vendor);
+        const updatedProduct = await productService.update(productId, dataForDB, vendor!);
 
-        res.status(200).json({ 
-            message: "product updated successfully", 
-            product: updatedProduct 
+        res.status(200).json({
+            message: "product updated successfully",
+            product: updatedProduct
         });
 
     } catch (error) {
@@ -264,7 +264,7 @@ export const getProduct: RequestHandler = async (req, res, next) => {
         const product = await prisma.product.findUnique({
             where: {
                 id: productId,
-                vendorId: vendor.id,
+                vendorId: vendor?.id!,
             },
             include: {
                 category: true,
@@ -291,7 +291,7 @@ export const deleteProduct: RequestHandler = async (req, res, next) => {
         const productId = Number(req.params.productId);
 
         const [product] = await Promise.all([
-            prisma.product.findUnique({ where: { id: productId, vendorId: vendor.id } })
+            prisma.product.findUnique({ where: { id: productId, vendorId: vendor?.id! } })
         ]);
 
         if (!product) {
@@ -332,15 +332,62 @@ export const refillProduct: RequestHandler = async (req, res, next) => {
         }
 
         const [product] = await Promise.all([
-            prisma.product.findUnique({ where: { id: productId, vendorId: vendor.id } })
+            prisma.product.findUnique({ where: { id: productId, vendorId: vendor?.id! } })
         ]);
 
         if (!product) {
             throw { message: "product not found", status: 400 }
         }
 
-        const data = await productService.refill(productId, result.data, vendor);
+        const data = await productService.refill(product, result.data);
         res.status(200).json(data);
+    } catch (error) {
+        if (error instanceof Error) {
+            next({ message: error.message, status: 500 });
+        } else if (typeof error === "object" && error !== null && "status" in (error as Record<string, any>)) {
+            throw error;
+        } else {
+            next({ message: "Server Error", status: 500 });
+        }
+    }
+}
+
+export const updateProductBatch: RequestHandler = async (req, res, next) => {
+    try {
+
+        const vendor = req.vendor;
+
+        const productId = Number(req.params.productId);
+        const subProductId = Number(req.params.subProductId);
+
+        const result = productRefillSchema.safeParse(req.body);
+        if (!result.success) {
+            const { fieldErrors, formErrors } = result.error.flatten();
+
+            // If there are no fieldErrors (all arrays empty), use formErrors instead
+            const hasFieldErrors = Object.values(fieldErrors).some(
+                (errors) => errors && errors.length > 0
+            );
+
+            const errors = hasFieldErrors ? fieldErrors : formErrors;
+
+            return next({ status: 400, message: errors });
+        }
+
+        const [product, subProduct] = await Promise.all([
+            prisma.product.findUnique({ where: { id: productId, vendorId: vendor?.id! } }),
+            prisma.subProduct.findUnique({ where: { id: subProductId, productId } }),
+        ]);
+
+        if (!product) {
+            throw { message: "product not found", status: 400 }
+        }
+
+        if (!subProduct) {
+            throw { message: "product batch not found", status: 400 }
+        }
+        const response = await productService.updateProductBatch(product, subProduct, result)
+        res.status(200).json(response);
     } catch (error) {
         if (error instanceof Error) {
             next({ message: error.message, status: 500 });
@@ -374,14 +421,14 @@ export const toggleProductIsPublished: RequestHandler = async (req, res, next) =
         const productId = Number(req.params.productId);
 
         const [product] = await Promise.all([
-            prisma.product.findUnique({ where: { id: productId, vendorId: vendor.id } })
+            prisma.product.findUnique({ where: { id: productId, vendorId: vendor?.id! } })
         ]);
 
         if (!product) {
             throw { message: "product not found", status: 400 }
         }
 
-        await productService.toggleIsPublished(product, vendor.id)
+        await productService.toggleIsPublished(product, vendor?.id!)
 
 
         res.status(200).json({ message: `product ${product.is_published ? 'unpublished' : 'published'} successfully` });
@@ -450,3 +497,71 @@ export const getProductBatches: RequestHandler = async (req, res, next) => {
         }
     }
 };
+
+export const toggleProductBatchPublicity: RequestHandler = async (req, res, next) => {
+    try {
+        const vendor = req.vendor;
+
+        const productId = Number(req.params.productId);
+        const subProductId = Number(req.params.subProductId);
+
+        const [product, subProduct] = await Promise.all([
+            prisma.product.findUnique({ where: { id: productId, vendorId: vendor?.id! } }),
+            prisma.subProduct.findUnique({ where: { id: subProductId, productId } }),
+        ]);
+
+        if (!product) {
+            throw { message: "product not found", status: 400 }
+        }
+
+        if (!subProduct) {
+            throw { message: "product batch not found", status: 400 }
+        }
+
+        await productService.toggleBatchVisibility(subProduct, product)
+
+
+        res.status(200).json({ message: `product batch ${subProduct.status ? 'unpublished' : 'published'} successfully` });
+    } catch (error) {
+        if (error instanceof Error) {
+            next({ message: error.message, status: 500 });
+        } else if (typeof error === "object" && error !== null && "status" in (error as Record<string, any>)) {
+            throw error;
+        } else {
+            next({ message: "Server Error", status: 500 });
+        }
+    }
+}
+
+export const deleteProductBatch: RequestHandler = async (req, res, next) => {
+    try {
+        const vendor = req.vendor;
+        const user = req.user;
+        const productId = Number(req.params.productId);
+        const subProductId = Number(req.params.subProductId);
+
+        const [product, subProduct] = await Promise.all([
+            prisma.product.findUnique({ where: { id: productId, vendorId: vendor?.id! } }),
+            prisma.subProduct.findUnique({ where: { id: subProductId, productId } }),
+        ]);
+
+        if (!product) {
+            throw { message: "product not found", status: 400 }
+        }
+
+        if (!subProduct) {
+            throw { message: "product batch not found", status: 400 }
+        }
+
+        await productService.deleteBatch(subProduct, product);
+        res.status(200).json({ message: "product batch deleted successfully" });
+    } catch (error) {
+        if (error instanceof Error) {
+            next({ message: error.message, status: 500 });
+        } else if (typeof error === "object" && error !== null && "status" in (error as Record<string, any>)) {
+            throw error;
+        } else {
+            next({ message: "Server Error", status: 500 });
+        }
+    }
+}

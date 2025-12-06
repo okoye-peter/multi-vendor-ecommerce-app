@@ -2,26 +2,26 @@ import express from "express";
 import type { CorsOptions } from 'cors';
 import helmet from "helmet";
 import cors from "cors";
-import authRoute from './routers/auth.route.ts';
-import errorHandler from "./middleware/errorHandler.middleware.ts";
+import authRoute from './routers/auth.route.js';
+import errorHandler from "./middleware/errorHandler.middleware.js";
 import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
-import routeNotFoundErrorHandler from "./middleware/routeNotFound.middleware.ts";
+import routeNotFoundErrorHandler from "./middleware/routeNotFound.middleware.js";
 import path from "path";
 import { fileURLToPath } from "url";
-import departmentRoute from './routers/department.route.ts';
-import categoryRoute from './routers/category.route.ts'
-import stateRoute from './routers/state.route.ts'
-import './workers/index.worker.ts';
+import departmentRoute from './routers/department.route.js';
+import categoryRoute from './routers/category.route.js'
+import stateRoute from './routers/state.route.js'
+import './workers/index.worker.js';
 import { createBullBoard } from '@bull-board/api';
 import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
 import { ExpressAdapter } from '@bull-board/express';
-import { emailQueue } from './queues/email.queue.ts';
-import productRoute from './routers/product.route.ts'
-import vendorRoutes from './routers/vendor.route.ts';
-import { isAuthenticated } from "./middleware/auth.middleware.ts";
+import { emailQueue } from './queues/email.queue.js';
+import productRoute from './routers/product.route.js'
+import vendorRoutes from './routers/vendor.route.js';
+import { isAuthenticated } from "./middleware/auth.middleware.js";
 import { express as useragent } from 'express-useragent';
-import ErrorRoutes from './routers/errorLogs.route.ts'
+import ErrorRoutes from './routers/errorLogs.route.js'
 
 dotenv.config();
 

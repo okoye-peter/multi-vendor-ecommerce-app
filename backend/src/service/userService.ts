@@ -1,10 +1,10 @@
 // services/userService.js
 import { Prisma } from "@prisma/client";
-import prisma from "../libs/prisma.ts";
-import { userSchema } from "../controllers/auth.controller.ts";
+import prisma from "../libs/prisma.js";
+import { userSchema } from "../controllers/auth.controller.js";
 import type z from "zod";
 import bcrypt from "bcryptjs";
-import { FileService } from "../middleware/fileUpload.ts";
+import { FileService } from "../middleware/fileUpload.js";
 
 
 type UserData = z.infer<typeof userSchema>;

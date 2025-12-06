@@ -1,5 +1,5 @@
-import type { ProductData } from "../pages/vendor/products/modals/Create.tsx";
-import type { Country, LGA, State, loginData, PasswordResetData, Vendor } from "../types/Index.ts";
+import { type BatchData } from './../pages/vendor/products/modals/SubProducts/Create';
+import type { Country, LGA, State, loginData, PasswordResetData } from "../types/Index.ts";
 import axiosInstance from "./axios.ts";
 // import { AxiosError } from "axios";
 
@@ -45,12 +45,12 @@ export const getCountries = async (): Promise<Country[]> => {
 };
 
 export const getStatesByCountry = async (countryId: number): Promise<State[]> => {
-    const response = await axiosInstance.get(`/locations/${countryId}/states`);
+    const response = await axiosInstance.get(`/locations/countries/${countryId}/states`);
     return response.data;
 };
 
 export const getLGAsByState = async (stateId: number): Promise<LGA[]> => {
-    const response = await axiosInstance.get(`/locations/${stateId}/lgas`);
+    const response = await axiosInstance.get(`/locations/states/${stateId}/lgas`);
     return response.data;
 };
 
@@ -105,4 +105,24 @@ export const toggleProductPublicity = async (vendorId: number, productId: number
 export const getProduct = async (vendorId: number, productId: number) => {
     const response = await axiosInstance.get(`/vendors/${vendorId}/products/${productId}`);
     return response.data;
+}
+
+export const createProductBatch = async (vendorId: number, productId: number, batchData: BatchData) => {
+    const response = await axiosInstance.post(`/vendors/${vendorId}/products/${productId}/refill`, batchData)
+    return response.data
+}
+
+export const updateProductBatch = async (vendorId: number, productId: number, subProductId: number, batchData: BatchData) => {
+    const response = await axiosInstance.patch(`/vendors/${vendorId}/products/${productId}/batches/${subProductId}`, batchData)
+    return response.data
+}
+
+export const toggleProductBatchStatus = async (vendorId: number, productId: number, subProductId: number) => {
+    const response = await axiosInstance.put(`/vendors/${vendorId}/products/${productId}/batches/${subProductId}`)
+    return response.data
+}
+
+export const deleteProductBatch = async (vendorId: number, productId: number, subProductId: number) => {
+    const response = await axiosInstance.delete(`/vendors/${vendorId}/products/${productId}/batches/${subProductId}`)
+    return response.data
 }

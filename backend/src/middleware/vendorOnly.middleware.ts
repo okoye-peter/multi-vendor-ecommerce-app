@@ -1,6 +1,6 @@
 import type { RequestHandler } from "express";
 import { Role } from "@prisma/client";
-import prisma from "../libs/prisma.ts";
+import prisma from "../libs/prisma.js";
 
 /**
  * Middleware to restrict access to admin users only.
@@ -27,6 +27,8 @@ export const requireVendorAuthorization: RequestHandler = async (req, res, next)
                 userId: user.id
             }
         })
+        if(!vendor) return res.status(400).json({ message: "vendor not found" });
+        
         req.vendor = vendor;
 
         next();

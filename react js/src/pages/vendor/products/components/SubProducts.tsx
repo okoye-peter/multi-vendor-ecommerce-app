@@ -4,8 +4,21 @@ import { DataTable, type SearchableColumnDef } from "../../../../components/Data
 import type { Filter, SubProduct } from "../../../../types/Index";
 import { format, isBefore, startOfDay, differenceInDays } from 'date-fns';
 import { useState } from "react";
+import CreateBatch from '../modals/SubProducts/Create'
+import { Rss } from "lucide-react";
+import { toggleProductBatchStatus } from "../../../../libs/api";
+import FullPageLoader from "../../../../components/FullPageLoader";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "react-toastify";
+import DeleteProductBatchWarningModal from '../modals/SubProducts/Delete'
+import EditBatch from '../modals/SubProducts/Edit'
+
 
 const SubProducts = ({ productId, vendorId }: { productId: number, vendorId: number }) => {
+    const queryClient = useQueryClient();
+
+    const [subProductToDelete, setSubProductToDelete] = useState<SubProduct | null>(null)
+    const [subProductToEdit, setSubProductToEdit] = useState<SubProduct | null>(null)
     const [dataTableKey, setDataTableKey] = useState(1111);
     const dataTableColumns: SearchableColumnDef<SubProduct>[] = [
         {
@@ -30,6 +43,17 @@ const SubProducts = ({ productId, vendorId }: { productId: number, vendorId: num
             accessorKey: 'quantity_sold',
             header: 'Qty Sold',
             searchable: false,
+        },
+        {
+            id: 'published',
+            accessorKey: 'status',
+            header: 'Published',
+            cell: ({ getValue }) => (
+                <>
+                    {getValue() && <span className="px-3 py-1 text-xs text-green-900 bg-green-100 rounded">Published</span>}
+                    {!getValue() && <span className="px-3 py-1 text-xs text-red-900 bg-red-100 rounded">Unpublished</span>}
+                </>
+            ),
         },
         {
             id: 'expiry_date',
@@ -82,7 +106,7 @@ const SubProducts = ({ productId, vendorId }: { productId: number, vendorId: num
             id: 'created_at',
             accessorKey: 'createdAt',
             header: 'Created At',
-            cell: ({ getValue }) => format(new Date(getValue()), 'd MMM, yyyy'),
+            cell: ({ getValue }) => format(new Date(getValue() as string), 'd MMM, yyyy'),
         },
         {
             id: 'Actions',
@@ -90,7 +114,7 @@ const SubProducts = ({ productId, vendorId }: { productId: number, vendorId: num
             header: 'Actions',
             cell: ({ row }) => (
                 <ActionDropdown>
-                    <li>
+                    {/* <li>
                         <Link to={`/`}>
                             <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -98,13 +122,14 @@ const SubProducts = ({ productId, vendorId }: { productId: number, vendorId: num
                             </svg>
                             View Details
                         </Link>
-                    </li>
-                    {/* <li>
-                        <a onClick={() => togglePublicity({vendorId: row.original.vendorId as number, productId: row.original.id as number})}>
+                    </li> */}
+                    <li>
+                        <a onClick={() => toggleBatchStatus({ vendorId, productId, subProductId: row.original.id as number })}>
                             <Rss className="w-4 h-4" />
-                            { row.original.is_published ? 'Unpublish' : 'Publish' }
+                            {row.original.status ? 'Unpublish' : 'Publish'}
                         </a>
                     </li>
+
                     <li>
                         <a onClick={() => showEditModal(row.original)}>
                             <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -121,7 +146,7 @@ const SubProducts = ({ productId, vendorId }: { productId: number, vendorId: num
                             </svg>
                             Delete
                         </a>
-                    </li> */}
+                    </li>
                 </ActionDropdown>
             ),
         },
@@ -141,8 +166,38 @@ const SubProducts = ({ productId, vendorId }: { productId: number, vendorId: num
         },
     ];
 
+    const { mutate: toggleBatchStatus, isPending: toggleBatchStatusIsPending } = useMutation({
+        mutationFn: ({ vendorId, productId, subProductId }: { vendorId: number, productId: number, subProductId: number }) =>
+            toggleProductBatchStatus(vendorId, productId, subProductId),
+        onError: (error) => {
+            console.error('Toggle error:', error);
+            toast.error(error.message)
+        },
+        onSuccess: (data) => {
 
+            queryClient.invalidateQueries({
+                queryKey: ['getProductDetail', productId, vendorId],
+                refetchType: 'active'
+            });
 
+            toast.success(data.message)
+            setDataTableKey((prev) => prev + 1)
+        }
+    })
+
+    const showDeleteWarningModal = (subProduct: SubProduct) => {
+        setSubProductToDelete(subProduct);
+        (document.getElementById('deleteProductWarningModal') as HTMLDialogElement)?.showModal()
+    }
+
+    const showEditModal = (subProduct: SubProduct) => {
+        setSubProductToEdit(subProduct);
+        (document.getElementById('updateProductBatchModal') as HTMLDialogElement)?.showModal()
+    }
+
+    if (toggleBatchStatusIsPending) {
+        return <FullPageLoader />;
+    }
 
     return (
         <>
@@ -150,7 +205,7 @@ const SubProducts = ({ productId, vendorId }: { productId: number, vendorId: num
                 url={`/vendors/${vendorId}/products/${productId}/batches`}
                 columns={dataTableColumns}
                 filters={dataTableFilters}
-                title="Products"
+                title="Batches"
                 defaultPageSize={10}
                 key={dataTableKey}
                 headerActions={
@@ -165,6 +220,15 @@ const SubProducts = ({ productId, vendorId }: { productId: number, vendorId: num
                     </button>
                 }
             />
+
+            {/* create product batch modal */}
+            <CreateBatch vendorId={vendorId!} productId={productId!} onProductBatchCreated={() => { setDataTableKey(prev => prev + 1); console.log('batch created') }} />
+
+            {/* create product batch modal */}
+            <EditBatch vendorId={vendorId!} productId={productId!} subProduct={subProductToEdit!} onProductBatchUpdated={() => { setDataTableKey(prev => prev + 1); console.log('batch created') }} />
+
+            {/* delete product batch warning modal */}
+            <DeleteProductBatchWarningModal vendorId={vendorId!} subProduct={subProductToDelete} onProductBatchDeleted={() => { setDataTableKey(prev => prev + 1); console.log('batch deleted') }} />
         </>
     )
 }

@@ -163,6 +163,7 @@ const Register = () => {
             }
 
             const res = await registerMutation(formData).unwrap();
+            console.log('Registration successful:', res);
             toast.success(res.message, {
                 position: 'top-right'
             })

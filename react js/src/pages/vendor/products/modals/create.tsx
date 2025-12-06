@@ -1,12 +1,12 @@
-import type { Category, Department, Vendor } from '../../../../types/Index';
+import type { Category, Department, Vendor } from '../../../../types/Index.ts';
 import { Controller, useForm, type SubmitHandler } from 'react-hook-form';
 import z from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Select from 'react-select';
 import makeAnimated from 'react-select/animated';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { getUserVendors, createProduct } from '../../../../libs/api';
-import PageLoader from '../../../../components/PageLoader';
+import { getUserVendors, createProduct } from '../../../../libs/api.ts';
+import PageLoader from '../../../../components/PageLoader.tsx';
 import { useState, useEffect } from 'react';
 import MultiImageUploader from '../../../../components/MultiImageUploader.tsx';
 import type { AxiosError } from 'axios';
@@ -318,10 +318,10 @@ const Create = ({ categories, departments, onProductCreated }: Props) => {
                                             type="number"
                                             step="0.01"
                                             {...register('price', { valueAsNumber: true })}
-                                            className={`w-full input text-sm h-[38px] pl-6 focus:outline-none focus:border-[#388bff] input-bordered ${errors.price ? 'input-error' : ''}`}
+                                            className={`w-full input text-sm h-[38px] pl-6 focus:outline-none bg-transparent focus:border-[#388bff] input-bordered ${errors.price ? 'input-error' : ''}`}
                                             placeholder="product selling price"
                                         />
-                                        <span className="absolute left-1.5 top-[35px] text-[17px] text-gray-600 z-10">₦</span>
+                                        <span className="absolute left-1.5 top-[35px] text-[17px] text-gray-600">₦</span>
                                         {errors.price && <p className="mt-1 text-xs text-error">{errors.price.message}</p>}
                                     </div>
                                     <div className='relative'>
@@ -332,10 +332,10 @@ const Create = ({ categories, departments, onProductCreated }: Props) => {
                                             type="number"
                                             step="0.01"
                                             {...register('cost_price', { valueAsNumber: true })}
-                                            className={`w-full input text-sm h-[38px] pl-6 focus:outline-none focus:border-[#388bff] input-bordered ${errors.cost_price ? 'input-error' : ''}`}
+                                            className={`w-full input text-sm h-[38px] pl-6 focus:outline-none bg-transparent focus:border-[#388bff] input-bordered ${errors.cost_price ? 'input-error' : ''}`}
                                             placeholder="product cost price"
                                         />
-                                        <span className="absolute left-1.5 top-[35px] text-[17px] text-gray-600 z-10">₦</span>
+                                        <span className="absolute left-1.5 top-[35px] text-[17px] text-gray-600">₦</span>
                                         {errors.cost_price && <p className="mt-1 text-xs text-error">{errors.cost_price.message}</p>}
                                     </div>
                                     <div className='relative'>

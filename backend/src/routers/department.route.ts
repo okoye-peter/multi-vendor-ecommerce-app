@@ -1,7 +1,7 @@
 import express  from "express";
-import { isAuthenticated } from "../middleware/auth.middleware.ts";
-import { requireAdminAuthorization } from "../middleware/adminAccess.middleware.ts";
-import { createDepartment, getDepartmentsWithCategories, getPaginatedDepartments, updateDepartment, deleteDepartment, showDepartment, getAllDepartments } from "../controllers/department.controller.ts";
+import { isAuthenticated } from "../middleware/auth.middleware.js";
+import { requireAdminAuthorization } from "../middleware/adminAccess.middleware.js";
+import { createDepartment, getDepartmentsWithCategories, getPaginatedDepartments, updateDepartment, deleteDepartment, showDepartment, getAllDepartments } from "../controllers/department.controller.js";
 
 const router = express.Router();
 

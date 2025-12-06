@@ -2,8 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
     useReactTable,
     getCoreRowModel,
-    getFilteredRowModel,
-    getPaginationRowModel,
     getSortedRowModel,
     flexRender,
     type ColumnDef,
@@ -12,26 +10,12 @@ import {
     type Row,
 } from '@tanstack/react-table';
 import axiosInstance from '../libs/axios';
-import type { Filter } from '../types/Index';
+import type { Filter, PaginationInfo } from '../types/Index';
 
 // ============================================
 // TYPE DEFINITIONS
 // ============================================
 
-// export interface FilterOption {
-//     value: string | number;
-//     label: string;
-// }
-
-// export interface Filter {
-//     column: string;
-//     label: string;
-//     type: 'select' | 'date' | 'dateRange' | 'text';
-//     options?: FilterOption[];
-//     placeholder?: string;
-// }
-
-// ✅ Extended column definition with searchable property
 export type SearchableColumnDef<T> = ColumnDef<T, unknown> & {
     searchable?: boolean;
 };
@@ -48,7 +32,7 @@ export interface DataTableProps<T> {
     transformData?: (data: unknown) => T[];
     headerActions?: React.ReactNode;
     searchDebounceMs?: number;
-    searchFields?: string[]; // Optional manual override
+    searchFields?: string[];
 }
 
 // ============================================
@@ -72,6 +56,37 @@ function useDebounce<T>(value: T, delay: number): T {
 }
 
 // ============================================
+// PAGINATION HELPER
+// ============================================
+
+function getPaginationRange(currentPage: number, totalPages: number): (number | string)[] {
+    const delta = 2;
+    const range: (number | string)[] = [];
+    const rangeWithDots: (number | string)[] = [];
+    let l: number | undefined;
+
+    for (let i = 1; i <= totalPages; i++) {
+        if (i === 1 || i === totalPages || (i >= currentPage - delta && i <= currentPage + delta)) {
+            range.push(i);
+        }
+    }
+
+    for (const i of range) {
+        if (l) {
+            if (i - l === 2) {
+                rangeWithDots.push(l + 1);
+            } else if (i - l !== 1) {
+                rangeWithDots.push('...');
+            }
+        }
+        rangeWithDots.push(i);
+        l = i as number;
+    }
+
+    return rangeWithDots;
+}
+
+// ============================================
 // REUSABLE DATATABLE COMPONENT
 // ============================================
 
@@ -82,12 +97,12 @@ export function DataTable<T extends Record<string, unknown>>({
     title = 'Data Table',
     enableGlobalSearch = true,
     defaultPageSize = 10,
-    pageSizeOptions = [5, 10, 20, 50],
+    pageSizeOptions = [10, 20, 50, 100],
     onRowClick,
     transformData,
     headerActions,
     searchDebounceMs = 500,
-    searchFields, // Manual override
+    searchFields,
 }: DataTableProps<T>) {
     const [data, setData] = useState<T[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
@@ -95,23 +110,26 @@ export function DataTable<T extends Record<string, unknown>>({
     const [globalFilter, setGlobalFilter] = useState<string>('');
     const [sorting, setSorting] = useState<SortingState>([]);
     const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+
+    // Server-side pagination state
+    const [pagination, setPagination] = useState({
+        pageIndex: 0,
+        pageSize: defaultPageSize,
+    });
+    const [paginationInfo, setPaginationInfo] = useState<PaginationInfo | null>(null);
     
     // Debounce the search term
     const debouncedSearch = useDebounce(globalFilter, searchDebounceMs);
 
-    // ✅ Auto-build searchFields from columns marked as searchable
+    // Auto-build searchFields from columns marked as searchable
     const autoSearchFields = React.useMemo(() => {
-        
         if (searchFields) {
             return searchFields;
         }
         
         const fields = columns
-            .filter(col => {
-                return col.searchable;
-            })
+            .filter(col => col.searchable)
             .map(col => {
-                // Prefer accessorKey for nested fields, fallback to id
                 if ('accessorKey' in col && col.accessorKey) {
                     return String(col.accessorKey);
                 }
@@ -124,17 +142,28 @@ export function DataTable<T extends Record<string, unknown>>({
     }, [columns, searchFields]);
 
     // Fetch data from API
-    const fetchData = useCallback(async (searchTerm: string, appliedFilters: ColumnFiltersState, autoSearchFields: string[] = []) => {
+    const fetchData = useCallback(async (
+        searchTerm: string, 
+        appliedFilters: ColumnFiltersState, 
+        autoSearchFields: string[] = [], 
+        page: number, 
+        pageSize: number
+    ) => {
         try {
             setLoading(true);
             
-            // Build URL with search and filter parameters
             const urlObj = new URL(url, window.location.origin);
+
+            // Add pagination parameters (API uses 1-based indexing)
+            urlObj.searchParams.set('page', String(page + 1));
+            urlObj.searchParams.set('limit', String(pageSize));
             
             // Add search parameter
             if (searchTerm) {
                 urlObj.searchParams.set('search', searchTerm);
-                if(autoSearchFields)urlObj.searchParams.set('searchFields', autoSearchFields.join(','));
+                if (autoSearchFields.length > 0) {
+                    urlObj.searchParams.set('searchFields', autoSearchFields.join(','));
+                }
             }
             
             // Add filter parameters
@@ -144,14 +173,17 @@ export function DataTable<T extends Record<string, unknown>>({
                 }
             });
             
-            // Get the full URL (remove origin if url was relative)
             const fetchUrl = url.startsWith('http') 
                 ? urlObj.toString() 
                 : urlObj.pathname + urlObj.search;
             
-            // Replace with your actual axios instance
             const response = await axiosInstance.get(fetchUrl);
             const result = response.data;
+            
+            // Extract pagination info
+            if (result.pagination) {
+                setPaginationInfo(result.pagination);
+            }
             
             // Transform data if transformer is provided
             if (transformData) {
@@ -164,6 +196,7 @@ export function DataTable<T extends Record<string, unknown>>({
         } catch (err) {
             setError(err instanceof Error ? err.message : 'An error occurred');
             setData([]);
+            setPaginationInfo(null);
         } finally {
             setLoading(false);
         }
@@ -175,52 +208,29 @@ export function DataTable<T extends Record<string, unknown>>({
     // Fetch data when debounced search or applied filters change
     useEffect(() => {
         if (url) {
-            fetchData(debouncedSearch, appliedFilters, autoSearchFields);
+            fetchData(
+                debouncedSearch, 
+                appliedFilters, 
+                autoSearchFields,  
+                pagination.pageIndex, 
+                pagination.pageSize
+            );
         }
-    }, [url, debouncedSearch, appliedFilters, autoSearchFields, fetchData]);
-
-    // Custom global filter function (for client-side filtering if needed)
-    const globalFilterFn = (row: Row<T>, columnId: string, filterValue: string): boolean => {
-        const search = filterValue.toLowerCase();
-
-        // Search across all columns defined in the table
-        return columns.some(col => {
-            const colId = col.id || ('accessorKey' in col ? col.accessorKey as string : '');
-            if (colId) {
-                try {
-                    const value = row.getValue(colId);
-                    return value && String(value).toLowerCase().includes(search);
-                } catch {
-                    // Column doesn't exist in the row model, skip it
-                    return false;
-                }
-            }
-            return false;
-        });
-    };
+    }, [url, debouncedSearch, appliedFilters, autoSearchFields, fetchData, pagination.pageIndex, pagination.pageSize]);
 
     const table = useReactTable({
         data,
         columns,
         state: {
-            globalFilter,
             sorting,
-            columnFilters,
+            pagination,
         },
-        onGlobalFilterChange: setGlobalFilter,
         onSortingChange: setSorting,
-        onColumnFiltersChange: setColumnFilters,
-        globalFilterFn,
+        onPaginationChange: setPagination,
         getCoreRowModel: getCoreRowModel(),
-        getFilteredRowModel: getFilteredRowModel(),
         getSortedRowModel: getSortedRowModel(),
-        getPaginationRowModel: getPaginationRowModel(),
-        initialState: {
-            pagination: {
-                pageSize: defaultPageSize,
-            },
-        },
-        manualFiltering: false, // Set to true if you want all filtering server-side
+        manualPagination: true,
+        pageCount: paginationInfo?.totalPages ?? -1,
     });
 
     // Handle filter change
@@ -241,14 +251,22 @@ export function DataTable<T extends Record<string, unknown>>({
     const applyFilters = () => {
         setAppliedFilters([...columnFilters]);
         // Reset to first page when filters change
-        table.setPageIndex(0);
+        setPagination(prev => ({ ...prev, pageIndex: 0 }));
     };
 
     // Reset all filters
     const resetFilters = () => {
         setColumnFilters([]);
         setAppliedFilters([]);
-        table.setPageIndex(0);
+        setPagination(prev => ({ ...prev, pageIndex: 0 }));
+    };
+
+    // Handle page size change and reset to first page
+    const handlePageSizeChange = (newSize: number) => {
+        setPagination({
+            pageIndex: 0,
+            pageSize: newSize,
+        });
     };
 
     if (loading && data.length === 0) {
@@ -271,6 +289,8 @@ export function DataTable<T extends Record<string, unknown>>({
             </div>
         );
     }
+
+    const paginationRange = paginationInfo ? getPaginationRange(paginationInfo.page, paginationInfo.totalPages) : [];
 
     return (
         <div className="w-full">
@@ -491,55 +511,62 @@ export function DataTable<T extends Record<string, unknown>>({
                     </div>
 
                     {/* Pagination */}
-                    {table.getPageCount() > 0 && (
+                    {paginationInfo && paginationInfo.totalPages > 0 && (
                         <div className="flex flex-wrap items-center justify-between gap-4 mt-6">
                             <div className="text-sm text-base-content/70">
-                                Showing {table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1} to{' '}
-                                {Math.min(
-                                    (table.getState().pagination.pageIndex + 1) * table.getState().pagination.pageSize,
-                                    table.getFilteredRowModel().rows.length
-                                )}{' '}
-                                of {table.getFilteredRowModel().rows.length} results
+                                Showing {((paginationInfo.page - 1) * paginationInfo.limit) + 1} to{' '}
+                                {Math.min(paginationInfo.page * paginationInfo.limit, paginationInfo.total)}{' '}
+                                of {paginationInfo.total} results
                             </div>
 
-                            <div className="btn-group">
+                            <div className="flex items-center gap-1">
+                                {/* Previous Button */}
                                 <button
-                                    className="btn btn-sm"
-                                    onClick={() => table.setPageIndex(0)}
-                                    disabled={!table.getCanPreviousPage()}
-                                >
-                                    «
-                                </button>
-                                <button
-                                    className="btn btn-sm"
+                                    className="btn btn-sm btn-ghost"
                                     onClick={() => table.previousPage()}
-                                    disabled={!table.getCanPreviousPage()}
+                                    disabled={!paginationInfo.hasPrev}
                                 >
-                                    ‹
+                                    ‹ Previous
                                 </button>
-                                <button className="btn btn-sm btn-active">
-                                    Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
-                                </button>
+
+                                {/* Page Numbers */}
+                                {paginationRange.map((page, index) => {
+                                    if (page === '...') {
+                                        return (
+                                            <span key={`dots-${index}`} className="px-2">
+                                                ...
+                                            </span>
+                                        );
+                                    }
+                                    
+                                    const pageNum = page as number;
+                                    const isActive = pageNum === paginationInfo.page;
+                                    
+                                    return (
+                                        <button
+                                            key={pageNum}
+                                            className={`btn btn-sm ${isActive ? 'btn-active' : 'btn-ghost'}`}
+                                            onClick={() => table.setPageIndex(pageNum - 1)}
+                                        >
+                                            {pageNum}
+                                        </button>
+                                    );
+                                })}
+
+                                {/* Next Button */}
                                 <button
-                                    className="btn btn-sm"
+                                    className="btn btn-sm btn-ghost"
                                     onClick={() => table.nextPage()}
-                                    disabled={!table.getCanNextPage()}
+                                    disabled={!paginationInfo.hasNext}
                                 >
-                                    ›
-                                </button>
-                                <button
-                                    className="btn btn-sm"
-                                    onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-                                    disabled={!table.getCanNextPage()}
-                                >
-                                    »
+                                    Next ›
                                 </button>
                             </div>
 
                             <select
                                 className="select select-bordered select-sm"
-                                value={table.getState().pagination.pageSize}
-                                onChange={e => table.setPageSize(Number(e.target.value))}
+                                value={pagination.pageSize}
+                                onChange={e => handlePageSizeChange(Number(e.target.value))}
                             >
                                 {pageSizeOptions.map(pageSize => (
                                     <option key={pageSize} value={pageSize}>

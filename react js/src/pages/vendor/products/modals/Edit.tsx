@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getProductForEdit, getUserVendors, updateProduct } from '../../../../libs/api'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import FullPageLoader from '../../../../components/FullPageLoader'
 import type { Category, Department, Vendor } from '../../../../types/Index'
 import makeAnimated from 'react-select/animated';
@@ -64,6 +64,8 @@ export type ProductUpdateData = z.infer<typeof productUpdateSchema>;
 const animatedComponents = makeAnimated();
 
 const EditProduct = ({ productId, vendorId, onProductUpdated, categories, departments }: Props) => {
+    const queryClient = useQueryClient();
+    
     const statuses = [
         {
             name: 'Active',
@@ -124,6 +126,11 @@ const EditProduct = ({ productId, vendorId, onProductUpdated, categories, depart
             setSelectedDepartment(null);
             setSelectedCategory(null);
             setSelectedVendor(null);
+
+            queryClient.invalidateQueries({
+                queryKey: ['getProductDetail', productId, vendorId],
+                exact: true
+            });
 
             // ✅ Notify parent component to reload
             onProductUpdated?.();
@@ -300,10 +307,10 @@ const EditProduct = ({ productId, vendorId, onProductUpdated, categories, depart
                                             type="number"
                                             step="0.01"
                                             {...register('price', { valueAsNumber: true })}
-                                            className={`w-full input text-sm h-[38px] pl-6 focus:outline-none focus:border-[#388bff] input-bordered ${errors.price ? 'input-error' : ''}`}
+                                            className={`w-full input text-sm h-[38px] pl-6 focus:outline-none bg-transparent focus:border-[#388bff] input-bordered ${errors.price ? 'input-error' : ''}`}
                                             placeholder="product selling price"
                                         />
-                                        <span className="absolute left-1.5 top-[35px] text-[17px] text-gray-600 z-10">₦</span>
+                                        <span className="absolute left-1.5 top-[35px] text-[17px] text-gray-600">₦</span>
                                         {errors.price && <p className="mt-1 text-xs text-error">{errors.price.message}</p>}
                                     </div>
 

@@ -1,5 +1,6 @@
 import { LayoutDashboard, Package, ShoppingCart, AlertCircle, RotateCcw, Menu, X } from 'lucide-react';
 import type { VendorSidebarProps } from '../types/Index';
+import { Link } from 'react-router';
 
 const VendorSidebar = ({ sidebarOpen, setSidebarOpen }: VendorSidebarProps) => {
     const menuItems = [
@@ -33,13 +34,13 @@ const VendorSidebar = ({ sidebarOpen, setSidebarOpen }: VendorSidebarProps) => {
                             const isActive = currentPath === item.path;
                             return (
                                 <li key={item.id}>
-                                    <a
-                                        href={item.path}
-                                        className={`flex items-center gap-3 ${isActive ? 'active' : ''}`}
+                                    <Link
+                                        to={item.path}
+                                        className={`flex items-center justify-start gap-3 btn btn-ghost ${isActive ? 'btn-active' : ''}`}
                                     >
                                         <Icon className="w-5 h-5" />
                                         {sidebarOpen && <span>{item.label}</span>}
-                                    </a>
+                                    </Link>
                                 </li>
                             );
                         })}

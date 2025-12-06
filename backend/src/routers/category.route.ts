@@ -1,7 +1,7 @@
 import express from 'express';
-import { isAuthenticated } from '../middleware/auth.middleware.ts';
-import { requireAdminAuthorization } from '../middleware/adminAccess.middleware.ts';
-import { createCategory, showCategory, updateCategory, getPaginatedCategoriesWithTheirDepartment, deleteCategory, getAllCategories } from '../controllers/category.controller.ts';
+import { isAuthenticated } from '../middleware/auth.middleware.js';
+import { requireAdminAuthorization } from '../middleware/adminAccess.middleware.js';
+import { createCategory, showCategory, updateCategory, getPaginatedCategoriesWithTheirDepartment, deleteCategory, getAllCategories } from '../controllers/category.controller.js';
 
 const router = express.Router();
 

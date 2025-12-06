@@ -1,4 +1,4 @@
-import prisma from "../libs/prisma.ts";
+import prisma from "../libs/prisma.js";
 import { type RequestHandler } from "express";
 
 
