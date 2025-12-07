@@ -386,7 +386,7 @@ export const updateProductBatch: RequestHandler = async (req, res, next) => {
         if (!subProduct) {
             throw { message: "product batch not found", status: 400 }
         }
-        const response = await productService.updateProductBatch(product, subProduct, result)
+        const response = await productService.updateProductBatch(product, subProduct, result.data)
         res.status(200).json(response);
     } catch (error) {
         if (error instanceof Error) {
