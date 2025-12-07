@@ -8,6 +8,7 @@ import { useState } from 'react';
 import type { AxiosError } from 'axios';
 import { toast } from 'react-toastify';
 import { createProductBatch } from '../../../../../libs/api.ts';
+import type { Product, SubProduct } from '../../../../../types/Index.ts';
 
 type Props = {
     vendorId: number,
@@ -29,7 +30,7 @@ const animatedComponents = makeAnimated();
 
 const Create = ({ vendorId, productId, onProductBatchCreated }: Props) => {
     const queryClient = useQueryClient();
-    
+
     const statuses = [
         {
             name: 'Active',
@@ -62,7 +63,11 @@ const Create = ({ vendorId, productId, onProductBatchCreated }: Props) => {
     const { mutate: saveProductBatch, isPending } = useMutation({
         mutationFn: ({ vendorId, productId, formData }: { vendorId: number, productId: number, formData: BatchData }) =>
             createProductBatch(vendorId, productId, formData),
-        onSuccess: () => {
+        onSuccess: (data: {
+            message: string,
+            product: Product;
+            subProduct: SubProduct
+        }) => {
             // ✅ Reset react-hook-form
             reset();
 
@@ -73,11 +78,17 @@ const Create = ({ vendorId, productId, onProductBatchCreated }: Props) => {
 
             // ✅ Close modal
             const modal = document.getElementById('createSubProductModal') as HTMLDialogElement;
-            modal?.close();
+            if(modal instanceof HTMLDialogElement) modal.close();
 
-            queryClient.invalidateQueries({
-                queryKey: ['getProductDetail', productId, vendorId],
-                exact: true
+
+            // ✅ Update the product quantity directly in the cache
+            queryClient.setQueryData<Product>(['getProductDetail', productId, vendorId], (oldData) => {
+                if (!oldData) return oldData; // Don't update if there's no existing data
+
+                return {
+                    ...oldData,
+                    ...data.product
+                };
             });
 
             // ✅ Notify parent component to reload

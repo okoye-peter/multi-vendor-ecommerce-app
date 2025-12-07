@@ -9,7 +9,7 @@ import { toast } from 'react-toastify'
 import type { AxiosError } from 'axios'
 import { updateProductBatch } from '../../../../../libs/api.ts'
 import type { BatchData } from './Create.tsx'
-import type { SubProduct } from '../../../../../types/Index.ts'
+import type { Product, SubProduct } from '../../../../../types/Index.ts'
 import { format } from 'date-fns'
 
 type Props = {
@@ -32,7 +32,7 @@ const animatedComponents = makeAnimated();
 
 const EditSubProduct = ({ productId, vendorId, onProductBatchUpdated, subProduct }: Props) => {
     const queryClient = useQueryClient();
-    
+
     const statuses = [
         {
             name: 'Active',
@@ -65,7 +65,11 @@ const EditSubProduct = ({ productId, vendorId, onProductBatchUpdated, subProduct
     const { mutate: updateProductBatchMutation, isPending } = useMutation({
         mutationFn: ({ vendorId, productId, subProductId, formData }: { vendorId: number, productId: number, subProductId: number, formData: BatchData }) =>
             updateProductBatch(vendorId, productId, subProductId, formData),
-        onSuccess: () => {
+        onSuccess: (data: {
+            message: string,
+            product: Product;
+            subProduct: SubProduct
+        }) => {
             // ✅ Close modal on success
             const modal = document.getElementById('updateProductBatchModal') as HTMLDialogElement;
             modal?.close();
@@ -73,10 +77,16 @@ const EditSubProduct = ({ productId, vendorId, onProductBatchUpdated, subProduct
             // Reset form
             setSelectedStatus(true);
 
-            queryClient.invalidateQueries({
-                queryKey: ['getProductDetail', productId, vendorId],
-                exact: true
+            // ✅ Update the product quantity directly in the cache
+            queryClient.setQueryData<Product>(['getProductDetail', productId, vendorId], (oldData) => {
+                if (!oldData) return oldData; // Don't update if there's no existing data
+
+                return {
+                    ...oldData,
+                    ...data.product
+                };
             });
+
 
             // ✅ Notify parent component to reload
             onProductBatchUpdated?.();
@@ -190,32 +200,32 @@ const EditSubProduct = ({ productId, vendorId, onProductBatchUpdated, subProduct
                                         {errors.status && <p className="mt-1 text-xs text-error">{errors.status.message}</p>}
                                     </div>
                                     <div className='relative'>
-                                    <label className="block mb-2 text-sm font-medium label-text">
-                                        Cost Price
-                                    </label>
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        {...register('cost_price', { valueAsNumber: true })}
-                                        className={`w-full input text-sm h-[38px] pl-6 focus:outline-none bg-transparent focus:border-[#388bff] input-bordered ${errors.cost_price ? 'input-error' : ''}`}
-                                        placeholder="product cost price"
-                                    />
-                                    <span className="absolute left-1.5 top-[35px] text-[17px] text-gray-600">₦</span>
-                                    {errors.cost_price && <p className="mt-1 text-xs text-error">{errors.cost_price.message}</p>}
-                                </div>
-                                
-                                <div className='relative'>
-                                    <label className="block mb-2 text-sm font-medium label-text">
-                                        Expiry Date <small className='text-xs text-gray-400'>(optional)</small>
-                                    </label>
-                                    <input
-                                        type="date"
-                                        {...register('expiry_date')}
-                                        className={`w-full input text-sm h-[38px] focus:outline-none focus:border-[#388bff] input-bordered ${errors.expiry_date ? 'input-error' : ''}`}
-                                        placeholder="enter product expiry date"
-                                    />
-                                    {errors.expiry_date && <p className="mt-1 text-xs text-error">{errors.expiry_date.message}</p>}
-                                </div>
+                                        <label className="block mb-2 text-sm font-medium label-text">
+                                            Cost Price
+                                        </label>
+                                        <input
+                                            type="number"
+                                            step="0.01"
+                                            {...register('cost_price', { valueAsNumber: true })}
+                                            className={`w-full input text-sm h-[38px] pl-6 focus:outline-none bg-transparent focus:border-[#388bff] input-bordered ${errors.cost_price ? 'input-error' : ''}`}
+                                            placeholder="product cost price"
+                                        />
+                                        <span className="absolute left-1.5 top-[35px] text-[17px] text-gray-600">₦</span>
+                                        {errors.cost_price && <p className="mt-1 text-xs text-error">{errors.cost_price.message}</p>}
+                                    </div>
+
+                                    <div className='relative'>
+                                        <label className="block mb-2 text-sm font-medium label-text">
+                                            Expiry Date <small className='text-xs text-gray-400'>(optional)</small>
+                                        </label>
+                                        <input
+                                            type="date"
+                                            {...register('expiry_date')}
+                                            className={`w-full input text-sm h-[38px] focus:outline-none focus:border-[#388bff] input-bordered ${errors.expiry_date ? 'input-error' : ''}`}
+                                            placeholder="enter product expiry date"
+                                        />
+                                        {errors.expiry_date && <p className="mt-1 text-xs text-error">{errors.expiry_date.message}</p>}
+                                    </div>
 
                                 </div>
 
