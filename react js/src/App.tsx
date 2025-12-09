@@ -21,10 +21,15 @@ import VendorLayout from './components/Layouts/VendorLayout.tsx';
 import VendorDashboard from './pages/vendor/Dashboard.tsx'
 import ProductsList from './pages/vendor/products/Index.tsx'
 import ViewProductRecords from './pages/vendor/products/Show.tsx'
+import ProductIndex from './pages/products/Index.tsx'
+import ProductDetails from './pages/products/Show.tsx'
+import { emptyCart, setCarts } from './store/CartSlice.ts';
+import { useLazyGetCartsQuery } from './store/features/CartApi.ts';
 
 
 function App() {
     const location = useLocation();
+    const [getCarts] = useLazyGetCartsQuery();
     const isAdminRoute = location.pathname.startsWith('/admin');
     // const isVendorRoute = location.pathname.startsWith('/vendor');
     const { data, isLoading, isError, error } = useGetAuthenticatedUserQuery();
@@ -40,17 +45,36 @@ function App() {
     };
     const isAuthenticated = Boolean(user);
 
-    useEffect(() => {
+   useEffect(() => {
+    const fetchUserAndCart = async () => {
         if (data && !isError && !isLoading) {
             dispatch(setUser(data.user));
+
+            try {
+                const res = await getCarts();
+                
+                if (res.isSuccess) {
+                    // Ensure cart is always an array
+                    const carts = Array.isArray(res.data) ? res.data : [res.data];
+                    console.log('carts', carts)
+                    dispatch(setCarts(carts));
+                }
+            } catch (err) {
+                console.error("Failed to fetch carts:", err);
+                toast.error("Error loading user's carts" )
+            }
 
             if (!data.user.emailVerifiedAt) {
                 dispatch(setShowEmailVerificationModal(true));
             }
         } else if (isError && error && error.status === 401) {
             dispatch(setUser(null));
+            dispatch(emptyCart());
         }
-    }, [data, isError, isLoading, error, dispatch]);
+    };
+
+    fetchUserAndCart();
+}, [data, isError, isLoading, error, dispatch, getCarts]);
 
     if (isLoading) {
         return (
@@ -83,6 +107,10 @@ function App() {
                     <Route path='dashboard' element={<VendorDashboard />} />
                     <Route path='products' element={<ProductsList />} />
                     <Route path=':vendorId/products/:productId/' element={<ViewProductRecords />} />
+                </Route>
+                <Route path='/' element={isAuthenticated ? <Outlet /> : <Navigate to='/login' />}>
+                    <Route path='products' element={<ProductIndex />} />
+                    <Route path='products/:slug' element={<ProductDetails />} />
                 </Route>
 
                 {/* Admin routes - parent route with layout */}

@@ -118,14 +118,30 @@ export interface Department {
     [key: string]: unknown;
 };
 
+// export interface Product {
+//     id: number;
+//     name: string;
+//     category: Category;
+//     department: Department;
+//     price: string;
+//     quantity: number;
+//     [key: string]: unknown;
+// }
+
 export interface Product {
     id: number;
     name: string;
-    category: Category;
-    department: Department;
-    price: string;
+    slug?: string;
+    description: string;
+    price: number | string;
     quantity: number;
-    [key: string]: unknown;
+    is_published?: boolean;
+    departmentId?: number;
+    categoryId?: number;
+    images?: [{ id: number; url: string }];
+    department?: { id: number; name: string };
+    category?: { id: number; name: string };
+    tags?: string[];
 }
 
 export interface Vendor {
@@ -152,4 +168,16 @@ export interface PaginationInfo {
     totalPages: number;
     hasNext: boolean;
     hasPrev: boolean;
+}
+
+export interface Cart {
+    id: number,
+    quantity: number,
+    productId: number,
+    userId?: number,
+    product?: Product
+}
+
+export interface addToCartData {
+    productId: number
 }

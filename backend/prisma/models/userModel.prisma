@@ -19,6 +19,8 @@ model User {
     passwordResetTokens PasswordResetToken[]
     orderGroups         orderGroup[]
     orderStatusLogs     orderStatusLog[]
+    wishlists           Wishlist[]
+    carts               Cart[]
 
     @@index([email, phone, name])
     @@map("users")

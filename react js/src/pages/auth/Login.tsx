@@ -4,9 +4,12 @@ import { useLoginMutation } from '../../store/features/AuthApi';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import z from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import type { BackendError } from '../../types/Index';
+import type { BackendError, Cart } from '../../types/Index';
 import { useDispatch } from 'react-redux';
 import { setShowEmailVerificationModal, setUser } from '../../store/AuthSlice';
+import { useLazyGetCartsQuery } from '../../store/features/CartApi';
+import { setCarts } from '../../store/CartSlice';
+import { toast } from 'react-toastify';
 
 const loginSchema = z.object({
     email: z.string().email(),
@@ -16,6 +19,7 @@ const loginSchema = z.object({
 type loginData = z.infer<typeof loginSchema>;
 
 const Login = () => {
+    const [getCarts] = useLazyGetCartsQuery();
     const {
         register,
         formState: { errors, isSubmitting },
@@ -25,6 +29,7 @@ const Login = () => {
 
     const [loginMutation, { isLoading: isLoggingIn }] = useLoginMutation();
 
+
     const dispatch = useDispatch();
     const navigate = useNavigate();
 
@@ -33,16 +38,29 @@ const Login = () => {
     const onSubmit: SubmitHandler<loginData> = async (data: loginData) => {
         try {
             const res = await loginMutation(data).unwrap();
-            console.log('Login successful:', res);
             dispatch(setUser(res.user))
-            if(!res.user.emailVerifiedAt){
+            
+            await getCarts().then(res => {
+                if (res.isSuccess) {
+                    dispatch(setCarts(res.data as Cart[])); 
+                }
+            }).catch(err => {
+                toast.error('Error loading user carts')
+            })
+
+            if (!res.user.emailVerifiedAt) {
                 dispatch(setShowEmailVerificationModal(true));
             }
+
+            if (!res.user.emailVerifiedAt) {
+                dispatch(setShowEmailVerificationModal(true));
+            }
+
             navigate('/');
         } catch (error) {
             const backendError = error as BackendError;
             console.log('backendError', backendError);
-            
+
             if (backendError.response?.data?.message && typeof backendError.response.data.message === 'object') {
                 const errors = backendError.response.data.message as Record<string, string[]>;
 
@@ -54,7 +72,7 @@ const Login = () => {
                 });
             } else {
                 setError("root", {
-                    message: backendError.response?.data?.message as string || backendError?.message as string || backendError.data?.message as string ||'Login failed'
+                    message: backendError.response?.data?.message as string || backendError?.message as string || backendError.data?.message as string || 'Login failed'
                 });
             }
         }

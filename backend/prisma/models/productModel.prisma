@@ -16,10 +16,11 @@ model Product {
     updatedAt    DateTime    @updatedAt @map("updated_at")
 
     subProducts SubProduct[]
-    orders order[]
-    images ProductImage[]
+    orders      order[]
+    images      ProductImage[]
+    carts       Cart[]
+    wishlist    Wishlist[]
 
     @@index([slug, name])
-
     @@map("products")
 }

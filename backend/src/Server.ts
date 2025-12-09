@@ -22,6 +22,8 @@ import vendorRoutes from './routers/vendor.route.js';
 import { isAuthenticated } from "./middleware/auth.middleware.js";
 import { express as useragent } from 'express-useragent';
 import ErrorRoutes from './routers/errorLogs.route.js'
+import WishlistRoutes from './routers/wishlist.route.js'
+import CartRoutes from './routers/cart.route.js'
 
 dotenv.config();
 
@@ -88,6 +90,8 @@ app.use('/api/departments', departmentRoute);
 app.use('/api/categories', categoryRoute);
 app.use('/api/products', productRoute);
 app.use('/api/vendors', isAuthenticated, vendorRoutes);
+app.use('/api/wishlists', isAuthenticated, WishlistRoutes);
+app.use('/api/carts', isAuthenticated, CartRoutes);
 app.use('/errors', ErrorRoutes);
 
 

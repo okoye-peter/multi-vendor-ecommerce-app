@@ -1,8 +1,9 @@
+// import { Product } from './../../../react js/src/types/Index';
 import prisma from "../libs/prisma.js";
 import { type RequestHandler } from "express";
 import z from "zod";
 import ProductService from "../service/productService.js";
-import { FilterService } from "../service/filterService.js";
+import { FilterService, type FilterOptions } from "../service/filterService.js";
 import { PRODUCT_FILTER_CONFIG, SUB_PRODUCT_FILTER_CONFIG } from "../config/filter.config.js";
 import { FileService, type RequestWithUploadedFields, type RequestWithUploadedFiles } from "../middleware/fileUpload.js";
 
@@ -401,8 +402,29 @@ export const updateProductBatch: RequestHandler = async (req, res, next) => {
 
 export const getAllProducts: RequestHandler = async (req, res, next) => {
     try {
+        // Let FilterService.parseQueryParams handle all the parsing!
         const filterOptions = FilterService.parseQueryParams(req.query);
-        Object.assign(filterOptions, PRODUCT_FILTER_CONFIG);
+
+        // Override/add specific settings
+        // filterOptions.limit = 24;
+        filterOptions.searchFields = filterOptions.searchFields || ['name', 'description'];
+
+        // Add your custom includes
+        filterOptions.include = {
+            images: {
+                where: { default: true },
+                select: {
+                    id: true,
+                    url: true
+                }
+            },
+            department: {
+                select: { id: true, name: true }
+            },
+            category: {
+                select: { id: true, name: true }
+            }
+        };
 
         const result = await FilterService.executePaginatedQuery(
             prisma.product,
@@ -411,9 +433,87 @@ export const getAllProducts: RequestHandler = async (req, res, next) => {
 
         res.status(200).json({ success: true, ...result });
     } catch (error) {
-        next(error);
+        if (error instanceof Error) {
+            next({ message: error.message, status: 500 });
+        } else if (typeof error === "object" && error !== null && "status" in (error as Record<string, any>)) {
+            throw error;
+        } else {
+            next({ message: "Server Error", status: 500 });
+        }
     }
 };
+
+export const getProductDetails: RequestHandler = async (req, res, next) => {
+    try {
+        const slug = req.params.slug as string;
+
+        const product = await prisma.product.findFirst({
+            where: {
+                slug,
+            },
+            include: {
+                category: true,
+                department: true,
+                images: true,
+            },
+        });
+
+        if (!product) {
+            return res.status(404).json({ message: "Product not found" });
+        }
+
+        const relatedProducts = await prisma.product.findMany({
+            where: {
+                OR: [
+                    { categoryId: product.categoryId },
+                    { departmentId: product.departmentId },
+                ],
+                NOT: {
+                    id: product.id, // Exclude the current product
+                },
+            },
+
+            include: {
+                images: {
+                    where: { default: true }, // change to isDefault if needed
+                    select: {
+                        id: true,
+                        url: true,
+                    },
+                },
+                department: {
+                    select: {
+                        id: true,
+                        name: true,
+                    },
+                },
+                category: {
+                    select: {
+                        id: true,
+                        name: true,
+                    },
+                },
+            },
+
+            take: 4,
+        });
+
+        res.status(200).json({
+            product,
+            relatedProducts,
+        });
+
+    } catch (error) {
+        if (error instanceof Error) {
+            next({ message: error.message, status: 500 });
+        } else if (typeof error === "object" && error !== null && "status" in (error as Record<string, any>)) {
+            throw error;
+        } else {
+            next({ message: "Server Error", status: 500 });
+        }
+    }
+};
+
 
 export const toggleProductIsPublished: RequestHandler = async (req, res, next) => {
     try {
