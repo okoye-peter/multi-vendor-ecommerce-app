@@ -308,7 +308,7 @@ export class FilterService {
 
             // Handle filter syntax: field[operator]=value
             const operatorMatch = key.match(/^(.+)\[(.+)\]$/);
-            
+
             if (operatorMatch) {
                 const field = operatorMatch[1];
                 const operator = operatorMatch[2];
@@ -322,13 +322,13 @@ export class FilterService {
                 }
             } else {
                 const value = this.parseValue(query[key]);
-                
+
                 // Handle nested field filtering intelligently
                 if (key.includes('.')) {
                     const parts = key.split('.');
                     if (parts.length === 2) {
                         const [relation, field] = parts;
-                        
+
                         // If value is numeric and field is 'id', use direct foreign key
                         if (field === 'id' && typeof value === 'number') {
                             filters.push({
@@ -339,10 +339,10 @@ export class FilterService {
                         } else {
                             // For other nested fields (like name), use the nested path
                             // Determine operator based on field type
-                            const operator = field === 'name' || typeof value === 'string' 
-                                ? 'contains' 
+                            const operator = field === 'name' || typeof value === 'string'
+                                ? 'contains'
                                 : 'equals';
-                            
+
                             filters.push({
                                 field: key,
                                 operator: operator as FilterOperator,
@@ -352,7 +352,7 @@ export class FilterService {
                         return;
                     }
                 }
-                
+
                 // Handle direct ID fields (categoryId, departmentId, etc.)
                 if (key.endsWith('Id') && typeof value === 'number') {
                     filters.push({
@@ -362,7 +362,7 @@ export class FilterService {
                     });
                     return;
                 }
-                
+
                 // Default: use 'equals' for numbers/booleans, 'contains' for strings
                 const operator = typeof value === 'string' ? 'contains' : 'equals';
                 filters.push({
@@ -373,30 +373,30 @@ export class FilterService {
             }
         });
 
-         // Handle date range filters
-    if (typeof query.start_date === 'string') {
-        const dateFrom = new Date(query.start_date);
-        if (!isNaN(dateFrom.getTime())) {
-            filters.push({
-                field: 'createdAt',
-                operator: 'gte',
-                value: dateFrom,
-            });
+        // Handle date range filters
+        if (typeof query.start_date === 'string') {
+            const dateFrom = new Date(query.start_date);
+            if (!isNaN(dateFrom.getTime())) {
+                filters.push({
+                    field: 'createdAt',
+                    operator: 'gte',
+                    value: dateFrom,
+                });
+            }
         }
-    }
 
-    if (typeof query.end_date === 'string') {
-        const dateTo = new Date(query.end_date);
-        if (!isNaN(dateTo.getTime())) {
-            // Add one day to include the entire end date
-            dateTo.setDate(dateTo.getDate() + 1);
-            filters.push({
-                field: 'createdAt',
-                operator: 'lte',
-                value: dateTo,
-            });
+        if (typeof query.end_date === 'string') {
+            const dateTo = new Date(query.end_date);
+            if (!isNaN(dateTo.getTime())) {
+                // Add one day to include the entire end date
+                dateTo.setDate(dateTo.getDate() + 1);
+                filters.push({
+                    field: 'createdAt',
+                    operator: 'lte',
+                    value: dateTo,
+                });
+            }
         }
-    }
 
         if (filters.length > 0) {
             options.filters = filters;

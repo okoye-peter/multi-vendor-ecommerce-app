@@ -104,9 +104,9 @@ export default function ProductsList() {
 
     // Debounce search query (500ms delay)
     const debouncedSearchQuery = useDebounce(searchQuery, 500);
-    
 
-    
+
+
 
     // Reset to page 1 when filters change
     useEffect(() => {
@@ -418,7 +418,7 @@ export default function ProductsList() {
                                 <>
                                     <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
                                         {paginatedProducts?.data.map(product => (
-                                            <ProductCart key={product.id} product={product}/>
+                                            <ProductCart key={product.id} product={product} />
                                         ))}
                                     </div>
 

@@ -530,7 +530,6 @@ export const toggleProductIsPublished: RequestHandler = async (req, res, next) =
 
         await productService.toggleIsPublished(product, vendor?.id!)
 
-
         res.status(200).json({ message: `product ${product.is_published ? 'unpublished' : 'published'} successfully` });
     } catch (error) {
         if (error instanceof Error) {

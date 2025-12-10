@@ -206,7 +206,13 @@ export const initializePaymentForCheckout: RequestHandler = async (req, res, nex
         paystackReq.write(params);
         paystackReq.end();
     } catch (error) {
-        next(error);
+        if (error instanceof Error) {
+            res.status(500).json({ message: error.message });
+        } else if (typeof error === "object" && error !== null && "status" in (error as Record<string, any>)) {
+            throw error;
+        } else {
+            res.status(500).json({ message: "Server Error" });
+        }
     }
 };
 
@@ -376,49 +382,53 @@ export const placeOrder: RequestHandler = async (req, res, next) => {
     }
 }
 
-export const checkPaymentStatus: RequestHandler = async (req, res, next) => {
+export const checkPaymentStatus: RequestHandler = async (req, res) => {
     try {
         const { reference } = req.query;
         const user = req.user;
 
-        if (!reference) {
+        if (typeof reference !== "string" || !reference.trim()) {
             return res.status(400).json({
                 success: false,
-                message: 'Payment reference is required'
+                message: "Payment reference is required",
             });
         }
 
-        // Check if order exists with this payment reference
         const orderGroup = await prisma.orderGroup.findFirst({
             where: {
-                paymentRefNo: reference as string,
-                userId: user?.id!
+                paymentRefNo: reference,
+                userId: user?.id!  // ✅ Optional security check
             },
             select: {
                 id: true,
                 ref_no: true,
                 status: true,
                 totalAmount: true,
-                createdAt: true
-            }
+                createdAt: true,
+                paymentRefNo: true,
+            },
         });
 
-        if (orderGroup) {
-            return res.status(200).json({
-                success: true,
-                message: 'Order created successfully',
-                order_ref_no: orderGroup.ref_no,
-                data: orderGroup
-            });
-        } else {
-            // Order not created yet (webhook still processing)
+        if (!orderGroup) {
             return res.status(200).json({
                 success: false,
-                message: 'Order is being processed'
+                message: "Order is still being processed",
             });
         }
+
+        return res.status(200).json({
+            success: true,
+            message: "Order found",
+            order_ref_no: orderGroup.ref_no,
+            data: orderGroup,
+        });
     } catch (error) {
-        next(error);
+        console.error("CHECK PAYMENT STATUS ERROR:", error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error",
+        });
     }
 };
 
@@ -455,7 +465,7 @@ export const getOrder: RequestHandler = async (req, res, next) => {
             },
         });
 
-        if(!orderGroup)
+        if (!orderGroup)
             return res.status(404).json({ message: 'order not found' })
 
         res.status(200).json({ order_group: orderGroup })

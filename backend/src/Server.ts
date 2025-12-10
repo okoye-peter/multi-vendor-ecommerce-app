@@ -94,7 +94,7 @@ app.use('/api/products', productRoute);
 app.use('/api/vendors', isAuthenticated, vendorRoutes);
 app.use('/api/wishlists', isAuthenticated, WishlistRoutes);
 app.use('/api/carts', isAuthenticated, CartRoutes);
-app.use('/api/orders', isAuthenticated, orderRoutes);
+app.use('/api/orders', orderRoutes);
 app.post('/api/payment/webhooks', placeOrder);
 app.use('/errors', ErrorRoutes);
 
