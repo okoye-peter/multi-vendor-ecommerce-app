@@ -5,7 +5,7 @@ import generateAuthorizationTokenAndSetCookies from "../utils/generateAuthorizat
 import { sendPasswordResetToken } from "../utils/sendEmail.js";
 import prisma from "../libs/prisma.js";
 import bcrypt from "bcryptjs";
-import { queueVerificationEmail } from "../queues/email.queue.js";
+import { queuePasswordResetTokenEmail, queueVerificationEmail } from "../queues/email.queue.js";
 import { FileService, type RequestWithUploadedFile } from "../middleware/fileUpload.js";
 
 const userService = new UserService();
@@ -262,7 +262,7 @@ export const sendPasswordResetCode: RequestHandler = async (req, res, next) => {
         const passwordResetCode = Math.floor(100000 + Math.random() * 900000).toString();
         const passwordResetCodeExpiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 mins
 
-        await sendPasswordResetToken(email, parseInt(passwordResetCode));
+        await queuePasswordResetTokenEmail(email, parseInt(passwordResetCode));
 
         await prisma.passwordResetToken.create({
             data: {
@@ -362,7 +362,6 @@ export const resendEmailVerificationCode: RequestHandler = async (req, res, next
         const emailVerificationCodeExpiresAt = new Date(Date.now() + 1000 * 60 * 15);
 
         await queueVerificationEmail(user.email, parseInt(emailVerificationCode));
-        // await sendEmailVerificationCode(user.email, parseInt(emailVerificationCode));
 
         await prisma.user.update({
             where: {
@@ -473,103 +472,103 @@ export const getAuthenticatedUser: RequestHandler = async (req, res, next) => {
 };
 
 // ✅ Update user profile with new picture
-export const updateProfile: RequestHandler = async (req, res, next) => {
-    const uploadedFile = req.uploadedFile;
-    const newPictureUrl = uploadedFile?.path;
+// export const updateProfile: RequestHandler = async (req, res, next) => {
+//     const uploadedFile = req.uploadedFile;
+//     const newPictureUrl = uploadedFile?.path;
 
-    try {
-        const userId = req.user?.id; // Assuming you have auth middleware
+//     try {
+//         const userId = req.user?.id; // Assuming you have auth middleware
 
-        if (!userId) {
-            return res.status(401).json({ message: "Unauthorized" });
-        }
+//         if (!userId) {
+//             return res.status(401).json({ message: "Unauthorized" });
+//         }
 
-        // Get current user to check if they have an existing picture
-        const currentUser = await prisma.user.findUnique({
-            where: { id: userId },
-            select: { picture_url: true, publicId: true }
-        });
+//         // Get current user to check if they have an existing picture
+//         const currentUser = await prisma.user.findUnique({
+//             where: { id: userId },
+//             select: { picture_url: true, publicId: true }
+//         });
 
-        const newPublicId = newPictureUrl ? extractPublicIdFromUrl(newPictureUrl) : null;
+//         const newPublicId = newPictureUrl ? extractPublicIdFromUrl(newPictureUrl) : null;
 
-        const bodyData = {
-            ...req.body,
-            ...(newPictureUrl && {
-                picture_url: newPictureUrl,
-                publicId: newPublicId,
-            })
-        };
+//         const bodyData = {
+//             ...req.body,
+//             ...(newPictureUrl && {
+//                 picture_url: newPictureUrl,
+//                 publicId: newPublicId,
+//             })
+//         };
 
-        // Validate and update user
-        const updatedUser = await prisma.user.update({
-            where: { id: userId },
-            data: {
-                name: bodyData.name,
-                phone: bodyData.phone,
-                ...(newPictureUrl && {
-                    picture_url: newPictureUrl,
-                    publicId: newPublicId,
-                })
-            }
-        });
+//         // Validate and update user
+//         const updatedUser = await prisma.user.update({
+//             where: { id: userId },
+//             data: {
+//                 name: bodyData.name,
+//                 phone: bodyData.phone,
+//                 ...(newPictureUrl && {
+//                     picture_url: newPictureUrl,
+//                     publicId: newPublicId,
+//                 })
+//             }
+//         });
 
-        // ✅ Delete old picture from Cloudinary if exists and new picture uploaded
-        if (newPictureUrl && currentUser?.publicId) {
-            await FileService.deleteSingle(currentUser.publicId);
-        }
+//         // ✅ Delete old picture from Cloudinary if exists and new picture uploaded
+//         if (newPictureUrl && currentUser?.publicId) {
+//             await FileService.deleteSingle(currentUser.publicId);
+//         }
 
-        res.status(200).json({
-            user: updatedUser,
-            message: "Profile updated successfully"
-        });
-    } catch (error) {
-        // Rollback new picture on error
-        if (newPictureUrl) {
-            const publicId = extractPublicIdFromUrl(newPictureUrl);
-            if (publicId) {
-                await FileService.rollback(publicId);
-            }
-        }
+//         res.status(200).json({
+//             user: updatedUser,
+//             message: "Profile updated successfully"
+//         });
+//     } catch (error) {
+//         // Rollback new picture on error
+//         if (newPictureUrl) {
+//             const publicId = extractPublicIdFromUrl(newPictureUrl);
+//             if (publicId) {
+//                 await FileService.rollback(publicId);
+//             }
+//         }
 
-        if (error instanceof Error) {
-            res.status(500).json({ message: error.message });
-        } else {
-            res.status(500).json({ message: "Server Error" });
-        }
-    }
-};
+//         if (error instanceof Error) {
+//             res.status(500).json({ message: error.message });
+//         } else {
+//             res.status(500).json({ message: "Server Error" });
+//         }
+//     }
+// };
 
 // ✅ Delete user account (and profile picture)
-export const deleteAccount: RequestHandler = async (req, res, next) => {
-    try {
-        const userId = req.user?.id;
+// export const deleteAccount: RequestHandler = async (req, res, next) => {
+//     try {
+//         const userId = req.user?.id;
 
-        if (!userId) {
-            return res.status(401).json({ message: "Unauthorized" });
-        }
+//         if (!userId) {
+//             return res.status(401).json({ message: "Unauthorized" });
+//         }
 
-        // Get user to check if they have a profile picture
-        const user = await prisma.user.findUnique({
-            where: { id: userId },
-            select: { publicId: true }
-        });
+//         // Get user to check if they have a profile picture
+//         const user = await prisma.user.findUnique({
+//             where: { id: userId },
+//             select: { publicId: true }
+//         });
 
-        // Delete profile picture from Cloudinary if exists
-        if (user?.publicId) {
-            await FileService.deleteSingle(user.publicId);
-        }
+//         // Delete profile picture from Cloudinary if exists
+//         if (user?.publicId) {
+//             await FileService.deleteSingle(user.publicId);
+//         }
 
-        // Delete user from database
-        await prisma.user.delete({
-            where: { id: userId }
-        });
+//         // Delete user from database
+//         await prisma.user.delete({
+//             where: { id: userId }
+//         });
 
-        res.status(200).json({ message: "Account deleted successfully" });
-    } catch (error) {
-        if (error instanceof Error) {
-            res.status(500).json({ message: error.message });
-        } else {
-            res.status(500).json({ message: "Server Error" });
-        }
-    }
-};
+//         res.status(200).json({ message: "Account deleted successfully" });
+//     } catch (error) {
+//         if (error instanceof Error) {
+//             res.status(500).json({ message: error.message });
+//         } else {
+//             res.status(500).json({ message: "Server Error" });
+//         }
+//     }
+// };
