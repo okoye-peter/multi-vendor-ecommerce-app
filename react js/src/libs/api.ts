@@ -126,3 +126,35 @@ export const deleteProductBatch = async (vendorId: number, productId: number, su
     const response = await axiosInstance.delete(`/vendors/${vendorId}/products/${productId}/batches/${subProductId}`)
     return response.data
 }
+
+export const createPaystackPaymentAuthorizationCode = async () => {
+    const response = await axiosInstance.post('/orders')
+    return response.data
+}
+
+// const handleCheckout = async () => {
+//     try {
+//         const response = await fetch('https://your-api.com/api/payments/initialize', {
+//             method: 'POST',
+//             headers: {
+//                 'Content-Type': 'application/json',
+//                 'Authorization': `Bearer ${userToken}` // Your auth token
+//             }
+//         });
+
+//         const result = await response.json();
+
+//         if (result.success) {
+//             // ✅ Redirect user to Paystack payment page
+//             window.location.href = result.data.authorizationUrl;
+            
+//             // OR open in new tab
+//             // window.open(result.data.authorizationUrl, '_blank');
+//         } else {
+//             alert(result.message);
+//         }
+//     } catch (error) {
+//         console.error('Payment error:', error);
+//         alert('Failed to initialize payment');
+//     }
+// };

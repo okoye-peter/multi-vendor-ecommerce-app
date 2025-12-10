@@ -118,16 +118,6 @@ export interface Department {
     [key: string]: unknown;
 };
 
-// export interface Product {
-//     id: number;
-//     name: string;
-//     category: Category;
-//     department: Department;
-//     price: string;
-//     quantity: number;
-//     [key: string]: unknown;
-// }
-
 export interface Product {
     id: number;
     name: string;
@@ -180,4 +170,21 @@ export interface Cart {
 
 export interface addToCartData {
     productId: number
+}
+
+export interface VerificationResponse {
+    success: boolean;
+    message?: string;
+    order_ref_no?: string;
+};
+
+export type OrderGroup = {
+    id: number;
+    paymentRefNo: string;
+    ref_no: string;
+    status: number;
+    totalAmount: number;
+    deliveredAt: string;
+    createdAt: string;
+    updatedAt: string;
 }

@@ -302,7 +302,7 @@ export class FilterService {
 
         Object.keys(query).forEach(key => {
             // Skip pagination, sorting, and special params
-            if (['page', 'limit', 'sortBy', 'sortOrder', 'search', 'searchFields'].includes(key)) {
+            if (['page', 'limit', 'sortBy', 'sortOrder', 'search', 'searchFields', 'start_date', 'end_date'].includes(key)) {
                 return;
             }
 
@@ -372,6 +372,31 @@ export class FilterService {
                 });
             }
         });
+
+         // Handle date range filters
+    if (typeof query.start_date === 'string') {
+        const dateFrom = new Date(query.start_date);
+        if (!isNaN(dateFrom.getTime())) {
+            filters.push({
+                field: 'createdAt',
+                operator: 'gte',
+                value: dateFrom,
+            });
+        }
+    }
+
+    if (typeof query.end_date === 'string') {
+        const dateTo = new Date(query.end_date);
+        if (!isNaN(dateTo.getTime())) {
+            // Add one day to include the entire end date
+            dateTo.setDate(dateTo.getDate() + 1);
+            filters.push({
+                field: 'createdAt',
+                operator: 'lte',
+                value: dateTo,
+            });
+        }
+    }
 
         if (filters.length > 0) {
             options.filters = filters;

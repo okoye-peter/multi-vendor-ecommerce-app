@@ -25,6 +25,9 @@ import ProductIndex from './pages/products/Index.tsx'
 import ProductDetails from './pages/products/Show.tsx'
 import { emptyCart, setCarts } from './store/CartSlice.ts';
 import { useLazyGetCartsQuery } from './store/features/CartApi.ts';
+import CartIndex from './pages/carts/Index.tsx'
+import UserOrders from './pages/orders/Index.tsx'
+import UserOrderDetails from './pages/orders/Show.tsx'
 
 
 function App() {
@@ -109,6 +112,9 @@ function App() {
                     <Route path=':vendorId/products/:productId/' element={<ViewProductRecords />} />
                 </Route>
                 <Route path='/' element={isAuthenticated ? <Outlet /> : <Navigate to='/login' />}>
+                    <Route path='carts' element={<CartIndex />} />
+                    <Route path='orders' element={<UserOrders />} />
+                    <Route path='orders/:orderId' element={<UserOrderDetails />} />
                     <Route path='products' element={<ProductIndex />} />
                     <Route path='products/:slug' element={<ProductDetails />} />
                 </Route>
