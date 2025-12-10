@@ -67,7 +67,7 @@ const fetchProducts = async (
     sortOrder: string = 'asc',
     currentPage = 1
 ): Promise<PaginatedProducts> => {
-    let url = `/products?sortBy=name&sortOrder=${sortOrder}&is_published=true&limit=20&page=${currentPage}`;
+    let url = `/products?sortBy=name&sortOrder=${sortOrder}&is_published=true&limit=15&page=${currentPage}`;
 
     if (departmentFilters.length) url += `&departmentId=${departmentFilters.join(',')}`;
     if (categoryFilter.length) url += `&categoryId=${categoryFilter.join(',')}`;

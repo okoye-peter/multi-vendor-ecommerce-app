@@ -7,6 +7,8 @@ export enum OrderStatusValue {
     CANCELLED = 5
 }
 
+export type OrderStatusLabel = keyof typeof OrderStatusValue;
+
 export const OrderStatusLabels: Record<number, string> = {
     [OrderStatusValue.PENDING]: 'Pending',
     [OrderStatusValue.CONFIRMED]: 'Confirmed',
@@ -15,6 +17,8 @@ export const OrderStatusLabels: Record<number, string> = {
     [OrderStatusValue.DELIVERED]: 'Delivered',
     [OrderStatusValue.CANCELLED]: 'Cancelled'
 };
+
+export type OrderStatus = keyof typeof OrderStatusLabels;
 
 export const getOrderStatusLabel = (status: number): string => {
     return OrderStatusLabels[status] ?? 'Unknown';

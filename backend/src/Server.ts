@@ -24,6 +24,8 @@ import { express as useragent } from 'express-useragent';
 import ErrorRoutes from './routers/errorLogs.route.js'
 import WishlistRoutes from './routers/wishlist.route.js'
 import CartRoutes from './routers/cart.route.js'
+import orderRoutes from './routers/orders.route.js'
+import { placeOrder } from "./controllers/orders.controller.js";
 
 dotenv.config();
 
@@ -92,6 +94,8 @@ app.use('/api/products', productRoute);
 app.use('/api/vendors', isAuthenticated, vendorRoutes);
 app.use('/api/wishlists', isAuthenticated, WishlistRoutes);
 app.use('/api/carts', isAuthenticated, CartRoutes);
+app.use('/api/orders', isAuthenticated, orderRoutes);
+app.post('/api/payment/webhooks', placeOrder);
 app.use('/errors', ErrorRoutes);
 
 

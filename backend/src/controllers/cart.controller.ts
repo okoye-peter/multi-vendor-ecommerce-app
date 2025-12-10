@@ -28,7 +28,9 @@ export const getCarts: RequestHandler = async (req, res, next) => {
                             where: {
                                 default: true
                             }
-                        }
+                        },
+                        category: true,
+                        department: true,
                     }
                 }
             }
@@ -100,7 +102,9 @@ export const addToCart: RequestHandler = async (req, res, next) => {
                             where: {
                                 default: true,
                             }
-                        }
+                        },
+                        category: true,
+                        department: true,
                     }
                 }
             }
@@ -161,6 +165,28 @@ export const removeFromCartByCartId: RequestHandler = async (req, res, next) => 
         })
 
         res.status(201).json({ message: 'product removed from cart successfully', cart })
+    } catch (error) {
+        if (error instanceof Error) {
+            res.status(500).json({ message: error.message });
+        } else if (typeof error === "object" && error !== null && "status" in (error as Record<string, any>)) {
+            throw error;
+        } else {
+            res.status(500).json({ message: "Server Error" });
+        }
+    }
+}
+
+export const clearAllCartItem: RequestHandler = async (req, res, next) => {
+    try {
+        const user = req.user;
+
+        await prisma.cart.deleteMany({
+            where: {
+                userId: user?.id!
+            }
+        })
+
+        res.status(200).json({ message: 'cart cleared successfully' })
     } catch (error) {
         if (error instanceof Error) {
             res.status(500).json({ message: error.message });

@@ -8,10 +8,11 @@ model orderGroup {
     vendor      Vendor?   @relation(fields: [vendorId], references: [id], onDelete: SetNull)
     deliveredAt DateTime? @map("delivered_at")
     totalAmount Float     @default(0)
+    paymentRefNo String    @unique @map("payment_ref_no")
     createdAt   DateTime  @default(now()) @map("created_at")
     updatedAt   DateTime  @updatedAt @map("updated_at")
 
-    orders order[]
+    orders          order[]
     orderStatusLogs orderStatusLog[]
 
     @@map("order_groups")

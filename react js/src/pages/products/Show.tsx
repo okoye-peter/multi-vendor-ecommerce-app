@@ -4,13 +4,9 @@ import { useQuery } from '@tanstack/react-query';
 import {
     ShoppingCart,
     Heart,
-    Star,
-    ChevronLeft,
     Minus,
     Plus,
     Share2,
-    StarHalf,
-    Check,
     X
 } from 'lucide-react';
 import axiosInstance from '../../libs/axios';
@@ -305,7 +301,7 @@ export default function ProductDetail() {
                                             <div className="flex items-center gap-4">
                                                 <div className="inline-flex items-center rounded-xl">
                                                     <button
-                                                        onClick={() => updateCartQuantity(-1, cart?.id!)}
+                                                        onClick={() => updateCartQuantity(-1, cart?.id)}
                                                         disabled={cart.quantity <= 1}
                                                         className="p-3 transition hover:opacity-70 disabled:opacity-30 disabled:cursor-not-allowed"
                                                     >
@@ -315,7 +311,7 @@ export default function ProductDetail() {
                                                         {isUpdatingCart ? <span className="loading loading-spinner loading-sm"></span> : cart.quantity}
                                                     </span>
                                                     <button
-                                                        onClick={() => updateCartQuantity(1, cart?.id!)}
+                                                        onClick={() => updateCartQuantity(1, cart?.id)}
                                                         disabled={cart.quantity >= data.product.quantity}
                                                         className="p-3 transition hover:opacity-70 disabled:opacity-30 disabled:cursor-not-allowed"
                                                     >
@@ -387,10 +383,6 @@ export default function ProductDetail() {
                             </h3>
                             <div className="text-sm divide-y-1 rounded-xl">
                                 <div className="flex justify-between py-4">
-                                    <span className="font-semibold">SKU</span>
-                                    <span className="opacity-70">PRD-{data.product.id}</span>
-                                </div>
-                                <div className="flex justify-between py-4">
                                     <span className="font-semibold">Category</span>
                                     <span className="opacity-70">{data.product.category.name}</span>
                                 </div>
@@ -410,27 +402,27 @@ export default function ProductDetail() {
                 </div>
 
                 {/* Related Products Section */}
-                <div className="pt-16 mt-16 border-t-2">
+                <div className="pt-6 mt-6 border-t">
                     <h2 className="mb-8 text-2xl font-bold">You May Also Like</h2>
                     <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
                         {/* Placeholder cards */}
                         {data.relatedProducts.map((product) => (
-                            <div key={`related_product_${product.id}`} className="p-6 rounded-xl">
+                            <div key={`related_product_${product.id}`} className="rounded-lg shadow-lg">
                                 {/* Product Image */}
-                                <div className="relative overflow-hidden cursor-pointer aspect-square h-fit">
+                                <div className="relative overflow-hidden bg-white rounded-t-lg cursor-pointer aspect-square h-fit">
                                     <img
                                         src={product.images[0]?.url || '/placeholder-image.jpg'}
                                         alt={product.name}
-                                        className="object-cover w-full h-full mx-auto duration-300 group-hover:scale-110"
+                                        className="object-cover w-full h-full mx-auto duration-300 rounded-t-lg group-hover:scale-110"
                                     />
                                     {product.quantity > 0 && (
-                                        <div className="absolute px-2 py-1 text-xs rounded top-2 left-2 opacity-90">
+                                        <div className="absolute px-2 py-1 text-xs text-white bg-green-500 rounded top-2 left-2 opacity-90">
                                             IN STOCK
                                         </div>
                                     )}
                                     {product.quantity === 0 && (
                                         <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
-                                            <span className="px-4 py-2 text-sm font-semibold rounded">
+                                            <span className="px-4 py-2 text-sm font-semibold text-white bg-red-500 rounded">
                                                 Out of Stock
                                             </span>
                                         </div>
@@ -444,14 +436,14 @@ export default function ProductDetail() {
                                 </div>
 
                                 {/* Product Info */}
-                                <div className="p-4">
+                                <div className="p-4 mt-auto">
                                     <Link to={`/products/${product.slug}`} className="mb-1 text-base font-semibold transition-colors cursor-pointer hover:opacity-80 line-clamp-2">
                                         {product.name}
                                     </Link>
                                     <div className="mb-3 text-xs opacity-70">
                                         {product.department.name} / {product.category.name}
                                     </div>
-                                    <div className="mb-4 font-bold">
+                                    <div className="mt-auto font-bold">
                                         {formatPrice(product.price)}
                                     </div>
                                 </div>
