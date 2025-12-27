@@ -6,6 +6,7 @@ import { getProduct } from '../../../libs/api';
 import type { Category, Department } from '../../../types/Index';
 import FullPageLoader from '../../../components/FullPageLoader';
 import SubProducts from './components/SubProducts';
+import Orders from './components/Orders';
 
 interface ProductImage {
     id: number;
@@ -71,17 +72,6 @@ const Show = () => {
         };
         const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
         return <span className={`badge ${config.color} badge-sm`}> {config.text} </span>;
-    };
-
-    const getExpiryStatus = (expiryDate: string) => {
-        const today = new Date();
-        const expiry = new Date(expiryDate);
-        const diffTime = expiry.getTime() - today.getTime();
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-        if (diffDays < 0) return { color: 'text-error', text: 'Expired', icon: AlertCircle };
-        if (diffDays < 90) return { color: 'text-warning', text: `${diffDays} days left`, icon: Clock };
-        return { color: 'text-success', text: 'Good', icon: CheckCircle };
     };
 
     return (
@@ -223,6 +213,7 @@ const Show = () => {
                         )}
 
                         {activeTab === 'batches' && <SubProducts productId={product?.id || 0} vendorId={product?.vendorId || 0} />}
+                        {activeTab === 'orders' && <Orders productId={product?.id || 0} vendorId={product?.vendorId || 0} />}
                     </div>
                 </div>
             </div>

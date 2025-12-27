@@ -1,11 +1,13 @@
-// import { Product } from './../../../react js/src/types/Index';
 import prisma from "../libs/prisma.js";
 import { type RequestHandler } from "express";
 import z from "zod";
 import ProductService from "../service/productService.js";
-import { FilterService, type FilterOptions } from "../service/filterService.js";
-import { PRODUCT_FILTER_CONFIG, SUB_PRODUCT_FILTER_CONFIG } from "../config/filter.config.js";
+import { FilterService } from "../service/filterService.js";
+import { SUB_PRODUCT_FILTER_CONFIG } from "../config/filter.config.js";
 import { FileService, type RequestWithUploadedFields, type RequestWithUploadedFiles } from "../middleware/fileUpload.js";
+import { addToReportQueue, ReportType } from "../queues/reportDownload.queue.js";
+import { format } from "date-fns";
+import { getOrderStatusValue } from '../enums/orderStatus.js';
 
 const productService = new ProductService;
 
@@ -664,3 +666,140 @@ export const deleteProductBatch: RequestHandler = async (req, res, next) => {
         }
     }
 }
+
+export const getProductOrders: RequestHandler = async (req, res, next) => {
+    try {
+        const vendor = req.vendor;
+        const { productId } = req.params;
+
+        if (!productId?.trim())
+            throw { message: "product not found", status: 400 }
+
+
+        const product = await prisma.product.findFirst({
+            where: {
+                vendorId: vendor?.id!,
+                id: Number(productId)
+            }
+        })
+
+        if (!product)
+            throw { message: "product not found", status: 400 };
+
+        const filterOptions = FilterService.parseQueryParams(req.query);
+        filterOptions.searchFields = ['orderGroup.ref_no'];
+        filterOptions.where = {
+            ...filterOptions.where,  // Preserve any existing where conditions from query params
+            productId: Number(productId)  // Convert to number for proper type matching
+        }
+
+
+        filterOptions.include = {
+            orderGroup: {
+                select: { id: true, ref_no: true }
+            },
+            subProducts: {
+                include: {
+                    subProduct: {
+                        select: {
+                            id: true,
+                            batch_no: true
+                        }
+                    }
+                }
+            }
+        };
+        const result = await FilterService.executePaginatedQuery(
+            prisma.order,
+            filterOptions
+        )
+
+        res.status(200).json({ success: true, ...result })
+    } catch (error) {
+        if (error instanceof Error) {
+            next({ message: error.message, status: 500 });
+        } else if (typeof error === "object" && error !== null && "status" in (error as Record<string, any>)) {
+            throw error;
+        } else {
+            next({ message: "Server Error", status: 500 });
+        }
+    }
+}
+
+export const downloadProductSalesReport: RequestHandler = async (req, res, next) => {
+    try {
+        const user = req.user;
+        const vendor = req.vendor;
+
+        const { productId } = req.params;
+        let { startDate, endDate } = req.query;
+
+        // ✅ Validate and convert productId to number
+        if (!productId) {
+            return res.status(400).json({ message: 'Product ID is required' });
+        }
+
+        const productIdNum = parseInt(productId, 10);
+        if (isNaN(productIdNum)) {
+            return res.status(400).json({ message: 'Invalid product ID' });
+        }
+
+        // Validate product
+        const product = await prisma.product.findFirst({
+            where: {
+                id: productIdNum, // Use the converted number
+                vendorId: vendor?.id!
+            }
+        });
+
+        if (!product) {
+            return res.status(404).json({ message: 'Product not found' });
+        }
+
+        // Validate dates
+        if (!startDate) {
+            return res.status(400).json({ message: 'Start date is required' });
+        }
+
+        if (!endDate) {
+            endDate = new Date().toISOString();
+        }
+
+        const report_name = `${product.name.replaceAll(' ', '_')}_sales_report_from_${format(new Date(startDate as string), 'dd-MM-yyyy')}_to_${format(new Date(endDate as string), 'dd-MM-yyyy')}`;
+
+        // ✅ Use product.id (which is now guaranteed to be a number)
+        const filter = {
+            productId: product.id, // This is now a number
+            createdAt: {
+                gte: new Date(startDate as string),
+                lte: new Date(endDate as string)
+            },
+            orderGroup: {
+                status: {
+                    not: getOrderStatusValue('CANCELLED')
+                }
+            }
+        };
+
+        await addToReportQueue(
+            user?.email!,
+            report_name,
+            ReportType.PRODUCT_SALES_REPORT,
+            filter
+        );
+
+        return res.status(202).json({
+            message: 'Report generation started. You will receive an email shortly.',
+            reportName: report_name
+        });
+
+    } catch (error) {
+        if (error instanceof Error) {
+            next({ message: error.message, status: 500 });
+        } else if (typeof error === "object" && error !== null && "status" in (error as Record<string, any>)) {
+            throw error;
+        } else {
+            next({ message: "Server Error", status: 500 });
+        }
+    }
+};

@@ -240,7 +240,6 @@ export const placeOrder: RequestHandler = async (req, res, next) => {
             });
             return res.status(200).json({ message: 'Payment status noted' });
         }
-        console.log('event', event)
 
 
         const amountPaid: number = event.data.amount / 100;

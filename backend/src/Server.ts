@@ -26,6 +26,7 @@ import WishlistRoutes from './routers/wishlist.route.js'
 import CartRoutes from './routers/cart.route.js'
 import orderRoutes from './routers/orders.route.js'
 import { placeOrder } from "./controllers/orders.controller.js";
+import { reportQueue } from "./queues/reportDownload.queue.js";
 
 dotenv.config();
 
@@ -45,6 +46,7 @@ createBullBoard({
     queues: [
         // Add all your queues here
         new BullMQAdapter(emailQueue),
+        new BullMQAdapter(reportQueue),
     ],
     serverAdapter: serverAdapter,
 });

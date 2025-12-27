@@ -132,6 +132,7 @@ export interface Product {
     department?: { id: number; name: string };
     category?: { id: number; name: string };
     tags?: string[];
+    [key: string]: unknown;
 }
 
 export interface Vendor {
@@ -187,4 +188,46 @@ export type OrderGroup = {
     deliveredAt: string;
     createdAt: string;
     updatedAt: string;
+}
+
+export interface Wishlist {
+    id: number;
+    productId: number;
+    userId: number;
+    createdAt: Date;
+    product?: Product
+}
+
+export interface subProduct {
+    id: number;
+    batch_no: string;
+    expiry_date: string;
+    cost_price: number;
+    status: boolean;
+    productId?: number;
+    [key: string]: unknown;
+}
+
+export interface orderSubProduct {
+    id: number;
+    subProductId: number;
+    orderId: number;
+    quantity: number;
+    [key: string]: unknown;
+    subProduct?: subProduct
+}
+export interface Order {
+    id: number;
+    productId: number
+    requestedQuantity: number;
+    quantity: number;
+    orderGroupId: number;
+    priceOnPurchase: number;
+    createdAt: string
+    orderGroup?: {
+        id: number;
+        ref_no: string;
+    };
+    subProducts?:  orderSubProduct[];
+    [key: string]: unknown;
 }
