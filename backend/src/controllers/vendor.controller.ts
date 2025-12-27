@@ -143,7 +143,7 @@ export const vendorDashboardStats: RequestHandler = async (req, res, next) => {
             end_date: endDate.toISOString(),
             totalSales: Number(sales[0]?.total_sales ?? 0),
             totalOrders: Number(sales[0]?.total_orders ?? 0),
-            pendingOrders: pendingOrdersCount 
+            pendingOrders: pendingOrdersCount
         });
     } catch (error) {
         next(
@@ -153,4 +153,62 @@ export const vendorDashboardStats: RequestHandler = async (req, res, next) => {
         );
     }
 };
+
+export const getPaginatedOrderList: RequestHandler = async (req, res, next) => {
+    try {
+        const user = req.user
+
+        if (user?.type !== 'VENDOR')
+            return res.status(400).json({ message: 'user unauthorized' })
+
+        const vendorIds = await prisma.vendor.findMany({
+            where: {
+                userId: user?.id
+            },
+            select: {
+                id: true
+            }
+        })
+
+        const filterOptions = FilterService.parseQueryParams(req.query);
+
+        filterOptions.searchFields = filterOptions.searchFields || ['product.name', 'orderGroup.ref_no'];
+
+        filterOptions.filters = filterOptions.filters || [];
+        filterOptions.filters.push({
+            field: 'product.vendorId',
+            operator: 'in',
+            value: vendorIds.map(vendor => vendor.id)
+        });
+
+        // Add your custom includes
+        filterOptions.include = {
+            product: {
+                select: {
+                    id: true,
+                    name: true
+                }
+            },
+            orderGroup: {
+                select: {
+                    id: true,
+                    ref_no: true
+                }
+            }
+        };
+
+        const result = await FilterService.executePaginatedQuery(
+            prisma.order,
+            filterOptions
+        )
+
+        res.status(200).json({ success: true, ...result })
+    } catch (error) {
+        next(
+            error instanceof Error
+                ? { message: error.message, status: 500 }
+                : { message: "Server Error", status: 500 }
+        );
+    }
+}
 

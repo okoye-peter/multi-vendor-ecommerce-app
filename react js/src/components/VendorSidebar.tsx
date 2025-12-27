@@ -1,4 +1,4 @@
-import { LayoutDashboard, Package, ShoppingCart, AlertCircle, RotateCcw, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingCart, AlertCircle, Menu, X } from 'lucide-react';
 import type { VendorSidebarProps } from '../types/Index';
 import { Link } from 'react-router';
 
@@ -8,7 +8,7 @@ const VendorSidebar = ({ sidebarOpen, setSidebarOpen }: VendorSidebarProps) => {
         { id: 'products', label: 'Products', icon: Package, path: '/vendor/products' },
         { id: 'orders', label: 'Orders', icon: ShoppingCart, path: '/vendor/orders' },
         { id: 'expiry', label: 'Expiry Products', icon: AlertCircle, path: '/vendor/expiry' },
-        { id: 'returns', label: 'Returns', icon: RotateCcw, path: '/vendor/returns' },
+        // { id: 'returns', label: 'Returns', icon: RotateCcw, path: '/vendor/returns' },
     ];
 
     // Get current path to highlight active menu item

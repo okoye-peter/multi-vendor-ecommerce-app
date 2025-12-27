@@ -407,8 +407,6 @@ export const getAllProducts: RequestHandler = async (req, res, next) => {
         // Let FilterService.parseQueryParams handle all the parsing!
         const filterOptions = FilterService.parseQueryParams(req.query);
 
-        // Override/add specific settings
-        // filterOptions.limit = 24;
         filterOptions.searchFields = filterOptions.searchFields || ['name', 'description'];
 
         // Add your custom includes
@@ -688,10 +686,17 @@ export const getProductOrders: RequestHandler = async (req, res, next) => {
 
         const filterOptions = FilterService.parseQueryParams(req.query);
         filterOptions.searchFields = ['orderGroup.ref_no'];
-        filterOptions.where = {
-            ...filterOptions.where,  // Preserve any existing where conditions from query params
-            productId: Number(productId)  // Convert to number for proper type matching
-        }
+        
+        // filterOptions.where = {
+        //     ...filterOptions.where,  // Preserve any existing where conditions from query params
+        //     productId: Number(productId)  // Convert to number for proper type matching
+        // }
+        filterOptions.filters = filterOptions.filters || [];
+        filterOptions.filters.push({
+            field: 'productId',
+            operator: 'equals',
+            value: Number(productId)
+        });
 
 
         filterOptions.include = {
@@ -709,6 +714,7 @@ export const getProductOrders: RequestHandler = async (req, res, next) => {
                 }
             }
         };
+
         const result = await FilterService.executePaginatedQuery(
             prisma.order,
             filterOptions

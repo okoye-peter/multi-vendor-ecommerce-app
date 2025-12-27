@@ -7,32 +7,40 @@ import { toast } from 'react-toastify';
 
 const dateFilterSchema = z.object({
     startDate: z.coerce.date(),
-    endDate: z.coerce.date().optional().nullable()
+    endDate: z.union([
+        z.coerce.date(),
+        z.literal('').transform(() => null)
+    ]).optional().nullable()
 }).refine(
-        (data) => {
-            // Skip validation if no images provided (optional update)
-            if (data.startDate && data.endDate) {
-                const startDate = new Date(data.startDate);
-                const endDate = new Date(data.endDate);
-                return startDate.getTime() <= endDate.getTime();
-            }
-            return true
-        },
-        {
-            message: "start date can not be greater than end date",
-            path: ["startDate"]
+    (data) => {
+        if (data.startDate && data.endDate) {
+            const startDate = new Date(data.startDate);
+            const endDate = new Date(data.endDate);
+            return startDate.getTime() <= endDate.getTime();
         }
-    );
+        return true
+    },
+    {
+        message: "start date can not be greater than end date",
+        path: ["startDate"]
+    }
+);
 
 export type DateFilterData = z.infer<typeof dateFilterSchema>;
 
-const SaleReportDateFilter = ({ vendorId, productId }: {vendorId: number, productId: number}) => {
+const SaleReportDateFilter = ({ vendorId, productId }: { vendorId: number, productId: number }) => {
     const [isPending, setIsPending] = useState(false)
 
     const downloadReport: SubmitHandler<DateFilterData> = async (formData: DateFilterData) => {
         setIsPending(true);
         try {
-            const res = await axiosInstance.get(`vendors/${vendorId}/products/${productId}/sales_report?startDate=${formData.startDate}&endDate=${formData.endDate}`);
+            const startDateStr = formData.startDate.toISOString().split('T')[0];
+            const endDateStr = formData.endDate ? formData.endDate.toISOString().split('T')[0] : '';
+
+            const res = await axiosInstance.get(
+                `vendors/${vendorId}/products/${productId}/sales_report?startDate=${startDateStr}&endDate=${endDateStr}`
+            );
+
             toast.success(res.data.message)
             const modal = document.getElementById('reportDateFilterModal') as HTMLDialogElement;
             modal?.close();
@@ -45,12 +53,12 @@ const SaleReportDateFilter = ({ vendorId, productId }: {vendorId: number, produc
     }
 
     const {
-            register,
-            formState: { errors },
-            handleSubmit,
-        } = useForm({
-            resolver: zodResolver(dateFilterSchema)
-        })
+        register,
+        formState: { errors },
+        handleSubmit,
+    } = useForm({
+        resolver: zodResolver(dateFilterSchema)
+    })
 
 
     return (
@@ -95,21 +103,21 @@ const SaleReportDateFilter = ({ vendorId, productId }: {vendorId: number, produc
                                     {errors.endDate && <p className="mt-1 text-xs text-error">{errors.endDate.message}</p>}
                                 </div>
                             </div>
-                            
+
                             <button
-                                    className="block my-3 ml-auto btn btn-primary"
-                                    type='submit'
-                                    disabled={isPending}
-                                >
-                                    {isPending ? (
-                                        <>
-                                            <span className="loading loading-spinner loading-sm"></span>
-                                            Download
-                                        </>
-                                    ) : (
-                                        'Update Product'
-                                    )}
-                                </button>
+                                className="block my-3 ml-auto btn btn-primary"
+                                type='submit'
+                                disabled={isPending}
+                            >
+                                {isPending ? (
+                                    <>
+                                        <span className="loading loading-spinner loading-sm"></span>
+                                        Download
+                                    </>
+                                ) : (
+                                    'Update Product'
+                                )}
+                            </button>
                         </form>
                     </div>
                 </div>

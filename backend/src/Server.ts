@@ -27,12 +27,20 @@ import CartRoutes from './routers/cart.route.js'
 import orderRoutes from './routers/orders.route.js'
 import { placeOrder } from "./controllers/orders.controller.js";
 import { reportQueue } from "./queues/reportDownload.queue.js";
+import rateLimit from 'express-rate-limit';
 
 dotenv.config();
 
 const PORT = process.env.PORT || 5001;
 
 const app = express();
+
+let limiter = rateLimit({
+    max: 3,
+    windowMs: 20 * 60 * 1000, // 20 minutes
+    message: 'Too many failed attempt, try again after 20 minutes'
+})
+
 app.use(express.json());
 
 
@@ -88,7 +96,7 @@ const __dirname = path.dirname(__filename);
 // Serve static files from /public
 app.use(express.static(path.join(__dirname, "../public")));
 
-app.use('/api/auth', authRoute);
+app.use('/api/auth', limiter, authRoute);
 app.use('/api/locations', stateRoute);
 app.use('/api/departments', departmentRoute);
 app.use('/api/categories', categoryRoute);

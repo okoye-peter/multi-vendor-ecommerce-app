@@ -7,7 +7,6 @@ import {
     type ColumnDef,
     type SortingState,
     type ColumnFiltersState,
-    type Row,
 } from '@tanstack/react-table';
 import axiosInstance from '../libs/axios';
 import type { Filter, PaginationInfo } from '../types/Index';
@@ -73,9 +72,9 @@ function getPaginationRange(currentPage: number, totalPages: number): (number | 
 
     for (const i of range) {
         if (l) {
-            if (i - l === 2) {
+            if (i as number - l === 2) {
                 rangeWithDots.push(l + 1);
-            } else if (i - l !== 1) {
+            } else if (i as number - l !== 1) {
                 rangeWithDots.push('...');
             }
         }
@@ -140,6 +139,17 @@ export function DataTable<T extends Record<string, unknown>>({
         
         return fields;
     }, [columns, searchFields]);
+    
+    const handleRetry = () => {
+        fetchData(
+            debouncedSearch, 
+            appliedFilters, 
+            autoSearchFields,  
+            pagination.pageIndex, 
+            pagination.pageSize
+        );
+    };
+
 
     // Fetch data from API
     const fetchData = useCallback(async (
@@ -284,7 +294,25 @@ export function DataTable<T extends Record<string, unknown>>({
                     <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 stroke-current shrink-0" fill="none" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    <span>Error: {error}</span>
+                    <div className="flex-1">
+                        <span>Error: {error}</span>
+                    </div>
+                    <button 
+                        className="btn btn-sm btn-ghost"
+                        onClick={handleRetry}
+                        disabled={loading}
+                    >
+                        {loading ? (
+                            <span className="loading loading-spinner loading-sm"></span>
+                        ) : (
+                            <>
+                                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                                Retry
+                            </>
+                        )}
+                    </button>
                 </div>
             </div>
         );

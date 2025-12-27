@@ -21,6 +21,7 @@ import VendorLayout from './components/Layouts/VendorLayout.tsx';
 import VendorDashboard from './pages/vendor/Dashboard.tsx'
 import ProductsList from './pages/vendor/products/Index.tsx'
 import ViewProductRecords from './pages/vendor/products/Show.tsx'
+import VendorOrders from './pages/vendor/orders/Index.tsx'
 import ProductIndex from './pages/products/Index.tsx'
 import ProductDetails from './pages/products/Show.tsx'
 import { emptyCart, setCarts } from './store/CartSlice.ts';
@@ -48,37 +49,37 @@ function App() {
     };
     const isAuthenticated = Boolean(user);
 
-   useEffect(() => {
-    const fetchUserAndCart = async () => {
-        if (data && !isError && !isLoading) {
-            dispatch(setUser(data.user));
+    useEffect(() => {
+        const fetchUserAndCart = async () => {
+            if (data && !isError && !isLoading) {
+                dispatch(setUser(data.user));
 
-            try {
-                const res = await getCarts();
-                
-                if (res.isSuccess) {
-                    // Ensure cart is always an array
-                    const carts = Array.isArray(res.data) ? res.data : [res.data];
-                    console.log('carts', carts)
-                    dispatch(setCarts(carts));
+                try {
+                    const res = await getCarts();
+
+                    if (res.isSuccess) {
+                        // Ensure cart is always an array
+                        const carts = Array.isArray(res.data) ? res.data : [res.data];
+                        console.log('carts', carts)
+                        dispatch(setCarts(carts));
+                    }
+                } catch (err) {
+                    console.error("Failed to fetch carts:", err);
+                    toast.error("Error loading user's carts")
                 }
-            } catch (err) {
-                console.error("Failed to fetch carts:", err);
-                toast.error("Error loading user's carts" )
+
+                if (!data.user.emailVerifiedAt) {
+                    dispatch(setShowEmailVerificationModal(true));
+                }
+            } else if (isError && error && 'status' in error && error.status === 401) {
+                dispatch(setUser(null));
+                dispatch(emptyCart());
             }
+        };
 
-            if (!data.user.emailVerifiedAt) {
-                dispatch(setShowEmailVerificationModal(true));
-            }
-        } else if (isError && error && error.status === 401) {
-            dispatch(setUser(null));
-            dispatch(emptyCart());
-        }
-    };
-
-    fetchUserAndCart();
-}, [data, isError, isLoading, error, dispatch, getCarts]);
-
+        fetchUserAndCart();
+    }, [data, isError, isLoading, error, dispatch, getCarts]);
+    
     if (isLoading) {
         return (
             <div className="bg-base-200">
@@ -108,6 +109,7 @@ function App() {
                 {/* Vendor routes - parent route with layout */}
                 <Route path='/vendor' element={<VendorLayout>{isAuthenticated ? <Outlet /> : <Navigate to='/login' />}</VendorLayout>}>
                     <Route path='dashboard' element={<VendorDashboard />} />
+                    <Route path='orders' element={<VendorOrders />} />
                     <Route path='products' element={<ProductsList />} />
                     <Route path=':vendorId/products/:productId/' element={<ViewProductRecords />} />
                 </Route>

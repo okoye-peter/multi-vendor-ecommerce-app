@@ -27,6 +27,7 @@ import { createPaystackPaymentAuthorizationCode } from '../../libs/api'
 import { formatPrice } from '../../utils';
 import Paystack from '@paystack/inline-js';
 import axiosInstance from '../../libs/axios';
+import { isAxiosError } from 'axios';
 
 
 
@@ -100,38 +101,50 @@ const CartComponent = () => {
 
     const ProceedWithPayment = async () => {
         try {
-            setIsProcessingPayment(true)
+            setIsProcessingPayment(true);
             const res = await createPaystackPaymentAuthorizationCode();
+
             if (res.success) {
-                const popup = new Paystack()
+                const popup = new Paystack();
                 popup.resumeTransaction(res.data.accessCode, {
-                    onSuccess: (transaction) => {
+                    onSuccess: (transaction: Partial<{ reference: string }>) => {
                         console.log('Payment successful:', transaction);
                         // Start verification process
-                        verifyPaymentAndCreateOrder(transaction.reference);
+                        verifyPaymentAndCreateOrder(transaction.reference as string);
                     },
                     onCancel: () => {
-                        console.log('Payment cancelled');
                         toast.info('Payment cancelled');
                         setIsProcessingPayment(false);
                     },
-                    onError: (error) => {
-                        console.error('Payment error:', error);
-                        toast.error('Payment failed. Please try again.');
+                    onError: (error: unknown) => { // Use unknown for a safer approach
+                        if (isAxiosError(error)) {
+                            toast.error(error.response?.data);
+                        } else if (error instanceof Error) {
+                            console.error('Payment error:', error);
+                            toast.error(error.message);
+                        } else {
+                            console.error('Unknown payment error:', error);
+                            toast.error('Payment failed. Please try again.');
+                        }
                         setIsProcessingPayment(false);
                     }
-                })
+                });
             } else {
                 throw new Error('Error processing payment');
             }
-        } catch (error) {
-            console.log('ProceedWithPayment', error)
-            toast.error('Error processing payment, please try again later')
+        } catch (error: unknown) { // Remains unknown
+            if (isAxiosError(error)) {
+                toast.error(error.response?.data);
+            } else if (error instanceof Error) {
+                toast.error('Error processing payment: ' + error.message);
+            } else {
+                toast.error('Error processing payment, please try again later.');
+            }
         } finally {
-            setIsProcessingPayment(false)
+            setIsProcessingPayment(false);
         }
     }
-
+    
     // Function to poll for order creation (since webhook is async)
     const verifyPaymentAndCreateOrder = async (reference: string) => {
         setIsVerifying(true);
