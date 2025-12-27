@@ -1,16 +1,28 @@
 import type { RequestHandler } from "express";
 import z from "zod";
 import prisma from "../libs/prisma.js";
-import type { Prisma } from "@prisma/client";
 
 
 export const getWishlists: RequestHandler = async (req, res, next) => {
     try {
         const user = req.user
 
-        const wishlists = prisma.wishlist.findMany({
+        const wishlists = await prisma.wishlist.findMany({
             where: {
                 userId: user?.id!
+            },
+            include: {
+                product: {
+                    include: {
+                        images: {
+                            where: {
+                                default: true
+                            }
+                        },
+                        category: true,
+                        department: true,
+                    }
+                }
             }
         })
 
@@ -26,7 +38,7 @@ export const getWishlists: RequestHandler = async (req, res, next) => {
     }
 }
 
-export const addToWishlist: RequestHandler = async (req, res, next) => {
+export const toggleProductInWishlist: RequestHandler = async (req, res, next) => {
     try {
         const user = req.user;
         const productId = Number(req.params.productId)
@@ -36,16 +48,21 @@ export const addToWishlist: RequestHandler = async (req, res, next) => {
             await prisma.wishlist.findFirst({ where: { userId: user?.id!, productId: productId } }),
         ])
 
+        if (wishlist) {
+            await prisma.wishlist.delete({
+                where: {
+                    id: wishlist.id
+                }
+            })
+
+            return res.status(200).json({ message: 'product removed from wishlist successfully', wishlist })
+        }
+
         if (!product) {
             throw { status: 404, message: 'product not found' }
         }
 
-        if (wishlist) {
-            throw { status: 400, message: 'product already in wishlist' }
-        }
-
-
-        const newCart = await prisma.wishlist.create({
+        const newWishlist = await prisma.wishlist.create({
             data: {
                 quantity: 1,
                 productId,
@@ -53,7 +70,7 @@ export const addToWishlist: RequestHandler = async (req, res, next) => {
             }
         })
 
-        res.status(201).json({ message: 'product added to wishlist successfully', cart: newCart })
+        res.status(201).json({ message: 'product added to wishlist successfully', wishlist: newWishlist })
     } catch (error) {
         if (error instanceof Error) {
             res.status(500).json({ message: error.message });
@@ -65,33 +82,33 @@ export const addToWishlist: RequestHandler = async (req, res, next) => {
     }
 }
 
-export const removeFromWishlist: RequestHandler = async (req, res, next) => {
-    try {
-        const user = req.user;
-        const productId = Number(req.params.productId)
+// export const removeFromWishlist: RequestHandler = async (req, res, next) => {
+//     try {
+//         const user = req.user;
+//         const wishlistId = Number(req.params.wishlistId)
 
-        const wishlist = await prisma.wishlist.findFirst({ where: { userId: user?.id!, productId: productId } })
+//         const wishlist = await prisma.wishlist.findFirst({ where: { userId: user?.id!, id: wishlistId } })
 
-        await prisma.wishlist.delete({
-            where: {
-                productId_userId: {
-                    productId,
-                    userId: user?.id!
-                }
-            }
-        })
+//         if(!wishlist)
+//             return res.status(404).json({ message: 'product not in wishlist' })
 
-        res.status(201).json({ message: 'product removed from wishlist successfully', wishlist })
-    } catch (error) {
-        if (error instanceof Error) {
-            res.status(500).json({ message: error.message });
-        } else if (typeof error === "object" && error !== null && "status" in (error as Record<string, any>)) {
-            throw error;
-        } else {
-            res.status(500).json({ message: "Server Error" });
-        }
-    }
-}
+//         await prisma.wishlist.delete({
+//             where: {
+//                 id: wishlistId
+//             }
+//         })
+
+//         res.status(201).json({ message: 'product removed from wishlist successfully', wishlist })
+//     } catch (error) {
+//         if (error instanceof Error) {
+//             res.status(500).json({ message: error.message });
+//         } else if (typeof error === "object" && error !== null && "status" in (error as Record<string, any>)) {
+//             throw error;
+//         } else {
+//             res.status(500).json({ message: "Server Error" });
+//         }
+//     }
+// }
 
 export const moveWishlistItemToCart: RequestHandler = async (req, res, next) => {
     try {
@@ -152,5 +169,25 @@ export const moveWishlistItemToCart: RequestHandler = async (req, res, next) => 
         }
     }
 };
+
+export const clearWishlist: RequestHandler = async (req, res, next) => {
+    try {
+        const user = req.user;
+
+        await prisma.wishlist.deleteMany({
+            where: {
+                userId: user?.id!
+            }
+        })
+
+        res.status(200).json({ message: 'wishlist cleared successfully' })
+    } catch (error) {
+         if (error instanceof Error) {
+            res.status(500).json({ message: error.message });
+        } else {
+            res.status(500).json({ message: "Server Error" });
+        }
+    }
+}
 
 

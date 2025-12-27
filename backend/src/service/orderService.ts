@@ -113,7 +113,14 @@ export default class OrderGroupService {
 
                         await tx.subProduct.update({
                             where: { id: subProduct.id },
-                            data: { quantity: { decrement: quantityToDeduct } }
+                            data: { 
+                                quantity: { 
+                                    decrement: quantityToDeduct 
+                                },
+                                quantity_sold: {
+                                    increment: quantityToDeduct
+                                } 
+                            }
                         });
 
                         remainingQuantity -= quantityToDeduct;

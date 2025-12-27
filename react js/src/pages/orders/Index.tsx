@@ -254,7 +254,7 @@ const OrdersListPage: React.FC = () => {
                         <h1 className="mb-2 text-4xl font-bold text-gray-800">Orders</h1>
                         <p className="text-gray-600">Manage and track all your orders</p>
                     </div>
-                    <div className="bg-white shadow stats">
+                    <div className=" shadow-2xl stats">
                         <div className="stat">
                             <div className="stat-title">Total Orders</div>
                             <div className="text-3xl stat-value text-primary">
@@ -265,7 +265,7 @@ const OrdersListPage: React.FC = () => {
                 </div>
 
                 {/* Filters and Search */}
-                <div className="mb-6 bg-white shadow-xl card">
+                <div className="mb-6 shadow-xl card">
                     <div className="card-body">
                         <div className="flex flex-col gap-4">
                             {/* First Row: Search and Status Filter */}
@@ -424,7 +424,7 @@ const OrdersListPage: React.FC = () => {
 
                 {/* Loading State */}
                 {isLoading && (
-                    <div className="flex items-center justify-center py-16 bg-white shadow-xl card">
+                    <div className="flex items-center justify-center py-16 shadow-xl card">
                         <span className="loading loading-spinner loading-lg text-primary"></span>
                     </div>
                 )}
@@ -440,7 +440,7 @@ const OrdersListPage: React.FC = () => {
                 {/* Orders List - Desktop Table */}
                 {!isLoading && !error && ordersData && (
                     <>
-                        <div className="hidden overflow-hidden bg-white shadow-xl lg:block card">
+                        <div className="hidden overflow-hidden shadow-xl lg:block card">
                             <div className="overflow-x-auto">
                                 <table className="table table-zebra">
                                     <thead className="bg-base-200">
@@ -488,7 +488,7 @@ const OrdersListPage: React.FC = () => {
                         {/* Orders List - Mobile Cards */}
                         <div className="space-y-4 lg:hidden">
                             {ordersData.data.map((order) => (
-                                <div key={order.id} className="bg-white shadow-xl card">
+                                <div key={order.id} className="shadow-xl card">
                                     <div className="card-body">
                                         <div className="flex items-start justify-between mb-3">
                                             <div>
@@ -529,7 +529,7 @@ const OrdersListPage: React.FC = () => {
 
                         {/* Pagination */}
                         {ordersData.data.length > 0 && (
-                            <div className="mt-6 bg-white shadow-xl card">
+                            <div className="mt-6 shadow-xl card">
                                 <div className="card-body">
                                     <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
                                         <div className="text-sm text-gray-600">
@@ -547,7 +547,7 @@ const OrdersListPage: React.FC = () => {
 
                 {/* Empty State */}
                 {!isLoading && !error && ordersData?.data.length === 0 && (
-                    <div className="bg-white shadow-xl card">
+                    <div className=" shadow-xl card">
                         <div className="items-center py-16 text-center card-body">
                             <Package className="w-16 h-16 mb-4 text-gray-400" />
                             <h3 className="mb-2 text-2xl font-bold text-gray-700">No Orders Found</h3>

@@ -5,6 +5,7 @@ backend/prisma/src
 backend/prisma/schema/migrations
 backend/public/uploads
 backend/prisma/generated-schema.prisma
+backend/dist/
 
 react js/logs
 react js/*.log

@@ -164,7 +164,7 @@ const OrderDetailsPage: React.FC = () => {
     if (!order) return <div className="p-10 text-center">Failed to load order</div>;
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50">
+        <div className="min-h-screen  from-indigo-50 via-purple-50 to-pink-50">
             <div className="container px-4 py-8 mx-auto max-w-7xl">
 
                 {/* HEADER */}
@@ -213,7 +213,7 @@ const OrderDetailsPage: React.FC = () => {
                     <div className="space-y-6 lg:col-span-2">
 
                         {/* ITEMS */}
-                        <div className="bg-white shadow-xl card">
+                        <div className="shadow-xl card">
                             <div className="card-body">
                                 <h2 className="mb-4 text-2xl card-title">
                                     <Package className="w-6 h-6" />
@@ -243,7 +243,7 @@ const OrderDetailsPage: React.FC = () => {
                         </div>
 
                         {/* TIMELINE (DUMMY) */}
-                        <div className="bg-white shadow-xl card">
+                        <div className="shadow-xl card">
                             <div className="card-body">
                                 <h2 className="mb-4 text-2xl card-title">
                                     <Clock className="w-6 h-6" />
@@ -273,7 +273,7 @@ const OrderDetailsPage: React.FC = () => {
                         {/* ADDRESSES (DUMMY) */}
                         <div className="grid gap-6 md:grid-cols-2">
                             {[dummyAddress, dummyAddress].map((addr, i) => (
-                                <div key={i} className="bg-white shadow-xl card">
+                                <div key={i} className="shadow-xl card">
                                     <div className="card-body">
                                         <h2 className="mb-4 text-xl card-title">
                                             <MapPin className="w-5 h-5" />
@@ -292,7 +292,7 @@ const OrderDetailsPage: React.FC = () => {
                     <div className="space-y-6">
 
                         {/* CUSTOMER (DUMMY) */}
-                        <div className="bg-white shadow-xl card">
+                        <div className="shadow-xl card">
                             <div className="card-body">
                                 <h2 className="mb-4 text-xl card-title">
                                     <User className="w-5 h-5" />
@@ -317,7 +317,7 @@ const OrderDetailsPage: React.FC = () => {
                         </div>
 
                         {/* PAYMENT (DUMMY) */}
-                        <div className="bg-white shadow-xl card">
+                        <div className="shadow-xl card">
                             <div className="card-body">
                                 <h2 className="mb-4 text-xl card-title">
                                     <CreditCard className="w-5 h-5" />
@@ -330,7 +330,7 @@ const OrderDetailsPage: React.FC = () => {
                         </div>
 
                         {/* SUMMARY */}
-                        <div className="bg-white shadow-xl card">
+                        <div className="shadow-xl card">
                             <div className="card-body">
                                 <h2 className="mb-4 text-xl font-bold">
                                     Order Summary

@@ -15,7 +15,7 @@ import { emptyCart } from '../store/CartSlice.ts';
 export const Navbar = () => {
     const user = useSelector((state: RootState) => state.auth.user)
     const carts = useSelector((state: RootState) => state.cart.carts);
-    
+
     const [showSearch, setShowSearch] = useState(false);
     const dispatch = useDispatch();
     const [searchQuery, setSearchQuery] = useState('');
@@ -149,10 +149,14 @@ export const Navbar = () => {
                         {user && (
                             <button className="btn btn-ghost btn-circle">
                                 <div className="indicator">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    {/* <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                                    </svg> */}
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" className="size-5">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z" />
                                     </svg>
-                                    <span className="badge badge-xs badge-primary indicator-item"></span>
+
+                                    <span className="badge badge-xs badge-primary indicator-item">2</span>
                                 </div>
                             </button>
                         )}

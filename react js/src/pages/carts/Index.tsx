@@ -74,7 +74,7 @@ const CartComponent = () => {
     }, [subtotal, appliedPromo]);
 
     const shipping = 0;
-    const tax =0; // 7.5% VAT
+    const tax = 0; // 7.5% VAT
     // const shipping = subtotal > 50000 ? 0 : 5000;
     // const tax = (subtotal - discount) * 0.075; // 7.5% VAT
     const total = subtotal - discount + shipping + tax;
@@ -137,22 +137,32 @@ const CartComponent = () => {
         setIsVerifying(true);
         setVerificationComplete(false);
 
-        const maxAttempts = 20; // Poll for up to 40 seconds (20 * 2s)
-        let attempts = 0;
+        const successPollInterval = 3000; // Poll every 3 seconds on success (order not found yet)
+        const errorRetryInterval = 10000; // Retry after 10 seconds on error
+        const maxDuration = 90000; // Maximum 1 minute 30 seconds
+        const startTime = Date.now();
 
         const pollForOrder = async (): Promise<void> => {
             try {
-                attempts++;
+                const elapsedTime = Date.now() - startTime;
 
-                // Replace with your actual API endpoint to check order status
-                const response = await axiosInstance.get(`/orders/check-payment-status?reference=${reference}`, {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                });
+                // Check if we've exceeded the maximum duration
+                if (elapsedTime >= maxDuration) {
+                    setVerificationSuccess(false);
+                    setVerificationMessage(
+                        `Order verification timed out. Your payment was processed with reference: ${reference}. Please check your orders page in a few minutes or contact support if the order doesn't appear.`
+                    );
+                    setIsVerifying(false);
+                    setVerificationComplete(true);
+                    return;
+                }
 
-                const data: VerificationResponse = await response.data;
+                // Make API call to check order status
+                const response = await axiosInstance.get(
+                    `/orders/check-payment-status?reference=${reference}`
+                );
+
+                const data: VerificationResponse = response.data;
 
                 if (data.success) {
                     // Order found and created successfully
@@ -161,32 +171,36 @@ const CartComponent = () => {
                     setOrderRefNo(data.order_ref_no || '');
 
                     // Clear cart after successful order
-                    await clearCartMutation().unwrap();
-                    dispatch(emptyCart());
+                    try {
+                        await clearCartMutation().unwrap();
+                        dispatch(emptyCart());
+                    } catch (cartError) {
+                        console.error('Failed to clear cart:', cartError);
+                        // Don't fail the whole process if cart clearing fails
+                    }
 
                     setIsVerifying(false);
                     setVerificationComplete(true);
-                } else if (attempts >= maxAttempts) {
-                    // Timeout - webhook might have failed
-                    setVerificationSuccess(false);
-                    setVerificationMessage('Order verification is taking longer than expected. Please check your orders page or contact support with reference: ' + reference);
-                    setIsVerifying(false);
-                    setVerificationComplete(true);
                 } else {
-                    // Order not created yet, poll again
-                    setTimeout(() => pollForOrder(), 2000); // Poll every 2 seconds
+                    // Order not created yet, continue polling with shorter interval
+                    setTimeout(() => pollForOrder(), successPollInterval);
                 }
             } catch (error) {
                 console.error('Verification error:', error);
 
-                if (attempts >= maxAttempts) {
+                const elapsedTime = Date.now() - startTime;
+
+                // If we've exceeded max duration, stop polling
+                if (elapsedTime >= maxDuration) {
                     setVerificationSuccess(false);
-                    setVerificationMessage('An error occurred while verifying payment. Please check your orders page or contact support with reference: ' + reference);
+                    setVerificationMessage(
+                        `Unable to verify payment status. Your payment reference is: ${reference}. Please check your orders page shortly or contact support if the order doesn't appear.`
+                    );
                     setIsVerifying(false);
                     setVerificationComplete(true);
                 } else {
-                    // Retry on error
-                    setTimeout(() => pollForOrder(), 2000);
+                    // Retry after longer interval on error (10 seconds)
+                    setTimeout(() => pollForOrder(), errorRetryInterval);
                 }
             }
         };
