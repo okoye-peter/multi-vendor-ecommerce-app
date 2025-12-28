@@ -3,17 +3,30 @@ import { register, login, sendPasswordResetCode, resetPassword, verifyEmail, log
 import { isAuthenticated } from '../middleware/auth.middleware.js';
 import { guestOnly } from '../middleware/guest.middleware.js';
 import { handleSingleFileUpload, rollbackOnError, uploadSingleFile } from '../middleware/fileUpload.js';
+import rateLimit from 'express-rate-limit';
 
 
 const router = express.Router();
 
-router.post('/register', uploadSingleFile("picture"), handleSingleFileUpload("avatars"), rollbackOnError(), guestOnly, register);
-router.post('/login', guestOnly, login);
+let limiter = rateLimit({
+    max: 5,
+    windowMs: 20 * 60 * 1000, // 20 minutes
+    message: 'Too many failed attempt, try again after 20 minutes'
+})
+
+let passwordLimiter = rateLimit({
+    max: 1,
+    windowMs: 10 * 60 * 1000, // 20 minutes
+    message: 'Too many failed attempt, try again after 20 minutes'
+})
+
+router.post('/register', uploadSingleFile("picture"), handleSingleFileUpload("avatars"), rollbackOnError(), guestOnly, limiter, register);
+router.post('/login', guestOnly, limiter, login);
 router.post('/logout', isAuthenticated, logout);
-router.post('/password/reset/code', guestOnly, sendPasswordResetCode);
-router.post('/password/reset', guestOnly, resetPassword);
-router.post('/email/verification/code/resend', isAuthenticated, resendEmailVerificationCode);
-router.post('/email/verify', isAuthenticated, verifyEmail);
+router.post('/password/reset/code', guestOnly, passwordLimiter, sendPasswordResetCode);
+router.post('/password/reset', guestOnly, passwordLimiter, resetPassword);
+router.post('/email/verification/code/resend', isAuthenticated, passwordLimiter, resendEmailVerificationCode);
+router.post('/email/verify', isAuthenticated, passwordLimiter, verifyEmail);
 router.get('/user', isAuthenticated, getAuthenticatedUser);
 
 

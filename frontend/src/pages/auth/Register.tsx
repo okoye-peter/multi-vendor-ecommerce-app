@@ -203,7 +203,7 @@ const Register = () => {
 
 
     return (
-        <div className="flex items-center justify-center min-h-screen py-8 bg-base-200">
+        <div className="flex items-center justify-center min-h-screen py-24 bg-base-200">
             <div className="w-full max-w-2xl p-8 rounded-lg shadow-2xl bg-base-100">
                 {/* Header */}
                 <div className="mb-8 text-center">

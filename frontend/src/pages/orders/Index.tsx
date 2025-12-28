@@ -247,7 +247,7 @@ const OrdersListPage: React.FC = () => {
 
     return (
         <div className="min-h-screen ">
-            <div className="container px-4 py-8 mx-auto max-w-7xl">
+            <div className="container px-4 pt-24 pb-6 mx-auto max-w-7xl">
                 {/* Header */}
                 <div className="flex flex-col gap-4 mb-8 md:flex-row md:items-center md:justify-between">
                     <div>

@@ -166,7 +166,7 @@ const OrderDetailsPage: React.FC = () => {
 
     return (
         <div className="min-h-screen from-indigo-50 via-purple-50 to-pink-50">
-            <div className="container px-4 py-8 mx-auto max-w-7xl">
+            <div className="container px-4 pt-24 pb-6 mx-auto max-w-7xl">
 
                 {/* HEADER */}
                 <div className="mb-6">
