@@ -315,7 +315,7 @@ const Register = () => {
                                         getOptionLabel={(option: Country) => option.name}
                                         getOptionValue={(option: Country) => String(option.id)}
                                         value={countries?.find(country => country.id === selectedCountry) || null}
-                                        onChange={(val: state) => {
+                                        onChange={(val: Country | null) => {
                                             setSelectedCountry(val?.id || null);
                                             setValue('state', null); // Reset state when country changes
                                         }}
@@ -357,7 +357,7 @@ const Register = () => {
                                                 getOptionLabel={(option: state) => option.name}
                                                 getOptionValue={(option: state) => String(option.id)}
                                                 value={states?.find((s) => String(s.id) === field.value) || null}
-                                                onChange={(val: state) => field.onChange(val ? String(val.id) : '')}
+                                                onChange={(val: state | '') => field.onChange(val ? String(val.id) : '')}
                                                 onBlur={field.onBlur}
                                                 isClearable
                                                 isLoading={statesIsLoading}
