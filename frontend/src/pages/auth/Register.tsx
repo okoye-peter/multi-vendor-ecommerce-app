@@ -357,7 +357,7 @@ const Register = () => {
                                                 getOptionLabel={(option: state) => option.name}
                                                 getOptionValue={(option: state) => String(option.id)}
                                                 value={states?.find((s) => String(s.id) === field.value) || null}
-                                                onChange={(val: state | '') => field.onChange(val ? String(val.id) : '')}
+                                                onChange={(val: state | null) => field.onChange(val ? String(val.id) : null)}
                                                 onBlur={field.onBlur}
                                                 isClearable
                                                 isLoading={statesIsLoading}
@@ -366,10 +366,10 @@ const Register = () => {
                                                     control: () => '!bg-transparent',
                                                     menu: () => 'bg-base-100 border border-base-300',
                                                     menuList: () => 'bg-base-100',
-                                                    option: (state: {isSelected: boolean; isFocused: boolean}) =>
-                                                        state.isSelected
+                                                    option: (state: {isSelected: boolean; isFocused: boolean} | null) =>
+                                                        state?.isSelected
                                                             ? 'bg-primary text-primary-content'
-                                                            : state.isFocused
+                                                            : state?.isFocused
                                                                 ? 'bg-base-200'
                                                                 : '',
                                                     input: () => '!text-base-content',
