@@ -270,7 +270,7 @@ const EditProduct = ({ productId, vendorId, onProductUpdated, categories, depart
                                                     getOptionLabel={(option: { name: string, value: boolean }) => option.name}
                                                     getOptionValue={(option: { name: string, value: boolean }) => String(option.value)}
                                                     value={statuses?.find(status => status.value === selectedStatus) || null}
-                                                    onChange={(val: { name: string, value: boolean }) => {
+                                                    onChange={(val: { name: string, value: boolean } | null) => {
                                                         const statusValue = val?.value ?? true;
                                                         setSelectedStatus(statusValue);
                                                         field.onChange(statusValue);
@@ -344,7 +344,7 @@ const EditProduct = ({ productId, vendorId, onProductUpdated, categories, depart
                                                         control: () => '!bg-transparent',
                                                         menu: () => 'bg-base-100 border border-base-300',
                                                         menuList: () => 'bg-base-100',
-                                                        option: (state: { isSelected: boolean, isFocused: boolean }) =>
+                                                        option: (state: { isSelected: boolean, isFocused: boolean } | null) =>
                                                             state.isSelected
                                                                 ? 'bg-primary text-primary-content'
                                                                 : state.isFocused
@@ -378,7 +378,7 @@ const EditProduct = ({ productId, vendorId, onProductUpdated, categories, depart
                                                     getOptionLabel={(option: Category) => option.name}
                                                     getOptionValue={(option: Category) => String(option.id)}
                                                     value={categories?.find(category => category.id === selectedCategory) || null}
-                                                    onChange={(val: Category) => {
+                                                    onChange={(val: Category | null) => {
                                                         const catId = val?.id || null;
                                                         setSelectedCategory(catId);
                                                         field.onChange(catId);
@@ -425,7 +425,7 @@ const EditProduct = ({ productId, vendorId, onProductUpdated, categories, depart
                                                     getOptionLabel={(option: Vendor) => option.name}
                                                     getOptionValue={(option: Vendor) => String(option.id)}
                                                     value={vendors?.find((vendor: Vendor) => vendor.id === selectedVendor) || null}
-                                                    onChange={(val: Vendor) => {
+                                                    onChange={(val: Vendor | null) => {
                                                         const vendorId = val?.id || null;
                                                         setSelectedVendor(vendorId);
                                                         field.onChange(vendorId);

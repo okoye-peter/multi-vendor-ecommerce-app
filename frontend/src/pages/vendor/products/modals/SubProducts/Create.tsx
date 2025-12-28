@@ -158,7 +158,7 @@ const Create = ({ vendorId, productId, onProductBatchCreated }: Props) => {
                                                 getOptionLabel={(option: { name: string, value: boolean }) => option.name}
                                                 getOptionValue={(option: { name: string, value: boolean }) => String(option.value)}
                                                 value={statuses?.find(status => status.value === selectedStatus) || null}
-                                                onChange={(val: { name: string, value: boolean }) => {
+                                                onChange={(val: { name: string, value: boolean } | null) => {
                                                     const statusValue = val?.value ?? true;
                                                     setSelectedStatus(statusValue);
                                                     field.onChange(statusValue);
