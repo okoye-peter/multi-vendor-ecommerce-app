@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingBag, Search, Menu, Heart } from 'lucide-react';
+import { ShoppingBag, Menu, Heart } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { RootState } from '../store/Index';
 import { useDispatch, useSelector } from 'react-redux';
@@ -18,8 +18,8 @@ export const Navbar = () => {
     const navigate = useNavigate();
 
     const [isScrolled, setIsScrolled] = useState(false);
-    const [showSearch, setShowSearch] = useState(false);
-    const [searchQuery, setSearchQuery] = useState('');
+    // const [showSearch, setShowSearch] = useState(false);
+    // const [searchQuery, setSearchQuery] = useState('');
     const [logoutMutation, { isLoading: isLoggingOut }] = useLogoutMutation();
 
     useEffect(() => {
@@ -52,16 +52,16 @@ export const Navbar = () => {
         return name.split(' ').map(a => a.trim().toUpperCase().charAt(0)).join('');
     };
 
-    const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        console.log('Searching for:', searchQuery);
-        setSearchQuery('');
-    };
+    // const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
+    //     e.preventDefault();
+    //     console.log('Searching for:', searchQuery);
+    //     setSearchQuery('');
+    // };
 
-    const closeSearch = () => {
-        setShowSearch(false);
-        setSearchQuery('');
-    };
+    // const closeSearch = () => {
+    //     setShowSearch(false);
+    //     setSearchQuery('');
+    // };
 
     return (
         <>
