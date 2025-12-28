@@ -239,7 +239,7 @@ const CartComponent = () => {
     const canCheckout = cartItems.length > 0 && cartItems.every(item => item.product?.quantity);
 
     return (
-        <div className="min-h-screen bg-base-200" >
+        <div className="min-h-screen pt-24 pb-6 bg-base-200" >
 
             {/* Verification Modal (Blocking) */}
             {isVerifying && (

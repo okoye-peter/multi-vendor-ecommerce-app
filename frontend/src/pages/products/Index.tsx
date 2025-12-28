@@ -225,7 +225,7 @@ export default function ProductsList() {
     return (
         <div className="min-h-screen">
 
-            <div className="px-4 py-6 ">
+            <div className="px-4 pt-24 pb-6">
                 {/* Mobile Filter Button */}
                 <div className="mb-4 lg:hidden">
                     <button
