@@ -64,7 +64,6 @@ export const toggleProductInWishlist: RequestHandler = async (req, res, next) =>
 
         const newWishlist = await prisma.wishlist.create({
             data: {
-                quantity: 1,
                 productId,
                 userId: user?.id!
             }
@@ -182,7 +181,7 @@ export const clearWishlist: RequestHandler = async (req, res, next) => {
 
         res.status(200).json({ message: 'wishlist cleared successfully' })
     } catch (error) {
-         if (error instanceof Error) {
+        if (error instanceof Error) {
             res.status(500).json({ message: error.message });
         } else {
             res.status(500).json({ message: "Server Error" });

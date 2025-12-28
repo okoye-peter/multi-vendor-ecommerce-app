@@ -107,7 +107,7 @@ export const reportWorker = new Worker<ReportJobData>(
                         return {
                             id: index + 1,
                             ref_no: order.orderGroup.ref_no,
-                            status: getOrderStatusLabel(order.orderGroup.status),
+                            status: getOrderStatusLabel(order.orderGroup.status as import('../enums/orderStatus.js').OrderStatusValue),
                             amount: (order.quantity * order.priceOnPurchase),
                             quantity: order.quantity,
                             priceOnPurchase: order.priceOnPurchase,

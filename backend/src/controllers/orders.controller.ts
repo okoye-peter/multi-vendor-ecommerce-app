@@ -10,12 +10,6 @@ import type { orderGroup } from '@prisma/client';
 
 const orderService = new OrderGroupService;
 
-type fullOrderGroupType = orderGroup & {
-    _count: {
-        order: number
-    }
-}
-
 export const getUserOrders: RequestHandler = async (req, res, next) => {
     try {
         const user = req.user;

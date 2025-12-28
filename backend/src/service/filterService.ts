@@ -274,8 +274,8 @@ export class FilterService {
     }
 
     /**
-     * Parse query parameters from request
-     */
+  * Parse query parameters from request
+  */
     static parseQueryParams(query: Record<string, unknown>): FilterOptions {
         const options: FilterOptions = {
             page: typeof query.page === 'string' ? parseInt(query.page) : 1,
@@ -300,9 +300,50 @@ export class FilterService {
         // Parse filters from query params
         const filters: FilterCondition[] = [];
 
+        // Track which keys have been processed to avoid duplicates
+        const processedKeys = new Set<string>();
+
+        // FIRST: Handle date range filters with _from and _to suffixes
         Object.keys(query).forEach(key => {
-            // Skip pagination, sorting, and special params
-            if (['page', 'limit', 'sortBy', 'sortOrder', 'search', 'searchFields', 'start_date', 'end_date'].includes(key)) {
+            if (key.endsWith('_from')) {
+                const baseField = key.replace(/_from$/, '');
+                const dateValue = this.parseValue(query[key]);
+
+                if (dateValue instanceof Date && !isNaN(dateValue.getTime())) {
+                    filters.push({
+                        field: baseField,
+                        operator: 'gte',
+                        value: dateValue,
+                    });
+                }
+                processedKeys.add(key);
+            }
+
+            if (key.endsWith('_to')) {
+                const baseField = key.replace(/_to$/, '');
+                const dateValue = this.parseValue(query[key]);
+
+                if (dateValue instanceof Date && !isNaN(dateValue.getTime())) {
+                    // Add one day to include the entire end date
+                    const adjustedDate = new Date(dateValue);
+                    adjustedDate.setDate(adjustedDate.getDate() + 1);
+                    filters.push({
+                        field: baseField,
+                        operator: 'lte',
+                        value: adjustedDate,
+                    });
+                }
+                processedKeys.add(key);
+            }
+        });
+
+        // SECOND: Handle other query parameters
+        Object.keys(query).forEach(key => {
+            // Skip if already processed or is a special param
+            if (
+                processedKeys.has(key) ||
+                ['page', 'limit', 'sortBy', 'sortOrder', 'search', 'searchFields', 'start_date', 'end_date', 'startDate', 'endDate'].includes(key)
+            ) {
                 return;
             }
 
@@ -373,7 +414,7 @@ export class FilterService {
             }
         });
 
-        // Handle date range filters
+        // THIRD: Handle legacy date range filters (start_date, end_date, startDate, endDate)
         if (typeof query.start_date === 'string') {
             const dateFrom = new Date(query.start_date);
             if (!isNaN(dateFrom.getTime())) {
@@ -387,6 +428,30 @@ export class FilterService {
 
         if (typeof query.end_date === 'string') {
             const dateTo = new Date(query.end_date);
+            if (!isNaN(dateTo.getTime())) {
+                // Add one day to include the entire end date
+                dateTo.setDate(dateTo.getDate() + 1);
+                filters.push({
+                    field: 'createdAt',
+                    operator: 'lte',
+                    value: dateTo,
+                });
+            }
+        }
+
+        if (typeof query.startDate === 'string') {
+            const dateFrom = new Date(query.startDate);
+            if (!isNaN(dateFrom.getTime())) {
+                filters.push({
+                    field: 'createdAt',
+                    operator: 'gte',
+                    value: dateFrom,
+                });
+            }
+        }
+
+        if (typeof query.endDate === 'string') {
+            const dateTo = new Date(query.endDate);
             if (!isNaN(dateTo.getTime())) {
                 // Add one day to include the entire end date
                 dateTo.setDate(dateTo.getDate() + 1);

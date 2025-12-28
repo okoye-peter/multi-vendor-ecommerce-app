@@ -27,12 +27,20 @@ import CartRoutes from './routers/cart.route.js'
 import orderRoutes from './routers/orders.route.js'
 import { placeOrder } from "./controllers/orders.controller.js";
 import { reportQueue } from "./queues/reportDownload.queue.js";
+import rateLimit from 'express-rate-limit';
 
 dotenv.config();
 
 const PORT = process.env.PORT || 5001;
 
 const app = express();
+
+let limiter = rateLimit({
+    max: 3,
+    windowMs: 20 * 60 * 1000, // 20 minutes
+    message: 'Too many failed attempt, try again after 20 minutes'
+})
+
 app.use(express.json());
 
 
@@ -54,16 +62,21 @@ createBullBoard({
 
 const corsConfig: CorsOptions = {
     origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-        const allowedOrigins = ["https://yourapp.com", "https://www.yourapp.com"];
+        const allowedOrigins = ["https://yourapp.com", "https://www.yourapp.com", "http://localhost:5004"];
+
+        // Allow requests with no origin (like mobile apps, curl, Postman, or same-origin)
+        if (!origin) {
+            return callback(null, true);
+        }
 
         if (
             process.env.NODE_ENV === "development" &&
-            origin && ["http://localhost:5173", "http://127.0.0.1:5173", 'http://localhost:5004'].includes(origin)
+            ["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:5004"].includes(origin)
         ) {
             return callback(null, true);
         }
 
-        if (!origin || allowedOrigins.includes(origin)) {
+        if (allowedOrigins.includes(origin)) {
             callback(null, true);
         } else {
             callback(new Error("Not allowed by CORS"));
@@ -78,6 +91,15 @@ const corsConfig: CorsOptions = {
 // server.ts
 app.use(helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" },
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            imgSrc: ["'self'", "data:", "https://res.cloudinary.com"],
+            scriptSrc: ["'self'", "'unsafe-inline'"],
+            styleSrc: ["'self'", "'unsafe-inline'"],
+            connectSrc: ["'self'"],
+        },
+    },
 }));
 app.use(cors(corsConfig));
 app.use(useragent());
@@ -86,9 +108,9 @@ app.use(useragent());
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 // Serve static files from /public
-app.use(express.static(path.join(__dirname, "../public")));
+// app.use(express.static(path.join(__dirname, "../public")));
 
-app.use('/api/auth', authRoute);
+app.use('/api/auth', limiter, authRoute);
 app.use('/api/locations', stateRoute);
 app.use('/api/departments', departmentRoute);
 app.use('/api/categories', categoryRoute);
@@ -102,8 +124,40 @@ app.use('/errors', ErrorRoutes);
 
 
 app.use('/admin/queues', serverAdapter.getRouter());
+
+// Serve React app (both in development and production)
+const isProduction = process.env.NODE_ENV === 'production';
+const frontendPath = path.resolve(__dirname, '..', '..', 'frontend', 'dist');
+
+console.log(`Environment: ${process.env.NODE_ENV || 'development (not set)'}`);
+console.log(`Frontend path: ${frontendPath}`);
+
+// Serve static files with fallback to index.html for client-side routing
+app.use(express.static(frontendPath));
+
+// For any route that doesn't match an API endpoint or static file, serve index.html
+app.use((req, res, next) => {
+    // Skip if it's an API route or admin route
+    if (req.path.startsWith('/api/') || req.path.startsWith('/admin/')) {
+        return next();
+    }
+
+    // Skip if the request is for a file with an extension (static asset)
+    const hasFileExtension = path.extname(req.path) !== '';
+    if (hasFileExtension) {
+        return next();
+    }
+
+    // For all other routes (client-side navigation), serve index.html
+    const indexPath = path.join(frontendPath, 'index.html');
+    console.log(`Serving index.html for route: ${req.path}`);
+    res.sendFile(indexPath);
+});
+
 // Error Handling Middlewares
-app.use(routeNotFoundErrorHandler);
+if (!isProduction) {
+    app.use(routeNotFoundErrorHandler);
+}
 app.use(errorHandler);
 
 app.listen(PORT, () => {
