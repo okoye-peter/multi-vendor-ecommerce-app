@@ -1,50 +1,46 @@
-export enum OrderStatusValue {
-    PENDING = 0,
-    CONFIRMED = 1,
-    AWAITING_SHIPMENT = 2,
-    SHIPPED = 3,
-    DELIVERED = 4,
-    CANCELLED = 5
-}
+export const OrderStatusValue = {
+  PENDING: 0,
+  CONFIRMED: 1,
+  AWAITING_SHIPMENT: 2,
+  SHIPPED: 3,
+  DELIVERED: 4,
+  CANCELLED: 5,
+} as const;
 
-export type OrderStatusLabel = keyof typeof OrderStatusValue;
+export type OrderStatusValue =
+  typeof OrderStatusValue[keyof typeof OrderStatusValue];
 
-export const OrderStatusLabels: Record<number, string> = {
-    [OrderStatusValue.PENDING]: 'Pending',
-    [OrderStatusValue.CONFIRMED]: 'Confirmed',
-    [OrderStatusValue.AWAITING_SHIPMENT]: 'Awaiting Shipment',
-    [OrderStatusValue.SHIPPED]: 'Shipped',
-    [OrderStatusValue.DELIVERED]: 'Delivered',
-    [OrderStatusValue.CANCELLED]: 'Cancelled'
+export const OrderStatusLabels: Record<OrderStatusValue, string> = {
+  [OrderStatusValue.PENDING]: 'Pending',
+  [OrderStatusValue.CONFIRMED]: 'Confirmed',
+  [OrderStatusValue.AWAITING_SHIPMENT]: 'Awaiting Shipment',
+  [OrderStatusValue.SHIPPED]: 'Shipped',
+  [OrderStatusValue.DELIVERED]: 'Delivered',
+  [OrderStatusValue.CANCELLED]: 'Cancelled',
 };
 
-export type OrderStatus = keyof typeof OrderStatusLabels;
-
-export const getOrderStatusLabel = (status: number): string => {
-    return OrderStatusLabels[status] ?? 'Unknown';
+export const getOrderStatusLabel = (status: OrderStatusValue): string => {
+  return OrderStatusLabels[status] ?? 'Unknown';
 };
 
-export const getOrderStatusValue = (statusName: string): number => {
-    const map: Record<string, number> = {
-        'PENDING': 0,
-        'CONFIRMED': 1,
-        'AWAITING_SHIPMENT': 2,
-        'SHIPPED': 3,
-        'DELIVERED': 4,
-        'CANCELLED': 5
-    };
-    return map[statusName] ?? 0;
+export const getOrderStatusValue = (
+  statusName: keyof typeof OrderStatusValue
+): OrderStatusValue => {
+  return OrderStatusValue[statusName];
 };
 
-// For API responses
-export const formatOrderStatus = (status: string | number) => {
-    const value = typeof status === 'string' ? getOrderStatusValue(status) : status;
-    return {
-        value,
-        label: getOrderStatusLabel(value)
-    };
+export const formatOrderStatus = (status: OrderStatusValue | keyof typeof OrderStatusValue) => {
+  const value =
+    typeof status === 'string'
+      ? OrderStatusValue[status]
+      : status;
+
+  return {
+    value,
+    label: getOrderStatusLabel(value),
+  };
 };
 
 export const isValidOrderStatus = (status: number): status is OrderStatusValue => {
-    return getOrderStatusLabel(status) !== 'Unknown';
+  return Object.values(OrderStatusValue).includes(status as OrderStatusValue);
 };
