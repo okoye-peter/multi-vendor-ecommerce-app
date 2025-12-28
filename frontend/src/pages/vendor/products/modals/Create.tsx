@@ -293,10 +293,10 @@ const Create = ({ categories, departments, onProductCreated }: Props) => {
                                                         control: () => '!bg-transparent',
                                                         menu: () => 'bg-base-100 border border-base-300',
                                                         menuList: () => 'bg-base-100',
-                                                        option: (state: {isSelected: boolean, isFocused: boolean }) =>
-                                                            state.isSelected
+                                                        option: (state: {isSelected: boolean, isFocused: boolean } | null) =>
+                                                            state?.isSelected
                                                                 ? 'bg-primary text-primary-content'
-                                                                : state.isFocused
+                                                                : state?.isFocused
                                                                     ? 'bg-base-200'
                                                                     : '',
                                                         input: () => 'text-sm !text-base-content',
@@ -393,10 +393,10 @@ const Create = ({ categories, departments, onProductCreated }: Props) => {
                                                         control: () => '!bg-transparent',
                                                         menu: () => 'bg-base-100 border border-base-300',
                                                         menuList: () => 'bg-base-100',
-                                                        option: (state: { isSelected: boolean, isFocused: boolean }) =>
-                                                            state.isSelected
+                                                        option: (state: { isSelected: boolean, isFocused: boolean } | null) =>
+                                                            state?.isSelected
                                                                 ? 'bg-primary text-primary-content'
-                                                                : state.isFocused
+                                                                : state?.isFocused
                                                                     ? 'bg-base-200'
                                                                     : '',
                                                         input: () => 'text-sm !text-base-content',
@@ -440,10 +440,10 @@ const Create = ({ categories, departments, onProductCreated }: Props) => {
                                                         control: () => '!bg-transparent',
                                                         menu: () => 'bg-base-100 border border-base-300',
                                                         menuList: () => 'bg-base-100',
-                                                        option: (state: { isSelected: boolean, isFocused: boolean }) =>
-                                                            state.isSelected
+                                                        option: (state: { isSelected: boolean, isFocused: boolean } | null) =>
+                                                            state?.isSelected
                                                                 ? 'bg-primary text-primary-content'
-                                                                : state.isFocused
+                                                                : state?.isFocused
                                                                     ? 'bg-base-200'
                                                                     : '',
                                                         input: () => 'text-sm !text-base-content',
@@ -486,10 +486,10 @@ const Create = ({ categories, departments, onProductCreated }: Props) => {
                                                         control: () => '!bg-transparent',
                                                         menu: () => 'bg-base-100 border border-base-300',
                                                         menuList: () => 'bg-base-100',
-                                                        option: (state: { isSelected: boolean, isFocused: boolean }) =>
-                                                            state.isSelected
+                                                        option: (state: { isSelected: boolean, isFocused: boolean } | null) =>
+                                                            state?.isSelected
                                                                 ? 'bg-primary text-primary-content'
-                                                                : state.isFocused
+                                                                : state?.isFocused
                                                                     ? 'bg-base-200'
                                                                     : '',
                                                         input: () => 'text-sm !text-base-content',

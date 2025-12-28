@@ -282,10 +282,10 @@ const EditProduct = ({ productId, vendorId, onProductUpdated, categories, depart
                                                         control: () => '!bg-transparent',
                                                         menu: () => 'bg-base-100 border border-base-300',
                                                         menuList: () => 'bg-base-100',
-                                                        option: (state: { isSelected: boolean, isFocused: boolean }) =>
-                                                            state.isSelected
+                                                        option: (state: { isSelected: boolean, isFocused: boolean } | null) =>
+                                                            state?.isSelected
                                                                 ? 'bg-primary text-primary-content'
-                                                                : state.isFocused
+                                                                : state?.isFocused
                                                                     ? 'bg-base-200'
                                                                     : '',
                                                         input: () => 'text-sm !text-base-content',
@@ -330,7 +330,7 @@ const EditProduct = ({ productId, vendorId, onProductUpdated, categories, depart
                                                     getOptionLabel={(option: Department) => option.name}
                                                     getOptionValue={(option: Department) => String(option.id)}
                                                     value={departments?.find(department => department.id === selectedDepartment) || null}
-                                                    onChange={(val: Department) => {
+                                                    onChange={(val: Department | null) => {
                                                         const deptId = val?.id || null;
                                                         setSelectedDepartment(deptId);
                                                         field.onChange(deptId);
@@ -345,9 +345,9 @@ const EditProduct = ({ productId, vendorId, onProductUpdated, categories, depart
                                                         menu: () => 'bg-base-100 border border-base-300',
                                                         menuList: () => 'bg-base-100',
                                                         option: (state: { isSelected: boolean, isFocused: boolean } | null) =>
-                                                            state.isSelected
+                                                            state?.isSelected
                                                                 ? 'bg-primary text-primary-content'
-                                                                : state.isFocused
+                                                                : state?.isFocused
                                                                     ? 'bg-base-200'
                                                                     : '',
                                                         input: () => 'text-sm !text-base-content',
@@ -391,10 +391,10 @@ const EditProduct = ({ productId, vendorId, onProductUpdated, categories, depart
                                                         control: () => '!bg-transparent',
                                                         menu: () => 'bg-base-100 border border-base-300',
                                                         menuList: () => 'bg-base-100',
-                                                        option: (state: { isSelected: boolean, isFocused: boolean }) =>
-                                                            state.isSelected
+                                                        option: (state: { isSelected: boolean, isFocused: boolean } | null) =>
+                                                            state?.isSelected
                                                                 ? 'bg-primary text-primary-content'
-                                                                : state.isFocused
+                                                                : state?.isFocused
                                                                     ? 'bg-base-200'
                                                                     : '',
                                                         input: () => 'text-sm !text-base-content',
@@ -437,10 +437,10 @@ const EditProduct = ({ productId, vendorId, onProductUpdated, categories, depart
                                                         control: () => '!bg-transparent',
                                                         menu: () => 'bg-base-100 border border-base-300',
                                                         menuList: () => 'bg-base-100',
-                                                        option: (state: { isSelected: boolean, isFocused: boolean }) =>
-                                                            state.isSelected
+                                                        option: (state: { isSelected: boolean, isFocused: boolean } | null) =>
+                                                            state?.isSelected
                                                                 ? 'bg-primary text-primary-content'
-                                                                : state.isFocused
+                                                                : state?.isFocused
                                                                     ? 'bg-base-200'
                                                                     : '',
                                                         input: () => 'text-sm !text-base-content',
