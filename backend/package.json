@@ -8,7 +8,7 @@
         "build": "npm run prisma:generate && tsc",
         "start": "node dist/server.js",
         "start:prod": "NODE_ENV=production node dist/server.js",
-        "postbuild": "npm run prisma:deploy",
+        "postbuild:disabled": "npm run prisma:deploy",
         "prisma:combine": "node --import tsx scripts/combine-schemas.mjs",
         "prisma:generate": "npm run prisma:combine && prisma generate",
         "prisma:migrate": "npm run prisma:combine && prisma migrate dev",
@@ -46,6 +46,7 @@
         "nodemailer": "^7.0.9",
         "pg": "^8.16.3",
         "prisma": "^7.0.1",
+        "resend": "^6.6.0",
         "sharp": "^0.34.5",
         "winston": "^3.18.3",
         "zod": "^4.1.12"
