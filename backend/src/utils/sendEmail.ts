@@ -1,9 +1,6 @@
 import { format } from "date-fns";
 import transporter from "../config/mail.config.js";
 import { PASSWORD_RESET_REQUEST_TEMPLATE, VERIFICATION_EMAIL_TEMPLATE } from "../templates/emailTemplate.js";
-import { Resend } from 'resend';
-
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 
 export const sendEmailVerificationCode = async (recipientEmail: string, token: number) => {
@@ -15,20 +12,6 @@ export const sendEmailVerificationCode = async (recipientEmail: string, token: n
             html: VERIFICATION_EMAIL_TEMPLATE.replace('{verificationCode}', token.toString()),
         });
         console.log("Email sent: ", info.messageId);
-
-        // const { data, error } = await resend.emails.send({
-        //     from: 'onboarding@resend.dev', // Resend's test email - works without domain verification
-        //     to: recipientEmail,
-        //     subject: 'Email Verification Code',
-        //     html: VERIFICATION_EMAIL_TEMPLATE.replace('{verificationCode}', token.toString()),
-        // });
-
-        // if (error) {
-        //     console.error("Resend error:", error);
-        //     throw new Error(`Failed to send email: ${error.message}`);
-        // }
-
-        // console.log("✅ Verification email sent successfully:", data?.id);
     } catch (error) {
         console.error("Error sending email: ", error);
         throw new Error("Could not send email");
