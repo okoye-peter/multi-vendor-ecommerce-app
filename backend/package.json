@@ -8,7 +8,7 @@
         "build": "npm run prisma:generate && tsc",
         "start": "node dist/server.js",
         "start:prod": "NODE_ENV=production node dist/server.js",
-        "postbuild:disabled": "npm run prisma:deploy",
+        "postbuild": "npm run prisma:deploy",
         "prisma:combine": "node --import tsx scripts/combine-schemas.mjs",
         "prisma:generate": "npm run prisma:combine && prisma generate",
         "prisma:migrate": "npm run prisma:combine && prisma migrate dev",

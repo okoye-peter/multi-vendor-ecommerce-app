@@ -30,32 +30,38 @@ const ProductCard = ({ product }: ProductCartProps) => {
     };
 
     return (
-        <div className="overflow-hidden transition-all duration-300 shadow-sm card bg-base-100">
+        <div className="group card-modern overflow-hidden">
             {/* Product Image */}
             <div className="relative overflow-hidden cursor-pointer aspect-square">
-                <figure>
-                    <img
-                        src={product.images?.[0]?.url || '/placeholder-image.jpg'}
-                        alt={product.name}
-                        className="object-cover w-full h-full transition-transform duration-300 group-hover:scale-110"
-                    />
-                </figure>
+                <Link to={`/products/${product.slug}`}>
+                    <figure className="h-full">
+                        <img
+                            src={product.images?.[0]?.url || '/placeholder-image.jpg'}
+                            alt={product.name}
+                            className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-110"
+                        />
+                    </figure>
+                </Link>
+
+                {/* Stock Badge */}
                 {product.quantity > 0 ? (
-                    <div className="absolute px-2 py-1 text-xs text-white bg-green-500 rounded top-2 left-2 opacity-90">
+                    <div className="absolute px-3 py-1 text-xs font-semibold text-white bg-green-500 rounded-full top-3 left-3 shadow-lg animate-fade-in">
                         IN STOCK
                     </div>
                 ) : (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
-                        <span className="px-4 py-2 text-sm font-semibold text-white bg-red-500 rounded">
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                        <span className="px-4 py-2 text-sm font-semibold text-white bg-red-500 rounded-lg shadow-lg">
                             Out of Stock
                         </span>
                     </div>
                 )}
+
+                {/* Wishlist Button */}
                 <button
                     onClick={e => e.stopPropagation()}
-                    className="absolute p-2 transition-opacity bg-white rounded-full shadow-md opacity-0 top-2 right-2 group-hover:opacity-100"
+                    className="absolute p-2 transition-all bg-white rounded-full shadow-md opacity-0 top-3 right-3 group-hover:opacity-100 hover:scale-110 hover:bg-red-50"
                 >
-                    <Heart size={16} />
+                    <Heart size={18} className="text-red-500" />
                 </button>
             </div>
 
@@ -63,17 +69,17 @@ const ProductCard = ({ product }: ProductCartProps) => {
             <div className="card-body">
                 <Link
                     to={`/products/${product.slug}`}
-                    className="card-title"
+                    className="card-title hover:text-primary transition-colors line-clamp-2"
                 >
                     {product.name}
                 </Link>
-                <div className="mb-3 text-xs opacity-70">
+                <div className="mb-2 text-xs opacity-70">
                     {product.department?.name} / {product.category?.name}
                 </div>
-                <div className="mb-4 text-2xl font-bold">{formatPrice(product.price as number)}</div>
+                <div className="mb-4 text-2xl font-bold text-primary">{formatPrice(product.price as number)}</div>
                 <div className="justify-end mt-auto card-actions">
                     <button
-                        className="relative flex w-full gap-3 p-3 text-sm btn btn-outline btn-primary"
+                        className="relative flex w-full gap-2 btn btn-primary hover-lift"
                         disabled={isLoading || product.quantity === 0}
                         onClick={addProductToCart}
                     >
@@ -81,7 +87,7 @@ const ProductCard = ({ product }: ProductCartProps) => {
                             <span className="loading loading-spinner loading-sm"></span>
                         ) : (
                             <>
-                                <ShoppingCart size={16} />
+                                <ShoppingCart size={18} />
                                 Add to Cart
                             </>
                         )}

@@ -68,7 +68,7 @@ export const Navbar = () => {
             {isLoggingOut && <FullscreenLoader />}
 
             {/* Navigation */}
-            <nav className={`fixed top-0 w-full z-50 transition-all duration-300 ${isScrolled ? 'bg-base-100 shadow-lg' : 'bg-base-100'}`}>
+            <nav className={`fixed top-0 w-full z-50 transition-all duration-300 ${isScrolled ? 'navbar-blur shadow-xl' : 'bg-base-100'}`}>
                 <div className="drawer">
                     <input id="my-drawer-1" type="checkbox" className="drawer-toggle" />
 
@@ -76,9 +76,9 @@ export const Navbar = () => {
                         <div className="grid items-center w-full grid-cols-4 px-8 py-3 mx-auto lg:grid-cols-3 ">
                             {/* Left: Logo */}
                             <div className="flex items-center">
-                                <Link to="/" className="flex items-center gap-2">
-                                    <ShoppingBag className="w-8 h-8 text-primary" />
-                                    <span className="text-2xl font-bold text-transparent bg-gradient-to-r from-primary to-secondary bg-clip-text">
+                                <Link to="/" className="flex items-center gap-2 group">
+                                    <ShoppingBag className="w-8 h-8 text-primary transition-transform group-hover:scale-110" />
+                                    <span className="text-2xl font-bold gradient-text">
                                         MarketHub
                                     </span>
                                 </Link>
@@ -87,11 +87,11 @@ export const Navbar = () => {
                             {/* Center: Navigation (Desktop only) */}
                             <div className="justify-center hidden lg:flex">
                                 <ul className="px-1 menu menu-horizontal">
-                                    <li><Link to="/">Home</Link></li>
-                                    <li><Link to="/products">Products</Link></li>
-                                    <li><a>Categories</a></li>
-                                    <li><a>Contact Us</a></li>
-                                    <li><a>About Us</a></li>
+                                    <li><Link to="/" className="transition-colors hover:text-primary">Home</Link></li>
+                                    <li><Link to="/products" className="transition-colors hover:text-primary">Products</Link></li>
+                                    <li><a className="transition-colors hover:text-primary">Categories</a></li>
+                                    <li><a className="transition-colors hover:text-primary">Contact Us</a></li>
+                                    <li><a className="transition-colors hover:text-primary">About Us</a></li>
                                 </ul>
                             </div>
 
@@ -135,20 +135,20 @@ export const Navbar = () => {
 
                                 {/* Wishlist */}
                                 {user && (
-                                    <button className="btn btn-ghost btn-circle">
+                                    <button className="btn btn-ghost ">
                                         <div className="indicator">
                                             <Heart className="w-5 h-5" />
-                                            <span className="badge badge-xs badge-primary indicator-item">2</span>
+                                            <span className="badge badge-xs badge-primary indicator-item badge-pulse">2</span>
                                         </div>
                                     </button>
                                 )}
 
                                 {/* Cart */}
                                 {user && (
-                                    <Link to="/carts" className="btn btn-ghost btn-circle">
+                                    <Link to="/carts" className="btn btn-ghost ">
                                         <div className="indicator">
                                             <ShoppingBag className="w-5 h-5" />
-                                            <span className="badge badge-sm indicator-item">{carts.length}</span>
+                                            <span className="badge badge-xs indicator-item badge-primary badge-pulse">{carts.length}</span>
                                         </div>
                                     </Link>
                                 )}
@@ -156,8 +156,8 @@ export const Navbar = () => {
                                 {/* Profile Dropdown */}
                                 {user && (
                                     <div className="dropdown dropdown-end">
-                                        <div tabIndex={0} role="button" className="btn btn-ghost btn-circle avatar">
-                                            <div className="w-10 rounded-full">
+                                        <div tabIndex={0} role="button" className="btn btn-ghost btn-circle avatar hover-scale-sm">
+                                            <div className="w-10 rounded-full ring-2 ring-primary/20 transition-all hover:ring-primary/50">
                                                 <img
                                                     alt="User avatar"
                                                     src={
@@ -185,8 +185,8 @@ export const Navbar = () => {
                                 {/* Login/Register */}
                                 {!user && (
                                     <div className="flex gap-2">
-                                        <Link to="/login" className="btn btn-ghost">Login</Link>
-                                        <Link to="/register" className="hidden btn btn-primary lg:flex">Register</Link>
+                                        <Link to="/login" className="btn btn-ghost hover-scale-sm">Login</Link>
+                                        <Link to="/register" className="hidden btn btn-primary hover-lift lg:flex">Register</Link>
                                     </div>
                                 )}
 
@@ -201,16 +201,16 @@ export const Navbar = () => {
                     {/* Mobile Sidebar */}
                     <div className="drawer-side">
                         <label htmlFor="my-drawer-1" aria-label="close sidebar" className="drawer-overlay"></label>
-                        <ul className="min-h-full p-4 menu bg-base-200 w-80">
-                            <li><Link to="/">Home</Link></li>
-                            <li><Link to="/products">Products</Link></li>
-                            <li><a>Categories</a></li>
-                            <li><a>Contact Us</a></li>
-                            <li><a>About Us</a></li>
+                        <ul className="min-h-full p-4 menu bg-base-200 w-80 animate-slide-in-left">
+                            <li><Link to="/" className="transition-colors hover:text-primary">Home</Link></li>
+                            <li><Link to="/products" className="transition-colors hover:text-primary">Products</Link></li>
+                            <li><a className="transition-colors hover:text-primary">Categories</a></li>
+                            <li><a className="transition-colors hover:text-primary">Contact Us</a></li>
+                            <li><a className="transition-colors hover:text-primary">About Us</a></li>
                             {!user && (
                                 <>
-                                    <li className="mt-4"><Link to="/login">Login</Link></li>
-                                    <li><Link to="/register">Register</Link></li>
+                                    <li className="mt-4"><Link to="/login" className="transition-colors hover:text-primary">Login</Link></li>
+                                    <li><Link to="/register" className="transition-colors hover:text-primary">Register</Link></li>
                                 </>
                             )}
                         </ul>
