@@ -15,7 +15,7 @@ let limiter = rateLimit({
 })
 
 let passwordLimiter = rateLimit({
-    max: 1,
+    max: 5,
     windowMs: 10 * 60 * 1000, // 20 minutes
     message: 'Too many failed attempt, try again after 20 minutes'
 })

@@ -3,7 +3,7 @@ import type { Category, Department, Filter, Product } from "../../../types/Index
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { getAllCategory, getAllDepartments, toggleProductPublicity } from "../../../libs/api.ts";
 import CreateProduct from './modals/Create.tsx';
-import { useState } from "react";
+import { useState, useMemo, useCallback } from "react";
 import ActionDropdown from "../../../components/DataTableActionDropDown.tsx";
 import DeleteProductModal from "./modals/Delete.tsx";
 import EditProductModal from "./modals/Edit.tsx";
@@ -28,7 +28,35 @@ const ProductsTable = () => {
         queryFn: getAllDepartments
     })
 
-    const dataTableColumns: SearchableColumnDef<Product>[] = [
+    // Define callbacks before columns so they can be used in the column definitions
+    const showDeleteWarningModal = useCallback((product: Product) => {
+        setProductToDelete(product);
+        (document.getElementById('deleteProductWarningModal') as HTMLDialogElement)?.showModal()
+    }, []);
+
+    const showEditModal = useCallback((product: Partial<Product>) => {
+        setProductIdToEdit(Number(product.id))
+        setProductVendorIdIdToEdit(Number(product.vendorId))
+    }, []);
+
+    const resetDataOnProductUpdate = () => {
+        setDataTableKey(prev => prev + 1);
+        setProductIdToEdit(0);
+        setProductVendorIdIdToEdit(0)
+    }
+
+    const { mutate: togglePublicity, isPending: productPublicityIsPending } = useMutation({
+        mutationFn: ({ vendorId, productId }: { vendorId: number, productId: number }) => toggleProductPublicity(vendorId, productId),
+        onError: (error) => {
+            toast.error(error.message)
+        },
+        onSuccess: (data) => {
+            toast.success(data.message)
+            setDataTableKey((prev) => prev + 1)
+        }
+    })
+
+    const dataTableColumns: SearchableColumnDef<Product>[] = useMemo(() => [
         {
             id: 'id',
             accessorKey: 'id',
@@ -122,7 +150,7 @@ const ProductsTable = () => {
                 </ActionDropdown>
             ),
         },
-    ];
+    ], [showDeleteWarningModal, showEditModal, togglePublicity]);
 
     // ✅ Define filters with dynamic options
     const dataTableFilters: Filter[] = [
@@ -170,33 +198,6 @@ const ProductsTable = () => {
         console.log('Product clicked:', product);
         // Handle row click - navigate to detail page, open modal, etc.
     };
-
-    const showDeleteWarningModal = (product: Product) => {
-        setProductToDelete(product);
-        (document.getElementById('deleteProductWarningModal') as HTMLDialogElement)?.showModal()
-    }
-
-    const showEditModal = (product: Partial<Product>) => {
-        setProductIdToEdit(Number(product.id))
-        setProductVendorIdIdToEdit(Number(product.vendorId))
-    }
-
-    const resetDataOnProductUpdate = () => {
-        setDataTableKey(prev => prev + 1);
-        setProductIdToEdit(0);
-        setProductVendorIdIdToEdit(0)
-    }
-
-    const { mutate: togglePublicity, isPending: productPublicityIsPending } = useMutation({
-        mutationFn: ({ vendorId, productId }: { vendorId: number, productId: number }) => toggleProductPublicity(vendorId, productId),
-        onError: (error) => {
-            toast.error(error.message)
-        },
-        onSuccess: (data) => {
-            toast.success(data.message)
-            setDataTableKey((prev) => prev + 1)
-        }
-    })
 
     if (departmentsIsLoading || categoriesIsLoading || productPublicityIsPending) {
         return <FullPageLoader />;

@@ -8,57 +8,113 @@ interface ActionDropdownProps {
 // Reusable Dropdown Actions Component with Fixed Positioning
 const ActionDropdown: React.FC<ActionDropdownProps> = ({ children }) => {
     const [isOpen, setIsOpen] = useState(false);
-    const [position, setPosition] = useState({ top: 0, left: 0 });
     const buttonRef = useRef<HTMLButtonElement>(null);
     const menuRef = useRef<HTMLUListElement>(null);
 
+    // Update position whenever dropdown opens or on scroll/resize
     useEffect(() => {
-        if (isOpen && buttonRef.current && menuRef.current) {
-            const buttonRect = buttonRef.current.getBoundingClientRect();
-            const menuHeight = menuRef.current.offsetHeight;
-            const menuWidth = 208; // 52 * 4 (w-52 in Tailwind)
-            const viewportHeight = window.innerHeight;
-            const viewportWidth = window.innerWidth;
-            
-            // Default: position below button, aligned to right
-            let top = buttonRect.bottom + 8; // 8px gap
-            let left = buttonRect.right - menuWidth;
+        const updatePosition = () => {
+            if (buttonRef.current && menuRef.current) {
+                const buttonRect = buttonRef.current.getBoundingClientRect();
+                const menuHeight = menuRef.current.offsetHeight;
+                const menuWidth = 208; // 52 * 4 (w-52 in Tailwind)
+                const viewportHeight = window.innerHeight;
+                const viewportWidth = window.innerWidth;
 
-            // Check if menu goes below viewport
-            if (buttonRect.bottom + menuHeight + 8 > viewportHeight) {
-                // Position above the button
-                top = buttonRect.top - menuHeight - 8;
+                // Position below button by default
+                let top = buttonRect.bottom + 8;
+
+                // Align menu directly below the button (left edges aligned)
+                let left = buttonRect.left;
+
+                // If menu goes beyond right edge, align to right edge of button
+                if (left + menuWidth > viewportWidth - 8) {
+                    left = buttonRect.right - menuWidth;
+                }
+
+                // If still goes beyond left edge, align to viewport
+                if (left < 8) {
+                    left = 8;
+                }
+
+                // Check if menu goes below viewport
+                if (top + menuHeight > viewportHeight - 8) {
+                    // Position above the button instead
+                    top = buttonRect.top - menuHeight - 8;
+                }
+
+                // Ensure menu doesn't go above viewport
+                if (top < 8) {
+                    top = 8;
+                }
             }
+        };
 
-            // Check if menu goes beyond right edge
-            if (left + menuWidth > viewportWidth) {
-                left = viewportWidth - menuWidth - 16;
-            }
+        if (isOpen) {
+            // Initial position calculation with small delay to ensure DOM is ready
+            setTimeout(updatePosition, 10);
 
-            // Check if menu goes beyond left edge
-            if (left < 16) {
-                left = 16;
-            }
+            // Update position on scroll (with capture to catch scroll in any parent)
+            const handleScroll = () => updatePosition();
+            window.addEventListener('scroll', handleScroll, true);
+            window.addEventListener('resize', handleScroll);
 
-            setPosition({ top, left });
+            return () => {
+                window.removeEventListener('scroll', handleScroll, true);
+                window.removeEventListener('resize', handleScroll);
+            };
         }
     }, [isOpen]);
 
-    const handleToggle = () => {
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        if (!isOpen) return;
+
+        const handleClickOutside = (event: MouseEvent) => {
+            const target = event.target as HTMLElement;
+
+            // Don't close if clicking on the button itself or the menu
+            if (
+                buttonRef.current?.contains(target) ||
+                menuRef.current?.contains(target)
+            ) {
+                return;
+            }
+
+            // Close the dropdown
+            setIsOpen(false);
+        };
+
+        // Add listener with a small delay to avoid closing immediately
+        const timeoutId = setTimeout(() => {
+            document.addEventListener('mousedown', handleClickOutside);
+        }, 0);
+
+        return () => {
+            clearTimeout(timeoutId);
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [isOpen]);
+
+    const handleToggle = (e: React.MouseEvent) => {
+        e.stopPropagation(); // Prevent event from bubbling to parent row
         setIsOpen(!isOpen);
     };
 
-    const handleClose = () => {
+    const handleMenuClick = (e: React.MouseEvent) => {
+        e.stopPropagation(); // Prevent event from bubbling to parent row
         setIsOpen(false);
     };
 
     return (
-        <>
+        // Add onClick handler to prevent clicks on the container from bubbling
+        <div onClick={(e) => e.stopPropagation()}>
             <button
                 ref={buttonRef}
                 onClick={handleToggle}
                 className="btn btn-ghost btn-sm btn-circle"
                 aria-label="Actions"
+                type="button"
             >
                 <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -71,31 +127,23 @@ const ActionDropdown: React.FC<ActionDropdownProps> = ({ children }) => {
                     <circle cx="8" cy="14" r="1.5" />
                 </svg>
             </button>
-            
+
             {isOpen && (
-                <>
-                    {/* Backdrop */}
-                    <div 
-                        className="fixed inset-0 z-[9998]" 
-                        onClick={handleClose}
-                    />
-                    
-                    {/* Menu with fixed positioning (relative to viewport) */}
-                    <ul
-                        ref={menuRef}
-                        style={{
-                            position: 'fixed',
-                            top: `${position.top}px`,
-                            left: `${position.left}px`,
-                        }}
-                        className="z-[9999] p-2 border shadow-xl menu bg-base-100 rounded-box w-52 border-base-300"
-                        onClick={handleClose}
-                    >
-                        {children}
-                    </ul>
-                </>
+                <ul
+                    ref={menuRef}
+                    style={{
+                        position: 'fixed',
+                        right: '0'
+                        // top: `${position.top}px`,
+                        // left: `${position.left}px`,
+                    }}
+                    className="z-[9999] p-2 border shadow-xl menu bg-base-100 rounded-box w-52 border-base-300"
+                    onClick={handleMenuClick}
+                >
+                    {children}
+                </ul>
             )}
-        </>
+        </div>
     );
 };
 

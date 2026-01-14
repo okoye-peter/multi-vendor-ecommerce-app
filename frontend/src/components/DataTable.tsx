@@ -121,7 +121,7 @@ export function DataTable<T extends Record<string, unknown>>({
         pageSize: defaultPageSize,
     });
     const [paginationInfo, setPaginationInfo] = useState<PaginationInfo | null>(null);
-    
+
     // Debounce the search term
     const debouncedSearch = useDebounce(globalFilter, searchDebounceMs);
 
@@ -130,7 +130,7 @@ export function DataTable<T extends Record<string, unknown>>({
         if (searchFields) {
             return searchFields;
         }
-        
+
         const fields = columns
             .filter(col => col.searchable)
             .map(col => {
@@ -141,16 +141,16 @@ export function DataTable<T extends Record<string, unknown>>({
                 return null;
             })
             .filter((field): field is string => field !== null);
-        
+
         return fields;
     }, [columns, searchFields]);
-    
+
     const handleRetry = () => {
         fetchData(
-            debouncedSearch, 
-            appliedFilters, 
-            autoSearchFields,  
-            pagination.pageIndex, 
+            debouncedSearch,
+            appliedFilters,
+            autoSearchFields,
+            pagination.pageIndex,
             pagination.pageSize
         );
     };
@@ -158,21 +158,21 @@ export function DataTable<T extends Record<string, unknown>>({
 
     // Fetch data from API
     const fetchData = useCallback(async (
-        searchTerm: string, 
-        appliedFilters: ColumnFiltersState, 
-        autoSearchFields: string[] = [], 
-        page: number, 
+        searchTerm: string,
+        appliedFilters: ColumnFiltersState,
+        autoSearchFields: string[] = [],
+        page: number,
         pageSize: number
     ) => {
         try {
             setLoading(true);
-            
+
             const urlObj = new URL(url, window.location.origin);
 
             // Add pagination parameters (API uses 1-based indexing)
             urlObj.searchParams.set('page', String(page + 1));
             urlObj.searchParams.set('limit', String(pageSize));
-            
+
             // Add search parameter
             if (searchTerm) {
                 urlObj.searchParams.set('search', searchTerm);
@@ -180,33 +180,33 @@ export function DataTable<T extends Record<string, unknown>>({
                     urlObj.searchParams.set('searchFields', autoSearchFields.join(','));
                 }
             }
-            
+
             // Add filter parameters
             appliedFilters.forEach(filter => {
                 if (filter.value) {
                     urlObj.searchParams.set(filter.id, String(filter.value));
                 }
             });
-            
-            const fetchUrl = url.startsWith('http') 
-                ? urlObj.toString() 
+
+            const fetchUrl = url.startsWith('http')
+                ? urlObj.toString()
                 : urlObj.pathname + urlObj.search;
-            
+
             const response = await axiosInstance.get(fetchUrl);
             const result = response.data;
-            
+
             // Extract pagination info
             if (result.pagination) {
                 setPaginationInfo(result.pagination);
             }
-            
+
             // Transform data if transformer is provided
             if (transformData) {
                 setData(transformData(result));
             } else {
                 setData(Array.isArray(result) ? result : result.data || []);
             }
-            
+
             setError(null);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'An error occurred');
@@ -224,10 +224,10 @@ export function DataTable<T extends Record<string, unknown>>({
     useEffect(() => {
         if (url) {
             fetchData(
-                debouncedSearch, 
-                appliedFilters, 
-                autoSearchFields,  
-                pagination.pageIndex, 
+                debouncedSearch,
+                appliedFilters,
+                autoSearchFields,
+                pagination.pageIndex,
                 pagination.pageSize
             );
         }
@@ -302,7 +302,7 @@ export function DataTable<T extends Record<string, unknown>>({
                     <div className="flex-1">
                         <span>Error: {error}</span>
                     </div>
-                    <button 
+                    <button
                         className="btn btn-sm btn-ghost"
                         onClick={handleRetry}
                         disabled={loading}
@@ -381,7 +381,7 @@ export function DataTable<T extends Record<string, unknown>>({
                                         </label>
                                         <div tabIndex={0} className="p-6 mt-3 shadow-xl dropdown-content card bg-base-100 w-96">
                                             <h3 className="mb-4 text-lg font-semibold">Filter</h3>
-                                            
+
                                             <div className="space-y-4">
                                                 {filters.map(filter => (
                                                     <div key={filter.column} className="form-control">
@@ -457,7 +457,7 @@ export function DataTable<T extends Record<string, unknown>>({
                                             </div>
 
                                             <div className="flex gap-2 mt-6">
-                                                <button 
+                                                <button
                                                     className="flex-1 btn btn-ghost"
                                                     onClick={() => {
                                                         resetFilters();
@@ -466,7 +466,7 @@ export function DataTable<T extends Record<string, unknown>>({
                                                 >
                                                     Reset all
                                                 </button>
-                                                <button 
+                                                <button
                                                     className="flex-1 btn btn-primary"
                                                     onClick={() => {
                                                         applyFilters();
@@ -485,7 +485,7 @@ export function DataTable<T extends Record<string, unknown>>({
 
                     {/* Table */}
                     <div className="overflow-x-auto">
-                        <table className="table w-full table-zebra">
+                        <table className="table w-full table-zebra overflow-x-auto">
                             <thead>
                                 {table.getHeaderGroups().map(headerGroup => (
                                     <tr key={headerGroup.id}>
@@ -532,7 +532,7 @@ export function DataTable<T extends Record<string, unknown>>({
                                             onClick={() => onRowClick?.(row.original)}
                                         >
                                             {row.getVisibleCells().map(cell => (
-                                                <td key={cell.id} className='relative text-xs'>
+                                                <td key={cell.id} className='text-xs'>
                                                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                                                 </td>
                                             ))}
@@ -571,10 +571,10 @@ export function DataTable<T extends Record<string, unknown>>({
                                             </span>
                                         );
                                     }
-                                    
+
                                     const pageNum = page as number;
                                     const isActive = pageNum === paginationInfo.page;
-                                    
+
                                     return (
                                         <button
                                             key={pageNum}

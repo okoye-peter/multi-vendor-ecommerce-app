@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ShoppingBag, TrendingUp, Shield, Truck, ChevronRight, Star, Users, Store } from 'lucide-react';
+import { ShoppingBag, TrendingUp, Shield, Truck, ChevronRight, Star, Users, Store, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const HomePage = () => {
@@ -66,31 +66,47 @@ const HomePage = () => {
                         className={`absolute inset-0 transition-opacity duration-1000 ${currentSlide === index ? 'opacity-100' : 'opacity-0'
                             }`}
                     >
-                        <div className={`h-full bg-gradient-to-r ${slide.bg} flex items-center justify-center`}>
-                            <div className="px-4 text-center text-white">
-                                <h1 className="mb-4 text-5xl font-bold md:text-7xl animate-fade-in">
-                                    {slide.title}
-                                </h1>
-                                <p className="mb-8 text-xl md:text-2xl opacity-90">
-                                    {slide.subtitle}
-                                </p>
-                                <Link to="/products" className="text-gray-900 bg-white border-0 btn btn-lg hover:bg-gray-100">
-                                    {slide.cta}
-                                    <ChevronRight className="w-5 h-5" />
-                                </Link>
+                        <div className={`h-full bg-gradient-to-r ${slide.bg} animate-gradient flex items-center justify-center relative`}>
+                            {/* Decorative Elements */}
+                            <div className="absolute inset-0 overflow-hidden">
+                                <div className="absolute top-20 left-10 w-72 h-72 bg-white/10 rounded-full blur-3xl animate-float"></div>
+                                <div className="absolute bottom-20 right-10 w-96 h-96 bg-white/10 rounded-full blur-3xl animate-float" style={{ animationDelay: '1s' }}></div>
+                            </div>
+
+                            <div className="px-4 text-center text-white relative z-10">
+                                <div className="animate-fade-in-down">
+                                    <h1 className="mb-4 text-5xl font-bold md:text-7xl">
+                                        {slide.title}
+                                    </h1>
+                                </div>
+                                <div className="animate-fade-in-up">
+                                    <p className="mb-8 text-xl md:text-2xl opacity-90">
+                                        {slide.subtitle}
+                                    </p>
+                                </div>
+                                <div className="animate-scale-in">
+                                    <Link
+                                        to="/products"
+                                        className="text-gray-900 bg-white border-0 btn btn-lg hover:bg-gray-100 hover-lift group"
+                                    >
+                                        {slide.cta}
+                                        <ChevronRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
+                                    </Link>
+                                </div>
                             </div>
                         </div>
                     </div>
                 ))}
 
                 {/* Slide Indicators */}
-                <div className="absolute flex gap-2 transform -translate-x-1/2 bottom-8 left-1/2">
+                <div className="absolute flex gap-2 transform -translate-x-1/2 bottom-8 left-1/2 z-20">
                     {heroSlides.map((_, index) => (
                         <button
                             key={index}
                             onClick={() => setCurrentSlide(index)}
-                            className={`w-3 h-3 rounded-full transition-all ${currentSlide === index ? 'bg-white w-8' : 'bg-white/50'
+                            className={`h-3 rounded-full transition-all duration-300 ${currentSlide === index ? 'bg-white w-8' : 'bg-white/50 w-3'
                                 }`}
+                            aria-label={`Go to slide ${index + 1}`}
                         />
                     ))}
                 </div>
@@ -101,8 +117,11 @@ const HomePage = () => {
                 <div className="px-4 mx-auto max-w-7xl">
                     <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
                         {features.map((feature, index) => (
-                            <div key={index} className="flex items-center gap-4 p-4 transition-shadow rounded-lg bg-base-100 hover:shadow-lg">
-                                <div className="text-primary">{feature.icon}</div>
+                            <div
+                                key={index}
+                                className={`flex items-center gap-4 p-4 transition-all rounded-lg bg-base-100 hover-lift animate-fade-in-up stagger-${index + 1}`}
+                            >
+                                <div className="text-primary p-3 rounded-full bg-primary/10">{feature.icon}</div>
                                 <div>
                                     <h3 className="font-bold">{feature.title}</h3>
                                     <p className="text-sm opacity-70">{feature.desc}</p>
@@ -116,7 +135,11 @@ const HomePage = () => {
             {/* Categories Section */}
             <section className="px-4 py-16">
                 <div className="mx-auto max-w-7xl">
-                    <div className="mb-12 text-center">
+                    <div className="mb-12 text-center animate-fade-in-up">
+                        <div className="inline-flex items-center gap-2 mb-4 px-4 py-2 rounded-full bg-primary/10 text-primary">
+                            <Sparkles className="w-4 h-4" />
+                            <span className="text-sm font-semibold">Explore Categories</span>
+                        </div>
                         <h2 className="mb-4 text-4xl font-bold">Shop by Category</h2>
                         <p className="text-lg opacity-70">Explore our diverse range of products</p>
                     </div>
@@ -125,14 +148,17 @@ const HomePage = () => {
                         {categories.map((category, index) => (
                             <div
                                 key={index}
-                                className="cursor-pointer group"
+                                className={`cursor-pointer group animate-scale-in stagger-${index + 1}`}
                             >
-                                <div className={`aspect-square rounded-2xl bg-gradient-to-br ${category.color} p-8 flex flex-col items-center justify-center text-white transform transition-all hover:scale-105 hover:shadow-2xl`}>
-                                    <div className="mb-4 text-6xl transition-transform group-hover:scale-110">
+                                <div className={`aspect-square rounded-2xl bg-gradient-to-br ${category.color} p-8 flex flex-col items-center justify-center text-white transform transition-all duration-500 hover:scale-110 hover:rotate-3 hover:shadow-2xl relative overflow-hidden`}>
+                                    {/* Shine effect */}
+                                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+
+                                    <div className="mb-4 text-6xl transition-transform duration-500 group-hover:scale-125 relative z-10">
                                         {category.icon}
                                     </div>
-                                    <h3 className="text-lg font-bold">{category.name}</h3>
-                                    <p className="text-sm opacity-90">{category.count} items</p>
+                                    <h3 className="text-lg font-bold relative z-10">{category.name}</h3>
+                                    <p className="text-sm opacity-90 relative z-10">{category.count} items</p>
                                 </div>
                             </div>
                         ))}
@@ -143,17 +169,26 @@ const HomePage = () => {
             {/* Featured Vendors */}
             <section className="px-4 py-16 bg-base-200">
                 <div className="mx-auto max-w-7xl">
-                    <div className="mb-12 text-center">
+                    <div className="mb-12 text-center animate-fade-in-up">
+                        <div className="inline-flex items-center gap-2 mb-4 px-4 py-2 rounded-full bg-secondary/10 text-secondary">
+                            <Store className="w-4 h-4" />
+                            <span className="text-sm font-semibold">Top Sellers</span>
+                        </div>
                         <h2 className="mb-4 text-4xl font-bold">Featured Vendors</h2>
                         <p className="text-lg opacity-70">Shop from our top-rated sellers</p>
                     </div>
 
                     <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
                         {featuredVendors.map((vendor, index) => (
-                            <div key={index} className="transition-shadow shadow-xl card bg-base-100 hover:shadow-2xl">
+                            <div
+                                key={index}
+                                className={`card-modern animate-fade-in-up stagger-${index + 1}`}
+                            >
                                 <div className="items-center text-center card-body">
-                                    <div className="mb-4 text-6xl">{vendor.image}</div>
-                                    <h3 className="card-title">{vendor.name}</h3>
+                                    <div className="mb-4 text-6xl p-4 rounded-full bg-gradient-to-br from-primary/20 to-secondary/20 animate-float" style={{ animationDelay: `${index * 0.2}s` }}>
+                                        {vendor.image}
+                                    </div>
+                                    <h3 className="card-title text-xl">{vendor.name}</h3>
                                     <div className="flex items-center gap-1 text-warning">
                                         <Star className="w-4 h-4 fill-current" />
                                         <span className="font-bold">{vendor.rating}</span>
@@ -162,7 +197,7 @@ const HomePage = () => {
                                         <span>{vendor.products} Products</span>
                                         <span>{vendor.sales} Sales</span>
                                     </div>
-                                    <button className="w-full mt-4 btn btn-primary btn-sm">
+                                    <button className="w-full mt-4 btn btn-primary btn-sm hover-scale">
                                         Visit Store
                                     </button>
                                 </div>
@@ -175,19 +210,27 @@ const HomePage = () => {
             {/* CTA Section */}
             <section className="px-4 py-20">
                 <div className="max-w-5xl mx-auto">
-                    <div className="text-white shadow-2xl card bg-gradient-to-r from-primary to-secondary">
-                        <div className="items-center py-16 text-center card-body">
-                            <Store className="w-16 h-16 mb-4" />
+                    <div className="relative overflow-hidden text-white shadow-2xl rounded-3xl bg-gradient-to-r from-primary to-secondary animate-gradient">
+                        {/* Decorative Elements */}
+                        <div className="absolute inset-0 overflow-hidden">
+                            <div className="absolute -top-10 -right-10 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
+                            <div className="absolute -bottom-10 -left-10 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
+                        </div>
+
+                        <div className="items-center py-16 text-center card-body relative z-10">
+                            <div className="p-4 mb-4 rounded-full bg-white/20 animate-float">
+                                <Store className="w-16 h-16" />
+                            </div>
                             <h2 className="mb-4 text-4xl card-title">Become a Vendor</h2>
-                            <p className="max-w-2xl mb-8 text-xl">
+                            <p className="max-w-2xl mb-8 text-xl opacity-90">
                                 Join thousands of successful sellers and start your journey with us today.
                                 Zero listing fees for the first month!
                             </p>
                             <div className="flex flex-wrap justify-center gap-4">
-                                <button className="bg-white border-0 btn btn-lg text-primary hover:bg-gray-100">
+                                <button className="bg-white border-0 btn btn-lg text-primary hover:bg-gray-100 hover-lift">
                                     Start Selling
                                 </button>
-                                <button className="text-white border-white btn btn-lg btn-outline hover:bg-white hover:text-primary">
+                                <button className="text-white border-white btn btn-lg btn-outline hover:bg-white hover:text-primary hover-lift">
                                     Learn More
                                 </button>
                             </div>
@@ -200,43 +243,43 @@ const HomePage = () => {
             <footer className="px-4 py-12 bg-base-300">
                 <div className="mx-auto max-w-7xl">
                     <div className="grid grid-cols-1 gap-8 mb-8 md:grid-cols-4">
-                        <div>
+                        <div className="animate-fade-in-up">
                             <div className="flex items-center gap-2 mb-4">
                                 <ShoppingBag className="w-8 h-8 text-primary" />
-                                <span className="text-2xl font-bold">MarketHub</span>
+                                <span className="text-2xl font-bold gradient-text">MarketHub</span>
                             </div>
                             <p className="opacity-70">
                                 Your trusted multi-vendor marketplace for everything you need.
                             </p>
                         </div>
 
-                        <div>
+                        <div className="animate-fade-in-up stagger-1">
                             <h3 className="mb-4 text-lg font-bold">Shop</h3>
                             <ul className="space-y-2 opacity-70">
-                                <li><Link to={'/products'} className="hover:text-primary">All Products</Link></li>
-                                <li><a href="#" className="hover:text-primary">Categories</a></li>
-                                <li><a href="#" className="hover:text-primary">Deals</a></li>
-                                <li><a href="#" className="hover:text-primary">New Arrivals</a></li>
+                                <li><Link to={'/products'} className="hover:text-primary transition-colors">All Products</Link></li>
+                                <li><a href="#" className="hover:text-primary transition-colors">Categories</a></li>
+                                <li><a href="#" className="hover:text-primary transition-colors">Deals</a></li>
+                                <li><a href="#" className="hover:text-primary transition-colors">New Arrivals</a></li>
                             </ul>
                         </div>
 
-                        <div>
+                        <div className="animate-fade-in-up stagger-2">
                             <h3 className="mb-4 text-lg font-bold">Sell</h3>
                             <ul className="space-y-2 opacity-70">
-                                <li><a href="#" className="hover:text-primary">Become a Vendor</a></li>
-                                <li><a href="#" className="hover:text-primary">Vendor Dashboard</a></li>
-                                <li><a href="#" className="hover:text-primary">Pricing</a></li>
-                                <li><a href="#" className="hover:text-primary">Resources</a></li>
+                                <li><a href="#" className="hover:text-primary transition-colors">Become a Vendor</a></li>
+                                <li><a href="#" className="hover:text-primary transition-colors">Vendor Dashboard</a></li>
+                                <li><a href="#" className="hover:text-primary transition-colors">Pricing</a></li>
+                                <li><a href="#" className="hover:text-primary transition-colors">Resources</a></li>
                             </ul>
                         </div>
 
-                        <div>
+                        <div className="animate-fade-in-up stagger-3">
                             <h3 className="mb-4 text-lg font-bold">Support</h3>
                             <ul className="space-y-2 opacity-70">
-                                <li><a href="#" className="hover:text-primary">Help Center</a></li>
-                                <li><a href="#" className="hover:text-primary">Contact Us</a></li>
-                                <li><a href="#" className="hover:text-primary">Shipping Info</a></li>
-                                <li><a href="#" className="hover:text-primary">Returns</a></li>
+                                <li><a href="#" className="hover:text-primary transition-colors">Help Center</a></li>
+                                <li><a href="#" className="hover:text-primary transition-colors">Contact Us</a></li>
+                                <li><a href="#" className="hover:text-primary transition-colors">Shipping Info</a></li>
+                                <li><a href="#" className="hover:text-primary transition-colors">Returns</a></li>
                             </ul>
                         </div>
                     </div>

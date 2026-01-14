@@ -293,10 +293,10 @@ export const resetPassword: RequestHandler = async (req, res, next) => {
         newPassword: z.string().min(8).max(30).regex(/^[a-zA-Z0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]+$/, {
             message: "Password may include letters, numbers, and special characters",
         }),
-        repeatNewPassword: z.string().min(8).max(30).regex(/^[a-zA-Z0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]+$/, {
+        repeat_newPassword: z.string().min(8).max(30).regex(/^[a-zA-Z0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]+$/, {
             message: "Password may include letters, numbers, and special characters",
         }),
-    }).refine((data) => data.newPassword === data.repeatNewPassword, {
+    }).refine((data) => data.newPassword === data.repeat_newPassword, {
         message: "Passwords do not match",
     })
 
