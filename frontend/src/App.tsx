@@ -29,11 +29,15 @@ import { useLazyGetCartsQuery } from './store/features/CartApi.ts';
 import CartIndex from './pages/carts/Index.tsx'
 import UserOrders from './pages/orders/Index.tsx'
 import UserOrderDetails from './pages/orders/Show.tsx'
+import Wishlist from './pages/wishlist/Index.tsx';
+import { useLazyGetUserWishlistQuery } from './store/features/WishlistApi.ts';
+import { emptyWishlist, setWishlists } from './store/WishlistSlice.ts';
 
 
 function App() {
     const location = useLocation();
     const [getCarts] = useLazyGetCartsQuery();
+    const [getWishlist] = useLazyGetUserWishlistQuery();
     const isAdminRoute = location.pathname.startsWith('/admin');
     // const isVendorRoute = location.pathname.startsWith('/vendor');
     const { data, isLoading, isError, error } = useGetAuthenticatedUserQuery();
@@ -50,7 +54,7 @@ function App() {
     const isAuthenticated = Boolean(user);
 
     useEffect(() => {
-        const fetchUserAndCart = async () => {
+        const fetchUserCartAndWishlist = async () => {
             if (data && !isError && !isLoading) {
                 dispatch(setUser(data.user));
 
@@ -63,6 +67,13 @@ function App() {
                         console.log('carts', carts)
                         dispatch(setCarts(carts));
                     }
+
+                    const wishlistRes = await getWishlist();
+                    if (wishlistRes.isSuccess) {
+                        const wishlist = Array.isArray(wishlistRes.data) ? wishlistRes.data : [wishlistRes.data];
+                        console.log('wishlist', wishlist)
+                        dispatch(setWishlists(wishlist));
+                    }
                 } catch (err) {
                     console.error("Failed to fetch carts:", err);
                     toast.error("Error loading user's carts")
@@ -74,11 +85,12 @@ function App() {
             } else if (isError && error && 'status' in error && error.status === 401) {
                 dispatch(setUser(null));
                 dispatch(emptyCart());
+                dispatch(emptyWishlist());
             }
         };
 
-        fetchUserAndCart();
-    }, [data, isError, isLoading, error, dispatch, getCarts]);
+        fetchUserCartAndWishlist();
+    }, [data, isError, isLoading, error, dispatch, getCarts, getWishlist]);
 
     if (isLoading) {
         return (
@@ -115,6 +127,7 @@ function App() {
                 </Route>
                 <Route path='/' element={isAuthenticated ? <Outlet /> : <Navigate to='/login' />}>
                     <Route path='carts' element={<CartIndex />} />
+                    <Route path='wishlist' element={<Wishlist />} />
                     <Route path='orders' element={<UserOrders />} />
                     <Route path='orders/:orderId' element={<UserOrderDetails />} />
                     <Route path='products' element={<ProductIndex />} />
@@ -144,5 +157,4 @@ function App() {
 }
 
 export default App
-
 

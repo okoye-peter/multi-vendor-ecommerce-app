@@ -64,10 +64,10 @@ const SaleReportDateFilter = ({ vendorId, productId }: { vendorId: number, produ
     return (
         <>
             <dialog id="reportDateFilterModal" className="modal">
-                <div className="w-1/3 max-w-5xl modal-box">
+                <div className="w-1/3 max-w-5xl modal-box relative">
                     <h3 className="text-lg font-bold">Create Product</h3>
                     <button
-                        className="absolute btn btn-sm btn-circle btn-ghost right-2 top-2"
+                        className="absolute! btn btn-sm btn-circle btn-ghost right-2 top-2"
                         onClick={() => {
                             const modal = document.getElementById('reportDateFilterModal') as HTMLDialogElement;
                             modal?.close();

@@ -1,11 +1,15 @@
-import type { BackendError, Product } from '../types/Index';
+import type { BackendError, Cart, Product } from '../types/Index';
 import { Heart, ShoppingCart } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { formatPrice } from '../utils';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { useAddToCartMutation } from '../store/features/CartApi';
 import { addToCart } from '../store/CartSlice';
 import { toast } from 'react-toastify';
+import type { RootState } from '../store/Index';
+import { ProductCartQuantity } from './ProductCartQuantity';
+import { addToWishlist, removeFromWishlist } from '../store/WishlistSlice';
+import { useToggleProductInWishlistMutation } from '../store/features/WishlistApi';
 
 interface ProductCartProps {
     product: Product;
@@ -14,6 +18,10 @@ interface ProductCartProps {
 const ProductCard = ({ product }: ProductCartProps) => {
     const dispatch = useDispatch();
     const [addToCartMutation, { isLoading }] = useAddToCartMutation();
+    const wishlists = useSelector((state: RootState) => state.wishlist.wishlists);
+    const [toggleProductInWishlistMutation, { isLoading: wishlistLoading }] = useToggleProductInWishlistMutation();
+    const carts = useSelector((state: RootState) => state.cart.carts);
+    const cart: Cart | undefined = carts.find((cart: Cart) => cart.productId === product.id);
 
     const addProductToCart = async () => {
         try {
@@ -25,6 +33,26 @@ const ProductCard = ({ product }: ProductCartProps) => {
             console.log('backendError', backendError);
 
             toast.error(backendError.response?.data?.message as string || backendError?.message as string || backendError.data?.message as string || 'Failed to add product to cart');
+
+        }
+    };
+
+    const toggleProductInWishlist = async (e: React.MouseEvent) => {
+        e.stopPropagation();
+        try {
+            const res = await toggleProductInWishlistMutation({ productId: product.id }).unwrap();
+            if (wishlists.some(wishlist => wishlist.productId === product.id)) {
+                dispatch(removeFromWishlist({ productId: Number(product.id) }));
+                toast.success('Product removed from wishlist successfully');
+            } else {
+                dispatch(addToWishlist(res.wishlist));
+                toast.success('Product added to wishlist successfully');
+            }
+        } catch (error) {
+            const backendError = error as BackendError;
+            console.log('backendError', backendError);
+
+            toast.error(backendError.response?.data?.message as string || backendError?.message as string || backendError.data?.message as string || 'Failed to add product to wishlist');
 
         }
     };
@@ -58,10 +86,23 @@ const ProductCard = ({ product }: ProductCartProps) => {
 
                 {/* Wishlist Button */}
                 <button
-                    onClick={e => e.stopPropagation()}
+                    onClick={e => toggleProductInWishlist(e)}
                     className="absolute p-2 transition-all bg-white rounded-full shadow-md opacity-0 top-3 right-3 group-hover:opacity-100 hover:scale-110 hover:bg-red-50"
                 >
-                    <Heart size={18} className="text-red-500" />
+                    {
+                        wishlistLoading ?
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-500"></div>
+                            :
+
+                            (
+
+                                wishlists.some(wishlist => wishlist.productId === product.id) ?
+                                    <Heart size={18} className="text-red-500" fill="red" />
+                                    :
+                                    <Heart size={18} />
+
+                            )
+                    }
                 </button>
             </div>
 
@@ -77,22 +118,32 @@ const ProductCard = ({ product }: ProductCartProps) => {
                     {product.department?.name} / {product.category?.name}
                 </div>
                 <div className="mb-4 text-2xl font-bold text-primary">{formatPrice(product.price as number)}</div>
-                <div className="justify-end mt-auto card-actions">
-                    <button
-                        className="relative flex w-full gap-2 btn btn-primary hover-lift"
-                        disabled={isLoading || product.quantity === 0}
-                        onClick={addProductToCart}
-                    >
-                        {isLoading ? (
-                            <span className="loading loading-spinner loading-sm"></span>
-                        ) : (
-                            <>
-                                <ShoppingCart size={18} />
-                                Add to Cart
-                            </>
-                        )}
-                    </button>
-                </div>
+
+                {
+                    cart ?
+                        <>
+                            <ProductCartQuantity cartId={cart.id} currentQuantity={cart.quantity} productMaxQuantity={product.quantity} />
+                        </>
+                        :
+                        <>
+                            <div className="justify-end mt-auto card-actions">
+                                <button
+                                    className="relative flex w-full gap-2 btn btn-primary hover-lift"
+                                    disabled={isLoading || product.quantity === 0}
+                                    onClick={addProductToCart}
+                                >
+                                    {isLoading ? (
+                                        <span className="loading loading-spinner loading-sm"></span>
+                                    ) : (
+                                        <>
+                                            <ShoppingCart size={18} />
+                                            Add to Cart
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </>
+                }
             </div>
         </div>
     );

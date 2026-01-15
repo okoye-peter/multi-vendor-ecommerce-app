@@ -14,6 +14,7 @@ import { emptyCart } from '../store/CartSlice';
 export const Navbar = () => {
     const user = useSelector((state: RootState) => state.auth.user);
     const carts = useSelector((state: RootState) => state.cart.carts);
+    const wishlists = useSelector((state: RootState) => state.wishlist.wishlists);
     const dispatch = useDispatch();
     const navigate = useNavigate();
 
@@ -133,24 +134,25 @@ export const Navbar = () => {
                                     </button>
                                 )} */}
 
-                                {/* Wishlist */}
                                 {user && (
-                                    <button className="btn btn-ghost ">
-                                        <div className="indicator">
-                                            <Heart className="w-5 h-5" />
-                                            <span className="badge badge-xs badge-primary indicator-item badge-pulse">2</span>
-                                        </div>
-                                    </button>
-                                )}
+                                    <>
 
-                                {/* Cart */}
-                                {user && (
-                                    <Link to="/carts" className="btn btn-ghost ">
-                                        <div className="indicator">
-                                            <ShoppingBag className="w-5 h-5" />
-                                            <span className="badge badge-xs indicator-item badge-primary badge-pulse">{carts.length}</span>
-                                        </div>
-                                    </Link>
+                                    {/* Wishlist */}
+                                        <Link to="/wishlist" className="btn btn-ghost ">
+                                            <div className="indicator">
+                                                <Heart className="w-5 h-5" />
+                                                <span className="badge badge-xs badge-primary indicator-item badge-pulse">{wishlists.length}</span>
+                                            </div>
+                                        </Link>
+
+                                        {/* Cart */}
+                                        <Link to="/carts" className="btn btn-ghost ">
+                                            <div className="indicator">
+                                                <ShoppingBag className="w-5 h-5" />
+                                                <span className="badge badge-xs indicator-item badge-primary badge-pulse">{carts.length}</span>
+                                            </div>
+                                        </Link>
+                                    </>
                                 )}
 
                                 {/* Profile Dropdown */}

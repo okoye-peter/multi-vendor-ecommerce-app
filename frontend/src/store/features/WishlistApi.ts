@@ -3,7 +3,7 @@ import type { Wishlist } from "../../types/Index";
 
 
 export const wishlistApi = createApi({
-    reducerPath: 'wishlist',
+    reducerPath: 'wishlistApi',
     baseQuery: fetchBaseQuery({
         baseUrl: import.meta.env.VITE_API_URL,
         credentials: 'include'
@@ -30,7 +30,7 @@ export const wishlistApi = createApi({
         }),
         moveWishlistItemsToCart: builder.mutation<{ message: string }, void>({
             query: () => ({
-                url: `/wishlists/add_to_Cart`,
+                url: `/wishlists/add-to-cart`,
                 method: 'POST'
             })
         })
@@ -39,6 +39,7 @@ export const wishlistApi = createApi({
 
 export const {
     useGetUserWishlistQuery,
+    useLazyGetUserWishlistQuery,
     useMoveWishlistItemsToCartMutation,
     useToggleProductInWishlistMutation,
     useClearWishlistMutation,

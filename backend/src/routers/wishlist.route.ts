@@ -7,6 +7,6 @@ const router = express.Router()
 router.get('/', getWishlists)
 router.delete('/', clearWishlist)
 router.post('/:productId', toggleProductInWishlist)
-router.post('/add_to_Cart', moveWishlistItemToCart)
+router.post('/add-to-cart', moveWishlistItemToCart)
 
 export default router;

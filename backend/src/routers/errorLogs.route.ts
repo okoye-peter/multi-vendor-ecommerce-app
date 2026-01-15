@@ -2,7 +2,8 @@ import express from 'express';
 import fs from 'fs';
 import path from 'path';
 
-const router = express.Router();
+const 
+router = express.Router();
 
 router.get('/', (req, res) => {
     const logPath = path.join(process.cwd(), 'logs', 'error.log');

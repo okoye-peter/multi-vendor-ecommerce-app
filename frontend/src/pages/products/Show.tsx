@@ -4,8 +4,6 @@ import { useQuery } from '@tanstack/react-query';
 import {
     ShoppingCart,
     Heart,
-    Minus,
-    Plus,
     Share2,
     X
 } from 'lucide-react';
@@ -16,10 +14,9 @@ import { toast } from 'react-toastify';
 import { useAddToCartMutation } from '../../store/features/CartApi';
 import { addToCart } from '../../store/CartSlice';
 import { useDispatch, useSelector } from 'react-redux';
-import { useUpdateCartMutation } from '../../store/features/CartApi'
-import { updateCartItem } from '../../store/CartSlice';
 import type { BackendError, Cart } from '../../types/Index';
 import type { RootState } from '../../store/Index';
+import { ProductCartQuantity } from '../../components/ProductCartQuantity';
 
 // ============================================
 // TYPES
@@ -70,7 +67,7 @@ export default function ProductDetail() {
     const dispatch = useDispatch();
 
     const [addToCartMutation, { isLoading: isAddingToCart }] = useAddToCartMutation();
-    const [updateCartMutation, { isLoading: isUpdatingCart }] = useUpdateCartMutation();
+    
 
     const addProductToCart = async (productId: number) => {
         try {
@@ -86,20 +83,7 @@ export default function ProductDetail() {
         }
     };
 
-    const updateCartQuantity = async (quantity: number, cartId: number) => {
-        try {
-            const res = await updateCartMutation({ quantity, cartId }).unwrap();
-            dispatch(updateCartItem(res.cart));
-            toast.success('Cart item quantity updated successfully');
-
-        } catch (error) {
-            const backendError = error as BackendError;
-            console.log('backendError', backendError);
-
-            toast.error(backendError.response?.data?.message as string || backendError?.message as string || backendError.data?.message as string || 'Failed to update cart item quantity');
-
-        }
-    }
+    
 
     // Fetch product data
     const {
@@ -298,30 +282,7 @@ export default function ProductDetail() {
                                     </label>
                                     {
                                         cart ?
-                                            <div className="flex items-center gap-4">
-                                                <div className="inline-flex items-center rounded-xl">
-                                                    <button
-                                                        onClick={() => updateCartQuantity(-1, cart?.id)}
-                                                        disabled={cart.quantity <= 1}
-                                                        className="p-3 transition hover:opacity-70 disabled:opacity-30 disabled:cursor-not-allowed"
-                                                    >
-                                                        <Minus size={20} />
-                                                    </button>
-                                                    <span className="px-8 py-3 text-xl font-bold min-w-[80px] text-center">
-                                                        {isUpdatingCart ? <span className="loading loading-spinner loading-sm"></span> : cart.quantity}
-                                                    </span>
-                                                    <button
-                                                        onClick={() => updateCartQuantity(1, cart?.id)}
-                                                        disabled={cart.quantity >= data.product.quantity}
-                                                        className="p-3 transition hover:opacity-70 disabled:opacity-30 disabled:cursor-not-allowed"
-                                                    >
-                                                        <Plus size={20} />
-                                                    </button>
-                                                </div>
-                                                <span className="text-sm opacity-60">
-                                                    {data.product.quantity} available
-                                                </span>
-                                            </div>
+                                            <ProductCartQuantity cartId={cart.id} currentQuantity={cart.quantity} productMaxQuantity={data.product.quantity} />
                                             :
                                             <button
                                                 className="relative flex w-40 gap-3 p-3 text-sm btn btn-outline btn-primary"
