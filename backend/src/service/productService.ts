@@ -1,4 +1,4 @@
-import { Prisma, type Product, type SubProduct, type Vendor} from "@prisma/client";
+import { Prisma, type Product, type SubProduct, type Vendor } from "@prisma/client";
 import prisma from "../libs/prisma.js";
 import { productSchema, productRefillSchema, updateProductSchema } from "../controllers/product.controller.js";
 import generateBatchNumber from "../utils/generateSubProductBatchNumber.js";
@@ -124,6 +124,9 @@ export default class ProductService {
 
                     await tx.productImage.createMany({ data: imageRecords });
                 }
+            }, {
+                maxWait: 5000, // Wait max 5 seconds for a connection
+                timeout: 15000 // 15 seconds timeout
             });
 
             return product!;
@@ -228,6 +231,9 @@ export default class ProductService {
                 }
 
                 return product;
+            }, {
+                maxWait: 5000, // Wait max 5 seconds for a connection
+                timeout: 15000 // 15 seconds timeout
             });
 
             return updatedProduct;
@@ -249,6 +255,8 @@ export default class ProductService {
 
     async delete(productId: number) {
         try {
+            // Fetch product with images before deletion
+            let imagesToDelete: string[] = [];
             await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
                 const product = await tx.product.findUnique({
                     where: { id: productId },
@@ -263,6 +271,11 @@ export default class ProductService {
                     throw { status: 404, message: "Product not found" };
                 }
 
+                // Store images to delete after transaction
+                if (product.images?.length > 0) {
+                    imagesToDelete = product.images.map(img => img.url);
+                }
+
                 // Delete subProducts that don't have any orderSubProducts
                 await tx.subProduct.deleteMany({
                     where: {
@@ -273,19 +286,24 @@ export default class ProductService {
                     }
                 });
 
-                // Delete images from Cloudinary
-                if (product.images?.length > 0) {
-                    const imagesToDelete: string[] = product.images.map(img => img.url);
-                    await FileService.deleteMultiple(imagesToDelete);
-                }
-
-                // Delete the product
+                // Delete the product (cascade will delete images from DB)
                 await tx.product.delete({
                     where: {
                         id: productId
                     }
                 });
+            }, {
+                maxWait: 5000, // Wait max 5 seconds for a connection
+                timeout: 10000 // Reduced to 10 seconds since no external API calls
             });
+
+            // Delete images from Cloudinary AFTER transaction (async, don't wait)
+            if (imagesToDelete.length > 0) {
+                FileService.deleteMultiple(imagesToDelete).catch(err => {
+                    console.error('Failed to delete images from Cloudinary:', err);
+                    // Don't throw - this is a background cleanup task
+                });
+            }
         } catch (error) {
             if (error instanceof Error) {
                 throw { status: 500, message: error.message };

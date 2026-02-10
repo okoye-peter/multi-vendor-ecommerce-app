@@ -4,7 +4,8 @@ const BASE_URL = import.meta.env.MODE === 'development' ? import.meta.env.VITE_A
 
 const axiosInstance = axios.create({
     baseURL: BASE_URL,
-    withCredentials: true
-}) 
+    withCredentials: true,
+    timeout: 120000 // 2 minutes timeout for file uploads
+})
 
 export default axiosInstance;

@@ -14,10 +14,10 @@ const connectionString = process.env.DATABASE_URL;
 const pool = new Pool({
     connectionString,
     // Optimized settings for pooled connections
-    max: 10, // Reduced from 20 - most providers limit connections
+    max: 30, // Increased for high concurrency with file uploads
     min: 2, // Keep some connections alive
-    idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 10000,
+    idleTimeoutMillis: 10000, // Release idle connections faster
+    connectionTimeoutMillis: 10000, // Fail faster if can't connect
     // Add SSL config if using cloud databases
     ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
 });
