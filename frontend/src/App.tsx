@@ -94,7 +94,7 @@ function App() {
 
     if (isLoading) {
         return (
-            <div className="bg-base-200">
+            <div className="min-h-screen bg-background flex items-center justify-center">
                 <PageLoader />
             </div>
         )
@@ -110,7 +110,7 @@ function App() {
     // }
 
     return (
-        <div className="bg-base-200">
+        <div className="min-h-screen bg-background selection:bg-primary/10 selection:text-primary">
             {!isAdminRoute && <Navbar />}
             <Routes>
                 <Route path='/' element={<Home />} />

@@ -1,5 +1,10 @@
 import React, { useState, useEffect } from "react";
 import ImageUploading, { type ImageListType } from "react-images-uploading";
+import { Upload, X, Check, Image as ImageIcon, RefreshCw, Trash2, Star, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { cn } from "@/utils/cn";
 
 export type UploadedImage = {
     file: File | null;
@@ -19,7 +24,6 @@ const MultiImageUploader: React.FC<Props> = ({ onChange, initialImages = [] }) =
 
     const initialImagesKey = JSON.stringify(initialImages);
     
-    // Load initial images when component mounts or initialImages change
     useEffect(() => {
         if (initialImages.length > 0 && !isInitialized) {
             const convertedImages = initialImages.map(img => ({
@@ -84,13 +88,11 @@ const MultiImageUploader: React.FC<Props> = ({ onChange, initialImages = [] }) =
         }
     };
 
-    // Manual remove handler
     const handleRemove = (index: number) => {
         const newImages = images.filter((_, idx) => idx !== index);
         onChangeImages(newImages);
     };
 
-    // Manual update/replace handler
     const handleReplace = (index: number) => {
         const input = document.createElement('input');
         input.type = 'file';
@@ -120,65 +122,106 @@ const MultiImageUploader: React.FC<Props> = ({ onChange, initialImages = [] }) =
             onChange={onChangeImages}
             maxNumber={8}
         >
-            {({ imageList, onImageUpload }) => (
-                <div className="space-y-4">
-                    <button 
-                        type="button"
-                        className="btn btn-primary" 
-                        onClick={onImageUpload}
-                    >
-                        {images.length > 0 ? 'Add More Images' : 'Upload Images'}
-                    </button>
+            {({ imageList, onImageUpload, dragProps, isDragging }) => (
+                <div className="space-y-6">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                        <div className="space-y-1">
+                            <h4 className="text-sm font-black uppercase tracking-widest text-muted-foreground">Product Assets</h4>
+                            <p className="text-xs text-muted-foreground font-medium">Upload up to 8 high-resolution images. First image is featured.</p>
+                        </div>
+                        <Button 
+                            type="button"
+                            onClick={onImageUpload}
+                            {...dragProps}
+                            className={cn(
+                                "h-12 rounded-2xl font-black gap-2 shadow-xl shadow-primary/20 hover-lift",
+                                isDragging ? "bg-primary/90 scale-95" : ""
+                            )}
+                        >
+                            <Upload className="h-4 w-4" />
+                            {images.length > 0 ? 'Add More' : 'Upload Assets'}
+                        </Button>
+                    </div>
 
-                    <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6">
                         {imageList.map((image, index) => (
-                            <div key={index} className="relative shadow-xl card bg-base-200">
-                                {defaultIndex === index && (
-                                    <div className="absolute badge badge-primary top-2 left-2">
-                                        Default
+                            <Card key={index} className="group relative border-none bg-background shadow-xl shadow-black/[0.02] rounded-[2rem] overflow-hidden animate-scale-in">
+                                <CardContent className="p-0">
+                                    <div className="relative aspect-square overflow-hidden bg-muted/30">
+                                        <img 
+                                            src={image.dataURL} 
+                                            alt={`Asset ${index + 1}`}
+                                            className="object-cover w-full h-full transition-transform duration-700 group-hover:scale-105" 
+                                        />
+                                        
+                                        {/* Badges */}
+                                        <div className="absolute top-3 left-3 flex flex-col gap-2">
+                                            {defaultIndex === index && (
+                                                <Badge className="bg-primary/90 backdrop-blur-md text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border-none">
+                                                    Featured
+                                                </Badge>
+                                            )}
+                                        </div>
+
+                                        {/* Quick Actions Overlay */}
+                                        <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-center gap-3">
+                                            <Button
+                                                variant="secondary"
+                                                size="sm"
+                                                className="h-10 w-32 rounded-xl font-bold text-xs gap-2 bg-white/10 text-white border-white/20 hover:bg-white hover:text-foreground backdrop-blur-md"
+                                                onClick={() => handleSetDefault(index)}
+                                                disabled={defaultIndex === index}
+                                            >
+                                                <Star className={cn("h-3 w-3", defaultIndex === index && "fill-current")} />
+                                                {defaultIndex === index ? 'Featured' : 'Set Featured'}
+                                            </Button>
+                                            
+                                            <div className="flex gap-2">
+                                                <Button
+                                                    variant="secondary"
+                                                    size="icon"
+                                                    className="h-10 w-10 rounded-xl bg-white/10 text-white border-white/20 hover:bg-white hover:text-foreground backdrop-blur-md"
+                                                    onClick={() => handleReplace(index)}
+                                                >
+                                                    <RefreshCw className="h-3 w-3" />
+                                                </Button>
+                                                <Button
+                                                    variant="destructive"
+                                                    size="icon"
+                                                    className="h-10 w-10 rounded-xl bg-destructive/80 text-white border-none hover:bg-destructive shadow-lg"
+                                                    onClick={() => handleRemove(index)}
+                                                >
+                                                    <Trash2 className="h-3 w-3" />
+                                                </Button>
+                                            </div>
+                                        </div>
                                     </div>
-                                )}
-
-                                <figure>
-                                    <img 
-                                        src={image.dataURL} 
-                                        alt={`Upload ${index + 1}`}
-                                        className="object-cover w-full h-36" 
-                                    />
-                                </figure>
-
-                                <div className="p-2 space-y-2">
-                                    <button
-                                        type="button"
-                                        className="w-full btn btn-xs btn-info"
-                                        onClick={() => handleReplace(index)}
-                                    >
-                                        Replace
-                                    </button>
-
-                                    <button
-                                        type="button"
-                                        className="w-full btn btn-xs btn-success"
-                                        onClick={() => handleSetDefault(index)}
-                                        disabled={defaultIndex === index}
-                                    >
-                                        {defaultIndex === index ? 'Is Default' : 'Set Default'}
-                                    </button>
-
-                                    <button
-                                        type="button"
-                                        className="w-full btn btn-xs btn-error"
-                                        onClick={() => handleRemove(index)}
-                                    >
-                                        Remove
-                                    </button>
-                                </div>
-                            </div>
+                                </CardContent>
+                            </Card>
                         ))}
+                        
+                        {images.length < 8 && (
+                           <button
+                                type="button"
+                                onClick={onImageUpload}
+                                className="aspect-square rounded-[2rem] border-4 border-dashed border-muted flex flex-col items-center justify-center gap-2 text-muted-foreground hover:border-primary/50 hover:bg-primary/5 hover:text-primary transition-all duration-300"
+                           >
+                                <Plus className="h-10 w-10" />
+                                <span className="text-[10px] font-black uppercase tracking-widest">Add Asset</span>
+                           </button>
+                        )}
                     </div>
 
                     {images.length === 0 && (
-                        <p className="text-sm italic text-gray-500">No images uploaded yet.</p>
+                        <div className="py-20 rounded-[3rem] border-4 border-dashed border-muted/50 flex flex-col items-center justify-center text-center space-y-4">
+                            <div className="h-20 w-20 rounded-[2.5rem] bg-muted/30 flex items-center justify-center text-muted-foreground">
+                                <ImageIcon size={40} />
+                            </div>
+                            <div>
+                                <h5 className="font-black text-xl tracking-tight">Gallery is empty</h5>
+                                <p className="text-sm text-muted-foreground font-medium">Drag assets here or use the button above.</p>
+                            </div>
+                        </div>
                     )}
                 </div>
             )}

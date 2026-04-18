@@ -1,15 +1,18 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Mail, Check, AlertCircle, Clock, X } from 'lucide-react';
-import { useResendEmailVerificationCodeMutation, useVerifyEmailMutation } from '../store/features/AuthApi';
-import type { BackendError } from '../types/Index';
+import { Mail, Check, AlertCircle, Clock, X, ArrowRight, RefreshCw } from 'lucide-react';
+import { useResendEmailVerificationCodeMutation, useVerifyEmailMutation } from '@/store/features/AuthApi';
+import type { BackendError } from '@/types/Index';
 import { toast } from 'react-toastify';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/utils/cn';
 
 interface EmailVerificationModalProps {
     isOpen?: boolean;
     onClose?: () => void;
     onSuccess?: (email: string) => void;
-    userEmail: string; // Required - always provided from registration/login
-    autoShow?: boolean; // Show modal automatically if email not verified
+    userEmail: string;
+    autoShow?: boolean;
 }
 
 type OtpArray = [string, string, string, string, string, string];
@@ -29,8 +32,8 @@ export default function EmailVerificationModal({
     const [resendTimer, setResendTimer] = useState<number>(60);
     const [canResend, setCanResend] = useState<boolean>(false);
 
-    // Use controlled or internal state
     const isOpen = controlledIsOpen !== undefined ? controlledIsOpen : internalIsOpen;
+    
     const handleCloseModal = () => {
         if (controlledOnClose) {
             controlledOnClose();
@@ -38,6 +41,7 @@ export default function EmailVerificationModal({
             setInternalIsOpen(false);
         }
     };
+
     const [resendEmailVerificationCodeMutation, { isLoading: isSendingEmailVerification }] = useResendEmailVerificationCodeMutation();
     const [verifyEmailMutation, { isLoading: isVerifyingEmail }] = useVerifyEmailMutation();
 
@@ -46,26 +50,23 @@ export default function EmailVerificationModal({
         setLoading(true);
 
         try {
-            // API call: await sendOtpMutation({ email: userEmail }).unwrap();
             await resendEmailVerificationCodeMutation().unwrap();
             setResendTimer(60);
             setCanResend(false);
         } catch (err) {
             const backendError = err as BackendError;
-            setError(backendError.response?.data?.message as string || backendError.message || 'Failed to send verification code. Please try again.');
+            setError(backendError.response?.data?.message as string || backendError.message || 'Failed to send verification code.');
         } finally {
             setLoading(false);
         }
     }, [resendEmailVerificationCodeMutation]);
 
-    // Auto-send OTP when modal opens
     useEffect(() => {
         if (autoShow && isOpen) {
             handleSendOtp();
         }
     }, [autoShow, isOpen, handleSendOtp]);
 
-    // Countdown timer for resend
     useEffect(() => {
         let interval: ReturnType<typeof setInterval> | undefined;
         if (isOpen && resendTimer > 0) {
@@ -92,19 +93,10 @@ export default function EmailVerificationModal({
         newOtp[index] = value;
         setOtp(newOtp);
 
-        // Auto-focus next input
         if (value && index < 5) {
             const nextInput = document.getElementById(`otp-${index + 1}`);
             if (nextInput) (nextInput as HTMLInputElement).focus();
         }
-
-        // Auto-submit when all 6 digits are entered
-        // if (index === 5 && value) {
-        // const fullOtp = [...newOtp.slice(0, 5), value].join('');
-        // if (fullOtp.length === 6) {
-        //     setTimeout(() => handleVerifyOtp(fullOtp), 100);
-        // }
-        // }
     };
 
     const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>): void => {
@@ -136,7 +128,7 @@ export default function EmailVerificationModal({
             if (onSuccess) onSuccess(userEmail);
         } catch (err) {
             const backendError = err as BackendError;
-            setError(backendError.response?.data?.message as string || backendError.message || 'Invalid verification code. Please try again.');
+            setError(backendError.response?.data?.message as string || backendError.message || 'Invalid verification code.');
             setOtp(['', '', '', '', '', '']);
             const firstInput = document.getElementById('otp-0');
             if (firstInput) (firstInput as HTMLInputElement).focus();
@@ -157,71 +149,71 @@ export default function EmailVerificationModal({
             setResendTimer(60);
             setCanResend(false);
             const firstInput = document.getElementById('otp-0');
-            toast.success(res.message || 'Email verification code sent successfully')
+            toast.success(res.message || 'Code sent successfully')
             if (firstInput) (firstInput as HTMLInputElement).focus();
         } catch (error) {
             const backendError = error as BackendError;
-            setError(backendError.response?.data?.message as string || backendError.message || 'Failed to resend code. Please try again.');
+            setError(backendError.response?.data?.message as string || backendError.message || 'Failed to resend code.');
         } finally {
             setLoading(false);
         }
     };
 
-    const handleSkip = (): void => {
-        handleCloseModal();
-    };
-
-    if (!isOpen) {
-        return null;
-    }
+    if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-            <div className={`modal ${isOpen ? 'modal-open' : ''}`}>
-                <div className="relative max-w-md modal-box">
-                    {/* Close Button */}
-                    <button
-                        onClick={handleCloseModal}
-                        className="absolute btn btn-sm btn-circle btn-ghost right-2 top-2"
-                    >
-                        <X className="w-5 h-5" />
-                    </button>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <div className="absolute inset-0 bg-background/80 backdrop-blur-2xl animate-fade-in" onClick={handleCloseModal} />
+            
+            {/* Premium Modal Card */}
+            <div className="relative w-full max-w-md bg-background rounded-[2.5rem] shadow-2xl border border-border/10 overflow-hidden animate-scale-in">
+                {/* Close Button */}
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleCloseModal}
+                    className="absolute right-6 top-6 h-10 w-10 rounded-full hover:bg-accent transition-all z-10"
+                >
+                    <X className="w-5 h-5" />
+                </Button>
 
+                <div className="p-10 pt-12">
                     {success ? (
-                        <div className="py-4 text-center">
-                            <div className="inline-flex p-4 mb-4 rounded-full bg-success/10 animate-bounce">
-                                <Check className="w-16 h-16 text-success" />
+                        <div className="text-center animate-fade-in py-4">
+                            <div className="inline-flex p-6 mb-8 rounded-[2rem] bg-emerald-500/10 shadow-inner">
+                                <Check className="w-16 h-16 text-emerald-500 animate-bounce" />
                             </div>
-                            <h3 className="mb-2 text-2xl font-bold">Email Verified!</h3>
-                            <p className="mb-6 text-base-content/70">
-                                Your email <strong>{userEmail}</strong> has been successfully verified.
+                            <h3 className="mb-3 text-3xl font-black tracking-tight">Email Verified!</h3>
+                            <p className="mb-10 text-muted-foreground font-medium leading-relaxed">
+                                Great news! Your email <span className="text-foreground font-bold">{userEmail}</span> has been successfully verified.
                             </p>
-                            <button
-                                className="btn btn-primary btn-wide"
+                            <Button
+                                className="w-full h-14 rounded-2xl font-black text-lg shadow-xl shadow-primary/20 hover-lift group"
                                 onClick={handleCloseModal}
                             >
-                                Continue
-                            </button>
+                                Continue Shopping
+                                <ArrowRight className="ml-2 w-5 h-5 transition-transform group-hover:translate-x-1" />
+                            </Button>
                         </div>
                     ) : (
                         <div>
-                            <div className="mb-6 text-center">
-                                <div className="inline-flex items-center justify-center w-16 h-16 mb-4 rounded-full bg-primary/10">
-                                    <Mail className="w-8 h-8 text-primary" />
+                            <div className="mb-10 text-center">
+                                <div className="inline-flex items-center justify-center w-20 h-20 mb-8 rounded-[2.5rem] bg-primary/10 shadow-inner">
+                                    <Mail className="w-10 h-10 text-primary animate-pulse" />
                                 </div>
-                                <h3 className="mb-2 text-2xl font-bold">Check Your Email</h3>
-                                <p className="mb-2 text-base-content/70">
-                                    We've sent a 6-digit code to
+                                <h3 className="mb-3 text-4xl font-black tracking-tighter">Verify Your Email</h3>
+                                <p className="text-muted-foreground font-medium">
+                                    We've sent a 6-digit verification code to
                                 </p>
-                                <strong className="text-lg text-base-content">{userEmail}</strong>
+                                <Badge variant="secondary" className="mt-2 px-4 py-1 rounded-full text-primary font-bold bg-primary/5 hover:bg-primary/10 transition-colors">
+                                    {userEmail}
+                                </Badge>
                             </div>
 
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="label">
-                                        <span className="font-medium label-text">Enter Verification Code</span>
-                                    </label>
-                                    <div className="flex justify-between gap-2 mb-2">
+                            <div className="space-y-8">
+                                <div className="space-y-4">
+                                    <div className="flex justify-between gap-3">
                                         {otp.map((digit, index) => (
                                             <input
                                                 key={index}
@@ -229,7 +221,11 @@ export default function EmailVerificationModal({
                                                 type="text"
                                                 inputMode="numeric"
                                                 maxLength={1}
-                                                className="w-12 h-12 text-xl font-bold text-center input input-bordered"
+                                                className={cn(
+                                                    "w-full aspect-square text-2xl font-black text-center rounded-2xl transition-all outline-none",
+                                                    "bg-muted/30 border-none focus:ring-2 focus:ring-primary/40 focus:bg-background h-14",
+                                                    digit ? "bg-background ring-2 ring-primary/20" : ""
+                                                )}
                                                 value={digit}
                                                 onChange={(e) => handleOtpChange(index, e.target.value)}
                                                 onKeyDown={(e) => handleOtpKeyDown(index, e)}
@@ -237,67 +233,73 @@ export default function EmailVerificationModal({
                                             />
                                         ))}
                                     </div>
-                                    {otp.join('').length > 0 && otp.join('').length < 6 && (
-                                        <p className="text-xs text-center text-warning">
-                                            Enter all 6 digits
-                                        </p>
-                                    )}
-                                </div>
-
-                                {error && (
-                                    <div className="alert alert-error">
-                                        <AlertCircle className="w-5 h-5" />
-                                        <span className="text-sm">{error}</span>
-                                    </div>
-                                )}
-
-                                <button
-                                    onClick={() => handleVerifyOtp()}
-                                    className={`btn btn-primary w-full ${loading ? 'loading' : ''}`}
-                                    disabled={loading || otp.join('').length !== 6 || isSendingEmailVerification || isVerifyingEmail}
-                                >
-                                    {loading ? 'Verifying...' : 'Verify Email'}
-                                </button>
-
-                                <button
-                                    onClick={handleSkip}
-                                    className="w-full btn btn-ghost"
-                                >
-                                    I'll Verify Later
-                                </button>
-
-                                <div className="text-xs divider">OR</div>
-
-                                <div className="text-center">
-                                    {!canResend ? (
-                                        <div className="flex items-center justify-center gap-2 text-sm text-base-content/70">
-                                            <Clock className="w-4 h-4" />
-                                            <span>
-                                                Resend code in <strong className="text-primary">{resendTimer}s</strong>
-                                            </span>
+                                    
+                                    {error && (
+                                        <div className="flex items-center gap-3 p-4 rounded-2xl bg-destructive/10 text-destructive border border-destructive/20 animate-fade-in">
+                                            <AlertCircle className="w-5 h-5 shrink-0" />
+                                            <span className="text-sm font-bold leading-tight">{error}</span>
                                         </div>
-                                    ) : (
-                                        <button
-                                            onClick={handleResendOtp}
-                                            className="btn btn-ghost btn-sm"
-                                            disabled={loading}
-                                        >
-                                            Resend Verification Code
-                                        </button>
                                     )}
                                 </div>
 
-                                <div className="p-3 text-sm rounded-lg bg-info/10">
-                                    <p className="mb-1 font-medium text-info">💡 Tip:</p>
-                                    <p className="text-xs text-base-content/70">
-                                        Check your spam folder if you don't see the email within a few minutes.
-                                    </p>
+                                <div className="space-y-4">
+                                    <Button
+                                        onClick={() => handleVerifyOtp()}
+                                        className={cn(
+                                            "w-full h-14 rounded-2xl font-black text-xl shadow-xl shadow-primary/20 hover-lift",
+                                            loading ? "opacity-90" : ""
+                                        )}
+                                        disabled={loading || otp.join('').length !== 6 || isSendingEmailVerification || isVerifyingEmail}
+                                    >
+                                        {loading ? (
+                                            <div className="flex items-center gap-3">
+                                                <RefreshCw className="h-5 w-5 animate-spin" />
+                                                Verifying...
+                                            </div>
+                                        ) : 'Verify Code'}
+                                    </Button>
+
+                                    <div className="flex flex-col gap-3">
+                                        {!canResend ? (
+                                            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground font-bold py-2">
+                                                <Clock className="w-4 h-4" />
+                                                <span>
+                                                    Resend in <span className="text-primary">{resendTimer}s</span>
+                                                </span>
+                                            </div>
+                                        ) : (
+                                            <Button
+                                                variant="ghost"
+                                                onClick={handleResendOtp}
+                                                className="w-full h-12 rounded-xl text-primary font-black hover:bg-primary/5"
+                                                disabled={loading}
+                                            >
+                                                Resend verification code
+                                            </Button>
+                                        )}
+                                        
+                                        <Button
+                                            variant="secondary"
+                                            onClick={handleCloseModal}
+                                            className="w-full h-12 rounded-xl font-bold bg-muted/50 hover:bg-muted text-muted-foreground transition-all"
+                                        >
+                                            Complete later
+                                        </Button>
+                                    </div>
+                                </div>
+
+                                <div className="p-5 rounded-3xl bg-primary/5 border border-primary/10">
+                                    <div className="flex gap-3">
+                                        <div className="h-5 w-5 flex items-center justify-center rounded-full bg-primary/20 text-primary text-[10px] font-black shrink-0">!</div>
+                                        <p className="text-xs text-muted-foreground font-bold leading-relaxed">
+                                            If you haven't received the email, please check your spam folder or wait a few minutes before resending.
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     )}
                 </div>
-                <div className="modal-backdrop" onClick={handleCloseModal}></div>
             </div>
         </div>
     );

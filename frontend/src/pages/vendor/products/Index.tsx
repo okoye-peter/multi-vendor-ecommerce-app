@@ -1,23 +1,27 @@
-import { DataTable, type SearchableColumnDef } from "../../../components/DataTable.tsx";
-import type { Category, Department, Filter, Product } from "../../../types/Index.ts";
+import { DataTable, type SearchableColumnDef } from "@/components/DataTable";
+import type { Category, Department, Filter, Product } from "@/types/Index";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { getAllCategory, getAllDepartments, toggleProductPublicity } from "../../../libs/api.ts";
-import CreateProduct from './modals/Create.tsx';
+import { getAllCategory, getAllDepartments, toggleProductPublicity } from "@/libs/api";
+import CreateProduct from './modals/Create';
 import { useState, useMemo, useCallback } from "react";
-import ActionDropdown from "../../../components/DataTableActionDropDown.tsx";
-import DeleteProductModal from "./modals/Delete.tsx";
-import EditProductModal from "./modals/Edit.tsx";
-import { Rss } from "lucide-react";
+import ActionDropdown from "@/components/DataTableActionDropDown";
+import { DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import DeleteProductModal from "./modals/Delete";
+import EditProductModal from "./modals/Edit";
+import { Rss, Eye, Edit3, Trash2, Plus, Package } from "lucide-react";
 import { toast } from "react-toastify";
-import FullPageLoader from "../../../components/FullPageLoader.tsx";
-import { Link } from "react-router";
-
+import FullPageLoader from "@/components/FullPageLoader";
+import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { formatPrice } from "@/utils/index";
 
 const ProductsTable = () => {
     const [productToDelete, setProductToDelete] = useState<Product | null>(null)
     const [productIdToEdit, setProductIdToEdit] = useState<number | null>(null)
     const [productVendorIdIdToEdit, setProductVendorIdIdToEdit] = useState<number | null>(null)
     const [dataTableKey, setDataTableKey] = useState<number>(1111)
+    
     const { data: categories, isLoading: categoriesIsLoading } = useQuery<Category[]>({
         queryKey: ['allCategories'],
         queryFn: getAllCategory
@@ -28,7 +32,6 @@ const ProductsTable = () => {
         queryFn: getAllDepartments
     })
 
-    // Define callbacks before columns so they can be used in the column definitions
     const showDeleteWarningModal = useCallback((product: Product) => {
         setProductToDelete(product);
         (document.getElementById('deleteProductWarningModal') as HTMLDialogElement)?.showModal()
@@ -60,103 +63,132 @@ const ProductsTable = () => {
         {
             id: 'id',
             accessorKey: 'id',
-            header: 'ID',
+            header: 'Hash ID',
+            cell: (info) => (
+                <span className="font-mono text-[10px] text-muted-foreground font-bold">
+                    #{String(info.getValue()).padStart(4, '0')}
+                </span>
+            )
         },
         {
             id: 'name',
             accessorKey: 'name',
-            header: 'Product Name',
+            header: 'Product Narrative',
             searchable: true,
+            cell: (info) => (
+                <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-xl bg-primary/5 flex items-center justify-center text-primary">
+                        <Package size={18} />
+                    </div>
+                    <span className="font-black tracking-tight">{String(info.getValue())}</span>
+                </div>
+            )
         },
         {
             id: 'category',
             accessorKey: 'category.name',
             header: 'Category',
             searchable: true,
-            cell: (info) => info.row.original.category?.name || 'N/A',
+            cell: (info) => (
+                <Badge variant="secondary" className="bg-muted/50 text-muted-foreground border-none font-bold text-[10px] uppercase tracking-widest px-2 py-0.5 rounded-lg">
+                    {info.row.original.category?.name || 'GENERIC'}
+                </Badge>
+            ),
         },
         {
             id: 'department',
             accessorKey: 'department.name',
-            header: 'Department',
+            header: 'Unit',
             searchable: true,
-            cell: (info) => info.row.original.department?.name || 'N/A',
+            cell: (info) => (
+                <span className="text-[10px] font-black text-muted-foreground uppercase tracking-tighter">
+                    {info.row.original.department?.name || 'N/A'}
+                </span>
+            ),
         },
         {
             id: 'price',
             accessorKey: 'price',
-            header: 'Price',
-            cell: (info) => `₦${Number(info.getValue()).toFixed(2)}`,
+            header: 'Valuation',
+            cell: (info) => (
+                <span className="font-black text-sm tracking-tight">
+                    {formatPrice(Number(info.getValue()))}
+                </span>
+            ),
         },
         {
             id: 'quantity_available',
             accessorKey: 'quantity',
-            header: 'Qty Available',
-        },
-        {
-            id: 'vendor',
-            accessorKey: 'vendor.name',
-            header: 'Vendor',
+            header: 'Inventory',
+            cell: (info) => (
+                <div className="flex items-center gap-2">
+                    <div className={cn(
+                        "h-1.5 w-1.5 rounded-full animate-pulse",
+                        Number(info.getValue()) > 10 ? "bg-emerald-500" : "bg-rose-500"
+                    )} />
+                    <span className="font-bold text-xs">{String(info.getValue())} UNITS</span>
+                </div>
+            )
         },
         {
             id: 'published',
             accessorKey: 'is_published',
-            header: 'Published',
+            header: 'Relay Status',
             cell: (info) => (
-                <>
-                    {info.getValue() && <span className="px-3 py-1 text-xs text-green-900 bg-green-100 rounded">Published</span>}
-                    {!info.getValue() && <span className="px-3 py-1 text-xs text-red-900 bg-red-100 rounded">Unpublished</span>}
-                </>
+                <Badge className={cn(
+                    "border-none font-black text-[9px] tracking-widest px-2.5 py-0.5 rounded-full uppercase",
+                    info.getValue() ? "bg-emerald-500/10 text-emerald-600" : "bg-rose-500/10 text-rose-600"
+                )}>
+                    {info.getValue() ? 'Published' : 'Draft'}
+                </Badge>
             ),
         },
         {
             id: 'Actions',
-            accessorKey: 'action',
-            header: 'Actions',
+            accessorKey: 'id',
+            header: 'Operations',
             cell: (info) => (
                 <ActionDropdown>
-                    <li>
-                        <Link to={`/vendor/${info.row.original.vendorId}/products/${info.row.original.id}`}>
-                            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                            </svg>
-                            View Details
+                    <DropdownMenuItem asChild>
+                        <Link 
+                            to={`/vendor/${info.row.original.vendorId}/products/${info.row.original.id}`}
+                            className="flex items-center gap-2 cursor-pointer font-black text-[10px] uppercase tracking-widest py-2"
+                        >
+                            <Eye className="w-3.5 h-3.5 text-primary" />
+                            Inspection Details
                         </Link>
-                    </li>
-                    <li>
-                        <a onClick={() => togglePublicity({ vendorId: info.row.original.vendorId as number, productId: info.row.original.id as number })}>
-                            <Rss className="w-4 h-4" />
-                            {info.row.original.is_published ? 'Unpublish' : 'Publish'}
-                        </a>
-                    </li>
-                    <li>
-                        <a onClick={() => showEditModal(info.row.original)}>
-                            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                            </svg>
-                            Edit
-                        </a>
-                    </li>
-                    <div className="my-0 divider"></div>
-                    <li>
-                        <a onClick={() => showDeleteWarningModal(info.row.original)} className="text-error">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                            Delete
-                        </a>
-                    </li>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                        onClick={() => togglePublicity({ vendorId: info.row.original.vendorId as number, productId: info.row.original.id as number })}
+                        className="flex items-center gap-2 cursor-pointer font-black text-[10px] uppercase tracking-widest py-2"
+                    >
+                        <Rss className="w-3.5 h-3.5 text-indigo-500" />
+                        {info.row.original.is_published ? 'Cease Relay' : 'Initialize Relay'}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                        onClick={() => showEditModal(info.row.original)}
+                        className="flex items-center gap-2 cursor-pointer font-black text-[10px] uppercase tracking-widest py-2"
+                    >
+                        <Edit3 className="w-3.5 h-3.5 text-amber-500" />
+                        Modify Matrix
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator className="bg-border/40" />
+                    <DropdownMenuItem 
+                        onClick={() => showDeleteWarningModal(info.row.original)}
+                        className="flex items-center gap-2 cursor-pointer font-black text-[10px] uppercase tracking-widest py-2 text-destructive focus:text-destructive focus:bg-destructive/5"
+                    >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Purge Entry
+                    </DropdownMenuItem>
                 </ActionDropdown>
             ),
         },
     ], [showDeleteWarningModal, showEditModal, togglePublicity]);
 
-    // ✅ Define filters with dynamic options
     const dataTableFilters: Filter[] = [
         {
             column: 'categoryId',
-            label: 'Category',
+            label: 'Taxonomy Category',
             type: 'select',
             options: categories?.map((cat: Category) => ({
                 value: String(cat.id),
@@ -165,7 +197,7 @@ const ProductsTable = () => {
         },
         {
             column: 'departmentId',
-            label: 'Department',
+            label: 'Operational Unit',
             type: 'select',
             options: departments?.map((dept: Department) => ({
                 value: String(dept.id),
@@ -174,29 +206,17 @@ const ProductsTable = () => {
         },
         {
             column: 'is_published',
-            label: 'Published',
+            label: 'Relay Integrity',
             type: 'select',
             options: [
-                {
-                    label: 'Published',
-                    value: true
-                },
-                {
-                    label: 'Unpublished',
-                    value: false
-                },
+                { label: 'Published Only', value: true },
+                { label: 'Drafts Only', value: false },
             ],
         },
-        // {
-        //     column: 'createdAt',
-        //     label: 'Created Date',
-        //     type: 'dateRange',
-        // },
     ];
 
     const handleRowClick = (product: Product) => {
-        console.log('Product clicked:', product);
-        // Handle row click - navigate to detail page, open modal, etc.
+        console.log('Product selected:', product.id);
     };
 
     if (departmentsIsLoading || categoriesIsLoading || productPublicityIsPending) {
@@ -204,35 +224,31 @@ const ProductsTable = () => {
     }
 
     return (
-        <>
+        <div className="animate-fade-in">
             <DataTable<Product>
                 url={`/vendors/products`}
                 columns={dataTableColumns}
                 filters={dataTableFilters}
-                title="Products"
+                title="Inventory Repository"
                 defaultPageSize={10}
                 onRowClick={handleRowClick}
                 key={dataTableKey}
                 headerActions={
-                    <button className="btn btn-primary" onClick={() => (document.getElementById('createProductModal') as HTMLDialogElement)?.showModal()}>
-                        <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-                        </svg>
-                        Add Product
-                    </button>
+                    <Button 
+                        onClick={() => (document.getElementById('createProductModal') as HTMLDialogElement)?.showModal()}
+                        className="h-11 rounded-xl font-black gap-2 shadow-xl shadow-primary/20 hover-lift"
+                    >
+                        <Plus className="w-4 h-4" />
+                        Onboard Asset
+                    </Button>
                 }
             />
 
-            {/* create product modal */}
-            <CreateProduct categories={categories!} departments={departments!} onProductCreated={() => { setDataTableKey(prev => prev + 1); console.log('product created') }} />
-
-            {/* edit product modal */}
-            <EditProductModal categories={categories!} departments={departments!} productId={productIdToEdit} vendorId={productVendorIdIdToEdit} onProductUpdated={() => { resetDataOnProductUpdate(); console.log('product updated') }} />
-
-            {/* delete product modal */}
-            <DeleteProductModal product={productToDelete} onProductDeleted={() => { setDataTableKey((prev) => prev + 1); console.log('product deleted') }} />
-
-        </>
+            {/* Modals remain for functional continuity */}
+            <CreateProduct categories={categories!} departments={departments!} onProductCreated={() => { setDataTableKey(prev => prev + 1) }} />
+            <EditProductModal categories={categories!} departments={departments!} productId={productIdToEdit} vendorId={productVendorIdIdToEdit} onProductUpdated={() => { resetDataOnProductUpdate() }} />
+            <DeleteProductModal product={productToDelete} onProductDeleted={() => { setDataTableKey((prev) => prev + 1) }} />
+        </div>
     );
 }
 

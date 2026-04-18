@@ -1,10 +1,31 @@
-@plugin "daisyui";
 @import "tailwindcss";
 
 /* ============================================
    CUSTOM PROPERTIES & DESIGN TOKENS
    ============================================ */
 :root {
+  /* Shadcn UI Theme Variables (Light Mode) */
+  --background: 0 0% 100%;
+  --foreground: 222.2 84% 4.9%;
+  --card: 0 0% 100%;
+  --card-foreground: 222.2 84% 4.9%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222.2 84% 4.9%;
+  --primary: 243.4 75.4% 58.6%; /* Vibrant Indigo */
+  --primary-foreground: 210 40% 98%;
+  --secondary: 339 90% 60%; /* Vibrant Rose */
+  --secondary-foreground: 222.2 47.4% 11.2%;
+  --muted: 210 40% 96.1%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+  --accent: 210 40% 96.1%;
+  --accent-foreground: 222.2 47.4% 11.2%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 214.3 31.8% 91.4%;
+  --input: 214.3 31.8% 91.4%;
+  --ring: 243.4 75.4% 58.6%;
+  --radius: 0.75rem;
+
   /* Timing Functions */
   --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
   --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
@@ -16,13 +37,38 @@
   --duration-slow: 500ms;
   
   /* Shadows */
-  --shadow-glow: 0 0 20px rgba(139, 92, 246, 0.3);
-  --shadow-soft: 0 10px 40px rgba(0, 0, 0, 0.1);
-  --shadow-elevated: 0 20px 60px rgba(0, 0, 0, 0.15);
+  --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.3); /* Indigo Glow */
+  --shadow-soft: 0 10px 40px rgba(0, 0, 0, 0.05);
+  --shadow-elevated: 0 20px 60px rgba(0, 0, 0, 0.1);
   
   /* Glass Effect */
-  --glass-bg: rgba(255, 255, 255, 0.1);
-  --glass-border: rgba(255, 255, 255, 0.2);
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] {
+  --background: 222.2 84% 4.9%;
+  --foreground: 210 40% 98%;
+  --card: 222.2 84% 4.9%;
+  --card-foreground: 210 40% 98%;
+  --popover: 222.2 84% 4.9%;
+  --popover-foreground: 210 40% 98%;
+  --primary: 243.4 75.4% 58.6%;
+  --primary-foreground: 222.2 47.4% 11.2%;
+  --secondary: 339 90% 60%;
+  --secondary-foreground: 210 40% 98%;
+  --muted: 217.2 32.6% 17.5%;
+  --muted-foreground: 215 20.2% 65.1%;
+  --accent: 217.2 32.6% 17.5%;
+  --accent-foreground: 210 40% 98%;
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 217.2 32.6% 17.5%;
+  --input: 217.2 32.6% 17.5%;
+  --ring: 243.4 75.4% 58.6%;
+  
+  --glass-bg: rgba(15, 23, 42, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.05);
 }
 
 /* ============================================
@@ -48,17 +94,17 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: hsl(var(--b2));
+  background: hsl(var(--muted));
 }
 
 ::-webkit-scrollbar-thumb {
-  background: hsl(var(--p) / 0.5);
+  background: hsl(var(--primary) / 0.5);
   border-radius: 5px;
   transition: background var(--duration-fast) var(--ease-smooth);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--p) / 0.7);
+  background: hsl(var(--primary) / 0.7);
 }
 
 /* ============================================

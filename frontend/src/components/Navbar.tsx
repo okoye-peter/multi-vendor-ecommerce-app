@@ -1,15 +1,31 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingBag, Menu, Heart } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import type { RootState } from '../store/Index';
+import { ShoppingBag, Menu, Heart, User, LogOut, Settings, Package, Store } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
-import { useLogoutMutation } from '../store/features/AuthApi';
-import { setUser } from '../store/AuthSlice';
+import { useLogoutMutation } from '@/store/features/AuthApi';
+import { setUser } from '@/store/AuthSlice';
+import { emptyCart } from '@/store/CartSlice';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
+import { Badge } from '@/components/ui/badge';
+import type { RootState } from '@/store/Index';
+import type { BackendError } from '@/types/Index';
 import FullscreenLoader from './FullPageLoader';
-import type { BackendError } from '../types/Index';
-import { useNavigate } from "react-router-dom";
-import { emptyCart } from '../store/CartSlice';
 
 export const Navbar = () => {
     const user = useSelector((state: RootState) => state.auth.user);
@@ -19,8 +35,6 @@ export const Navbar = () => {
     const navigate = useNavigate();
 
     const [isScrolled, setIsScrolled] = useState(false);
-    // const [showSearch, setShowSearch] = useState(false);
-    // const [searchQuery, setSearchQuery] = useState('');
     const [logoutMutation, { isLoading: isLoggingOut }] = useLogoutMutation();
 
     useEffect(() => {
@@ -31,21 +45,16 @@ export const Navbar = () => {
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
-    const handleLogout = async (e: React.FormEvent<HTMLAnchorElement>) => {
-        e.preventDefault();
+    const handleLogout = async () => {
         try {
             const res = await logoutMutation().unwrap();
-            toast.success(res?.message ?? 'Logged out successfully', {
-                position: 'top-right',
-            });
+            toast.success(res?.message ?? 'Logged out successfully');
             dispatch(setUser(null));
             dispatch(emptyCart());
             navigate('/login');
         } catch (error) {
             const backendError = error as BackendError;
-            toast.error(backendError.response?.data?.message as string || backendError.message || 'Logout failed', {
-                position: 'top-right',
-            });
+            toast.error(backendError.response?.data?.message as string || backendError.message || 'Logout failed');
         }
     };
 
@@ -53,169 +62,187 @@ export const Navbar = () => {
         return name.split(' ').map(a => a.trim().toUpperCase().charAt(0)).join('');
     };
 
-    // const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
-    //     e.preventDefault();
-    //     console.log('Searching for:', searchQuery);
-    //     setSearchQuery('');
-    // };
-
-    // const closeSearch = () => {
-    //     setShowSearch(false);
-    //     setSearchQuery('');
-    // };
+    const navLinks = [
+        { name: 'Home', href: '/' },
+        { name: 'Products', href: '/products' },
+        { name: 'Categories', href: '#' },
+        { name: 'Contact', href: '#' },
+        { name: 'About', href: '#' },
+    ];
 
     return (
         <>
             {isLoggingOut && <FullscreenLoader />}
 
-            {/* Navigation */}
-            <nav className={`fixed top-0 w-full z-50 transition-all duration-300 ${isScrolled ? 'navbar-blur shadow-xl' : 'bg-base-100'}`}>
-                <div className="drawer">
-                    <input id="my-drawer-1" type="checkbox" className="drawer-toggle" />
-
-                    <div className="drawer-content">
-                        <div className="grid items-center w-full grid-cols-4 px-8 py-3 mx-auto lg:grid-cols-3 ">
-                            {/* Left: Logo */}
-                            <div className="flex items-center">
-                                <Link to="/" className="flex items-center gap-2 group">
-                                    <ShoppingBag className="w-8 h-8 text-primary transition-transform group-hover:scale-110" />
-                                    <span className="text-2xl font-bold gradient-text">
-                                        MarketHub
-                                    </span>
-                                </Link>
-                            </div>
-
-                            {/* Center: Navigation (Desktop only) */}
-                            <div className="justify-center hidden lg:flex">
-                                <ul className="px-1 menu menu-horizontal">
-                                    <li><Link to="/" className="transition-colors hover:text-primary">Home</Link></li>
-                                    <li><Link to="/products" className="transition-colors hover:text-primary">Products</Link></li>
-                                    <li><a className="transition-colors hover:text-primary">Categories</a></li>
-                                    <li><a className="transition-colors hover:text-primary">Contact Us</a></li>
-                                    <li><a className="transition-colors hover:text-primary">About Us</a></li>
-                                </ul>
-                            </div>
-
-                            {/* Right: Icons and Actions */}
-                            <div className="flex items-center justify-end col-span-3 gap-2 lg:col-span-1">
-                                {/* Search Form */}
-                                {/* {showSearch && (
-                                    <form onSubmit={handleSearch} className="w-64">
-                                        <div className="relative flex items-center px-4 py-2 text-sm rounded-lg bg-base-200">
-                                            <Search className="w-5 h-5 text-base-content/50" />
-                                            <input
-                                                type="text"
-                                                placeholder="Type to search..."
-                                                className="flex-1 ml-3 bg-transparent focus:outline-none"
-                                                value={searchQuery}
-                                                onChange={(e) => setSearchQuery(e.target.value)}
-                                                autoFocus
-                                            />
-                                            <button
-                                                type="button"
-                                                onClick={closeSearch}
-                                                className="ml-2 hover:text-base-content/70"
-                                                aria-label="Close search"
-                                            >
-                                                ✕
-                                            </button>
-                                        </div>
-                                    </form>
-                                )} */}
-
-                                {/* Search Icon Button */}
-                                {/* {!showSearch && (
-                                    <button
-                                        onClick={() => setShowSearch(true)}
-                                        className="btn btn-ghost btn-circle"
-                                        aria-label="Open search"
-                                    >
-                                        <Search className="w-5 h-5" />
-                                    </button>
-                                )} */}
-
-                                {user && (
-                                    <>
-
-                                    {/* Wishlist */}
-                                        <Link to="/wishlist" className="btn btn-ghost ">
-                                            <div className="indicator">
-                                                <Heart className="w-5 h-5" />
-                                                <span className="badge badge-xs badge-primary indicator-item badge-pulse">{wishlists.length}</span>
-                                            </div>
-                                        </Link>
-
-                                        {/* Cart */}
-                                        <Link to="/carts" className="btn btn-ghost ">
-                                            <div className="indicator">
-                                                <ShoppingBag className="w-5 h-5" />
-                                                <span className="badge badge-xs indicator-item badge-primary badge-pulse">{carts.length}</span>
-                                            </div>
-                                        </Link>
-                                    </>
-                                )}
-
-                                {/* Profile Dropdown */}
-                                {user && (
-                                    <div className="dropdown dropdown-end">
-                                        <div tabIndex={0} role="button" className="btn btn-ghost btn-circle avatar hover-scale-sm">
-                                            <div className="w-10 rounded-full ring-2 ring-primary/20 transition-all hover:ring-primary/50">
-                                                <img
-                                                    alt="User avatar"
-                                                    src={
-                                                        user?.pictureUrl
-                                                            ? user.pictureUrl
-                                                            : `https://eu.ui-avatars.com/api/?name=${getNameInitials(user?.name || '')}&background=random`
-                                                    }
-                                                />
-                                            </div>
-                                        </div>
-                                        <ul tabIndex={-1} className="p-2 mt-3 shadow menu menu-sm dropdown-content bg-base-100 rounded-box z-[1] w-52">
-                                            <li><a className="justify-between">Profile<span className="badge">New</span></a></li>
-                                            {user && user.type?.toUpperCase() === 'VENDOR' && (
-                                                <li><Link to="/vendor/dashboard">Vendor Dashboard</Link></li>
-                                            )}
-                                            {user && user.type?.toUpperCase() === 'CUSTOMER' && (
-                                                <li><Link to="/orders">Orders</Link></li>
-                                            )}
-                                            <li><a>Settings</a></li>
-                                            <li><a onClick={handleLogout}>Logout</a></li>
-                                        </ul>
-                                    </div>
-                                )}
-
-                                {/* Login/Register */}
-                                {!user && (
-                                    <div className="flex gap-2">
-                                        <Link to="/login" className="btn btn-ghost hover-scale-sm">Login</Link>
-                                        <Link to="/register" className="hidden btn btn-primary hover-lift lg:flex">Register</Link>
-                                    </div>
-                                )}
-
-                                {/* Mobile Menu Button */}
-                                <label htmlFor="my-drawer-1" className="btn btn-ghost btn-circle drawer-button lg:hidden">
-                                    <Menu className="w-5 h-5" />
-                                </label>
-                            </div>
+            <nav className={`fixed top-0 w-full z-50 transition-all duration-500 ${
+                isScrolled 
+                ? 'py-3 bg-background/80 backdrop-blur-lg border-b border-border shadow-sm' 
+                : 'py-5 bg-transparent'
+            }`}>
+                <div className="container px-4 mx-auto md:px-6">
+                    <div className="flex items-center justify-between">
+                        {/* Left: Logo */}
+                        <div className="flex items-center">
+                            <Link to="/" className="flex items-center gap-2 group">
+                                <div className="p-2 transition-transform rounded-xl bg-primary/10 group-hover:scale-110">
+                                    <ShoppingBag className="w-6 h-6 text-primary" />
+                                </div>
+                                <span className="text-2xl font-bold tracking-tight gradient-text">
+                                    MarketHub
+                                </span>
+                            </Link>
                         </div>
-                    </div>
 
-                    {/* Mobile Sidebar */}
-                    <div className="drawer-side">
-                        <label htmlFor="my-drawer-1" aria-label="close sidebar" className="drawer-overlay"></label>
-                        <ul className="min-h-full p-4 menu bg-base-200 w-80 animate-slide-in-left">
-                            <li><Link to="/" className="transition-colors hover:text-primary">Home</Link></li>
-                            <li><Link to="/products" className="transition-colors hover:text-primary">Products</Link></li>
-                            <li><a className="transition-colors hover:text-primary">Categories</a></li>
-                            <li><a className="transition-colors hover:text-primary">Contact Us</a></li>
-                            <li><a className="transition-colors hover:text-primary">About Us</a></li>
-                            {!user && (
-                                <>
-                                    <li className="mt-4"><Link to="/login" className="transition-colors hover:text-primary">Login</Link></li>
-                                    <li><Link to="/register" className="transition-colors hover:text-primary">Register</Link></li>
-                                </>
+                        {/* Center: Navigation (Desktop) */}
+                        <div className="hidden lg:flex items-center gap-8">
+                            {navLinks.map((link) => (
+                                <Link 
+                                    key={link.name}
+                                    to={link.href}
+                                    className="text-sm font-medium transition-colors hover:text-primary text-muted-foreground"
+                                >
+                                    {link.name}
+                                </Link>
+                            ))}
+                        </div>
+
+                        {/* Right: Actions */}
+                        <div className="flex items-center gap-2 md:gap-4">
+                            {user && (
+                                <div className="flex items-center gap-1 md:gap-2">
+                                    {/* Wishlist */}
+                                    <Button variant="ghost" size="icon" asChild className="relative rounded-full hover:bg-primary/10 transition-smooth">
+                                        <Link to="/wishlist">
+                                            <Heart className="w-5 h-5" />
+                                            {wishlists.length > 0 && (
+                                                <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-[10px] animate-badge-pulse">
+                                                    {wishlists.length}
+                                                </Badge>
+                                            )}
+                                        </Link>
+                                    </Button>
+
+                                    {/* Cart */}
+                                    <Button variant="ghost" size="icon" asChild className="relative rounded-full hover:bg-primary/10 transition-smooth">
+                                        <Link to="/carts">
+                                            <ShoppingBag className="w-5 h-5" />
+                                            {carts.length > 0 && (
+                                                <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-[10px] animate-badge-pulse">
+                                                    {carts.length}
+                                                </Badge>
+                                            )}
+                                        </Link>
+                                    </Button>
+                                </div>
                             )}
-                        </ul>
+
+                            {/* Profile Dropdown */}
+                            {user ? (
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" className="relative w-10 h-10 p-0 rounded-full ring-2 ring-primary/10 hover:ring-primary/30 transition-all overflow-hidden">
+                                            <img
+                                                alt="User avatar"
+                                                className="object-cover w-full h-full"
+                                                src={user?.pictureUrl || `https://eu.ui-avatars.com/api/?name=${getNameInitials(user?.name || '')}&background=random`}
+                                            />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="w-56 p-2 mt-2 border-border/50 bg-background/95 backdrop-blur-xl transition-scale">
+                                        <DropdownMenuLabel className="font-normal">
+                                            <div className="flex flex-col space-y-1">
+                                                <p className="text-sm font-medium leading-none">{user.name}</p>
+                                                <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
+                                            </div>
+                                        </DropdownMenuLabel>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem asChild>
+                                            <Link to="/profile" className="cursor-pointer flex items-center gap-2 py-2">
+                                                <User className="w-4 h-4" />
+                                                <span>Profile</span>
+                                            </Link>
+                                        </DropdownMenuItem>
+                                        {user.type?.toUpperCase() === 'VENDOR' && (
+                                            <DropdownMenuItem asChild>
+                                                <Link to="/vendor/dashboard" className="cursor-pointer flex items-center gap-2 py-2">
+                                                    <Store className="w-4 h-4" />
+                                                    <span>Vendor Dashboard</span>
+                                                </Link>
+                                            </DropdownMenuItem>
+                                        )}
+                                        {user.type?.toUpperCase() === 'CUSTOMER' && (
+                                            <DropdownMenuItem asChild>
+                                                <Link to="/orders" className="cursor-pointer flex items-center gap-2 py-2">
+                                                    <Package className="w-4 h-4" />
+                                                    <span>My Orders</span>
+                                                </Link>
+                                            </DropdownMenuItem>
+                                        )}
+                                        <DropdownMenuItem asChild>
+                                            <Link to="/settings" className="cursor-pointer flex items-center gap-2 py-2">
+                                                <Settings className="w-4 h-4" />
+                                                <span>Settings</span>
+                                            </Link>
+                                        </DropdownMenuItem>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem 
+                                            onClick={handleLogout}
+                                            className="cursor-pointer flex items-center gap-2 py-2 text-destructive focus:text-destructive"
+                                        >
+                                            <LogOut className="w-4 h-4" />
+                                            <span>Logout</span>
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            ) : (
+                                <div className="flex items-center gap-2">
+                                    <Button variant="ghost" asChild className="hidden md:flex hover-lift hover:bg-primary/5 transition-fast">
+                                        <Link to="/login">Login</Link>
+                                    </Button>
+                                    <Button asChild className="rounded-full shadow-lg shadow-primary/20 hover-lift transition-fast">
+                                        <Link to="/register">Register</Link>
+                                    </Button>
+                                </div>
+                            )}
+
+                            {/* Mobile Menu */}
+                            <Sheet>
+                                <SheetTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="lg:hidden rounded-full hover:bg-primary/10 transition-fast">
+                                        <Menu className="w-5 h-5" />
+                                    </Button>
+                                </SheetTrigger>
+                                <SheetContent side="right" className="w-[300px] sm:w-[400px] border-l-border/50 bg-background/95 backdrop-blur-xl">
+                                    <SheetHeader className="mb-8">
+                                        <SheetTitle className="text-left flex items-center gap-2">
+                                            <ShoppingBag className="w-6 h-6 text-primary" />
+                                            <span className="text-xl font-bold gradient-text">MarketHub</span>
+                                        </SheetTitle>
+                                    </SheetHeader>
+                                    <div className="flex flex-col gap-4">
+                                        {navLinks.map((link) => (
+                                            <Link 
+                                                key={link.name} 
+                                                to={link.href}
+                                                className="text-lg font-medium py-3 border-b border-border/50 hover:text-primary transition-colors"
+                                            >
+                                                {link.name}
+                                            </Link>
+                                        ))}
+                                        {!user && (
+                                            <div className="flex flex-col gap-2 mt-4">
+                                                <Button variant="outline" asChild className="w-full rounded-xl transition-fast">
+                                                    <Link to="/login">Login</Link>
+                                                </Button>
+                                                <Button asChild className="w-full rounded-xl transition-fast">
+                                                    <Link to="/register">Register</Link>
+                                                </Button>
+                                            </div>
+                                        )}
+                                    </div>
+                                </SheetContent>
+                            </Sheet>
+                        </div>
                     </div>
                 </div>
             </nav>

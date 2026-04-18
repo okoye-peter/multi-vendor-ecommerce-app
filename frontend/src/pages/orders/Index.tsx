@@ -1,10 +1,42 @@
 import React, { useState, useEffect } from 'react';
-import { Package, Search, Filter, Eye, Truck, CheckCircle, Clock, XCircle, ChevronLeft, ChevronRight, Calendar, ArrowUpDown, PackageOpen } from 'lucide-react';
-import axiosInstance from '../../libs/axios';
-import { getOrderStatusLabel, OrderStatusValue } from '../../../../backend/src/enums/orderStatus'
-import type { OrderGroup } from '../../types/Index'
-import { formatPrice } from '../../utils';
-import { useNavigate } from 'react-router';
+import { 
+    Package, 
+    Search, 
+    Filter, 
+    Eye, 
+    Truck, 
+    CheckCircle, 
+    Clock, 
+    XCircle, 
+    ChevronLeft, 
+    ChevronRight, 
+    Calendar, 
+    ArrowUpDown, 
+    PackageOpen,
+    MoreHorizontal,
+    ShoppingBag,
+    ArrowRight,
+    Loader2,
+    CalendarDays
+} from 'lucide-react';
+import axiosInstance from '@/libs/axios';
+import { getOrderStatusLabel, OrderStatusValue } from '../../../../backend/src/enums/orderStatus';
+import type { OrderGroup } from '@/types/Index';
+import { formatPrice } from '@/utils';
+import { useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
+import { cn } from '@/utils/cn';
 
 type fullOrderGroupType = OrderGroup & {
     _count: {
@@ -36,33 +68,24 @@ const OrdersListPage: React.FC = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // Date filter states
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
-
-    // Sort states
     const [sortBy, setSortBy] = useState('date');
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-
-    // Debounced search term
     const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(searchTerm);
 
-    // Debounce search input
     useEffect(() => {
         const timer = setTimeout(() => {
             setDebouncedSearchTerm(searchTerm);
-            setCurrentPage(1); // Reset to first page on new search
+            setCurrentPage(1);
         }, 500);
-
         return () => clearTimeout(timer);
     }, [searchTerm]);
 
-    // Fetch orders
     useEffect(() => {
         const fetchOrders = async () => {
             setIsLoading(true);
             setError(null);
-
             try {
                 const params = new URLSearchParams({
                     page: currentPage.toString(),
@@ -70,104 +93,50 @@ const OrdersListPage: React.FC = () => {
                     sortBy: sortBy,
                     sortOrder: sortOrder,
                 });
+                if (debouncedSearchTerm) params.append('search', debouncedSearchTerm);
+                if (filterStatus !== 'all') params.append('status', filterStatus);
+                if (startDate) params.append('start_date', startDate);
+                if (endDate) params.append('end_date', endDate);
 
-                if (debouncedSearchTerm) {
-                    params.append('search', debouncedSearchTerm);
-                }
-
-                if (filterStatus !== 'all') {
-                    params.append('status', filterStatus);
-                }
-
-                if (startDate) {
-                    params.append('start_date', startDate);
-                }
-
-                if (endDate) {
-                    params.append('end_date', endDate);
-                }
-
-                // Replace with your actual API endpoint
                 const response = await axiosInstance.get(`/orders?${params.toString()}`);
-
-                const data: OrdersResponse = await response.data;
-                setOrdersData(data);
+                setOrdersData(response.data);
             } catch (err) {
-                setError(err instanceof Error ? err.message : 'An error occurred');
-                console.error('Error fetching orders:', err);
+                setError(err instanceof Error ? err.message : 'Database synchronization failed');
             } finally {
                 setIsLoading(false);
             }
         };
-
         fetchOrders();
     }, [currentPage, pageSize, debouncedSearchTerm, filterStatus, startDate, endDate, sortBy, sortOrder]);
 
     const getStatusBadge = (status: number) => {
-        const badges = {
-            pending: { class: 'badge-warning', icon: Clock, text: 'Pending' },
-            processing: { class: 'badge-info', icon: PackageOpen, text: 'Processing' },
-            awaiting_shipment: { class: 'badge-accent', icon: Package, text: 'Awaiting Shipment' },
-            shipped: { class: 'badge-primary', icon: Truck, text: 'Shipped' },
-            delivered: { class: 'badge-success', icon: CheckCircle, text: 'Delivered' },
-            cancelled: { class: 'badge-error', icon: XCircle, text: 'Cancelled' }
+        const statusLabel = getOrderStatusLabel(status as OrderStatusValue)?.toLowerCase();
+        
+        const configs: Record<string, { color: string, icon: any, label: string }> = {
+            pending: { color: 'bg-amber-500/10 text-amber-600', icon: Clock, label: 'Pending Arrival' },
+            processing: { color: 'bg-indigo-500/10 text-indigo-600', icon: PackageOpen, label: 'Processing' },
+            awaiting_shipment: { color: 'bg-blue-500/10 text-blue-600', icon: Package, label: 'Awaiting Relay' },
+            shipped: { color: 'bg-violet-500/10 text-violet-600', icon: Truck, label: 'In Transit' },
+            delivered: { color: 'bg-emerald-500/10 text-emerald-600', icon: CheckCircle, label: 'Delivered' },
+            cancelled: { color: 'bg-rose-500/10 text-rose-600', icon: XCircle, label: 'Terminated' }
         };
-        const badge = badges[getOrderStatusLabel(status as OrderStatusValue)?.toLowerCase() as keyof typeof badges];
-        const Icon = badge.icon;
+
+        const config = configs[statusLabel || 'pending'] || configs.pending;
+        const Icon = config.icon;
+
         return (
-            <div className={`badge ${badge.class} gap-1 p-3`}>
-                <Icon className="w-3 h-3" />
-                {badge.text}
-            </div>
+            <Badge variant="secondary" className={cn("px-3 py-1 rounded-full border-none font-black text-[9px] tracking-widest gap-2 uppercase", config.color)}>
+                <Icon size={12} strokeWidth={3} />
+                {config.label}
+            </Badge>
         );
     };
 
-    const handleViewOrder = (orderId: string) => {
-        navigate(`/orders/${orderId}`);
-        // alert(`Viewing order ${orderId}. In a real app, this would navigate to the order details page.`);
-    };
+    const handleViewOrder = (orderRef: string) => navigate(`/orders/${orderRef}`);
 
     const handlePageChange = (newPage: number) => {
         setCurrentPage(newPage);
         window.scrollTo({ top: 0, behavior: 'smooth' });
-    };
-
-    const handlePageSizeChange = (newSize: number) => {
-        setPageSize(newSize);
-        setCurrentPage(1);
-    };
-
-    const handleFilterChange = (newStatus: string) => {
-        setFilterStatus(newStatus);
-        setCurrentPage(1);
-    };
-
-    const handleDateFromChange = (date: string) => {
-        setStartDate(date);
-        setCurrentPage(1);
-    };
-
-    const handleDateToChange = (date: string) => {
-        setEndDate(date);
-        setCurrentPage(1);
-    };
-
-    const handleSortChange = (field: string) => {
-        if (sortBy === field) {
-            // Toggle sort order if same field
-            setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-        } else {
-            // Set new field with default desc order
-            setSortBy(field);
-            setSortOrder('desc');
-        }
-        setCurrentPage(1);
-    };
-
-    const clearDateFilters = () => {
-        setStartDate('');
-        setEndDate('');
-        setCurrentPage(1);
     };
 
     const clearAllFilters = () => {
@@ -180,381 +149,275 @@ const OrdersListPage: React.FC = () => {
         setCurrentPage(1);
     };
 
-    const renderPaginationButtons = () => {
-        if (!ordersData?.pagination) return null;
-
-        const { page, totalPages, hasNext, hasPrev } = ordersData.pagination;
-        const pageNumbers: (number | string)[] = [];
-
-        // Always show first page
-        pageNumbers.push(1);
-
-        // Show ellipsis and pages around current page
-        if (page > 3) {
-            pageNumbers.push('...');
-        }
-
-        // Show pages around current page
-        for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) {
-            pageNumbers.push(i);
-        }
-
-        // Show ellipsis before last page
-        if (page < totalPages - 2) {
-            pageNumbers.push('...');
-        }
-
-        // Always show last page (if more than 1 page)
-        if (totalPages > 1) {
-            pageNumbers.push(totalPages);
-        }
-
-        return (
-            <div className="flex items-center justify-center gap-2">
-                <button
-                    className="btn btn-sm"
-                    onClick={() => handlePageChange(page - 1)}
-                    disabled={!hasPrev || isLoading}
-                >
-                    <ChevronLeft className="w-4 h-4" />
-                </button>
-
-                {pageNumbers.map((pageNum, index) => (
-                    pageNum === '...' ? (
-                        <span key={`ellipsis-${index}`} className="px-2">...</span>
-                    ) : (
-                        <button
-                            key={pageNum}
-                            className={`btn btn-sm ${page === pageNum ? 'btn-primary' : 'btn-ghost'}`}
-                            onClick={() => handlePageChange(pageNum as number)}
-                            disabled={isLoading}
-                        >
-                            {pageNum}
-                        </button>
-                    )
-                ))}
-
-                <button
-                    className="btn btn-sm"
-                    onClick={() => handlePageChange(page + 1)}
-                    disabled={!hasNext || isLoading}
-                >
-                    <ChevronRight className="w-4 h-4" />
-                </button>
-            </div>
-        );
-    };
-
     return (
-        <div className="min-h-screen ">
-            <div className="container px-4 pt-24 pb-6 mx-auto max-w-7xl">
-                {/* Header */}
-                <div className="flex flex-col gap-4 mb-8 md:flex-row md:items-center md:justify-between">
-                    <div>
-                        <h1 className="mb-2 text-4xl font-bold text-gray-800">Orders</h1>
-                        <p className="text-gray-600">Manage and track all your orders</p>
-                    </div>
-                    <div className="shadow-2xl stats">
-                        <div className="stat">
-                            <div className="stat-title">Total Orders</div>
-                            <div className="text-3xl stat-value text-primary">
-                                {ordersData?.pagination.total || 0}
-                            </div>
+        <div className="min-h-screen bg-background pt-28 pb-20 selection:bg-primary/10">
+            {/* Background elements */}
+            <div className="fixed inset-0 pointer-events-none">
+                <div className="absolute top-0 right-0 w-[40%] h-[40%] bg-primary/5 rounded-full blur-[120px]" />
+                <div className="absolute bottom-0 left-0 w-[40%] h-[40%] bg-indigo-500/5 rounded-full blur-[120px]" />
+            </div>
+
+            <div className="container max-w-7xl px-4 mx-auto relative z-10 space-y-12">
+                {/* Header Section */}
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 animate-fade-in-down">
+                    <div className="space-y-4">
+                        <div className="inline-flex items-center gap-3 px-4 py-2 rounded-2xl bg-primary/5 text-primary border border-primary/10">
+                            <ShoppingBag size={16} />
+                            <span className="text-[10px] font-black uppercase tracking-widest">Order Management</span>
                         </div>
+                        <h1 className="text-5xl font-black tracking-tighter leading-none">
+                            Transaction Portal
+                        </h1>
+                        <p className="text-muted-foreground font-medium text-lg max-w-xl">
+                            Oversee your complete marketplace history and track active fulfillments in real-time.
+                        </p>
                     </div>
+
+                    <Card className="border-none bg-background/50 backdrop-blur-md px-10 py-6 rounded-[2.5rem] shadow-2xl shadow-black/[0.02]">
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-1 text-center">Lifetime Orders</p>
+                        <h3 className="text-4xl font-black tracking-tighter text-primary">
+                            {ordersData?.pagination.total || 0}
+                        </h3>
+                    </Card>
                 </div>
 
-                {/* Filters and Search */}
-                <div className="mb-6 shadow-xl card">
-                    <div className="card-body">
-                        <div className="flex flex-col gap-4">
-                            {/* First Row: Search and Status Filter */}
-                            <div className="flex flex-col gap-4 lg:flex-row">
-                                {/* Search */}
-                                <div className="flex-1 form-control">
-                                    <div className="relative input-group">
-                                        <span className="absolute z-10 top-2.5 left-1">
-                                            <Search className="w-5 h-5" />
-                                        </span>
-                                        <input
-                                            type="text"
-                                            placeholder="Search by order number or customer..."
-                                            className="w-full pl-7 input input-bordered"
-                                            value={searchTerm}
-                                            onChange={(e) => setSearchTerm(e.target.value)}
-                                        />
-                                    </div>
-                                </div>
-
-                                {/* Status Filter */}
-                                <div className="form-control lg:w-64">
-                                    <div className="relative input-group">
-                                        <span className="bg-base-200 absolute z-10 top-2.5 left-1">
-                                            <Filter className="w-5 h-5" />
-                                        </span>
-                                        <select
-                                            className="w-full select select-bordered pl-7"
-                                            value={filterStatus}
-                                            onChange={(e) => handleFilterChange(e.target.value)}
-                                        >
-                                            <option value="all">All Status</option>
-                                            <option value="pending">Pending</option>
-                                            <option value="processing">Processing</option>
-                                            <option value="shipped">Shipped</option>
-                                            <option value="delivered">Delivered</option>
-                                            <option value="cancelled">Cancelled</option>
-                                        </select>
-                                    </div>
-                                </div>
-
-                                {/* Page Size */}
-                                <div className="form-control lg:w-32">
-                                    <select
-                                        className="select select-bordered"
-                                        value={pageSize}
-                                        onChange={(e) => handlePageSizeChange(Number(e.target.value))}
-                                    >
-                                        <option value={5}>5 per page</option>
-                                        <option value={10}>10 per page</option>
-                                        <option value={25}>25 per page</option>
-                                        <option value={50}>50 per page</option>
-                                    </select>
+                {/* Filter Toolbar */}
+                <Card className="border-none shadow-2xl shadow-black/[0.02] bg-background/50 backdrop-blur-sm rounded-[3rem] overflow-hidden">
+                    <CardContent className="p-8 space-y-8">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            {/* Search */}
+                            <div className="lg:col-span-2 space-y-2">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Search Database</label>
+                                <div className="relative group">
+                                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                                    <Input
+                                        placeholder="Order ID, Customer Identity..."
+                                        className="pl-11 h-14 rounded-2xl bg-muted/30 border-none font-medium text-lg focus-visible:ring-primary/20"
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                    />
                                 </div>
                             </div>
 
-                            {/* Second Row: Date Filters and Sort */}
-                            <div className="flex flex-col gap-4 lg:flex-row">
-                                {/* Date From */}
-                                <div className="flex-1 form-control">
-                                    <label className="label">
-                                        <span className="label-text">From Date</span>
-                                    </label>
-                                    <div className="relative input-group">
-                                        <span className="absolute top-2.5 left-1 bg-base-200 z-10">
-                                            <Calendar className="w-5 h-5" />
-                                        </span>
-                                        <input
+                            {/* Status Filter */}
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Relay Status</label>
+                                <select
+                                    className="w-full h-14 px-6 rounded-2xl bg-muted/30 border-none font-black text-sm appearance-none outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer"
+                                    value={filterStatus}
+                                    onChange={(e) => { setFilterStatus(e.target.value); setCurrentPage(1); }}
+                                >
+                                    <option value="all">Global (All Status)</option>
+                                    <option value="pending">Pending Arrival</option>
+                                    <option value="processing">In Processing</option>
+                                    <option value="shipped">In Transit</option>
+                                    <option value="delivered">Relay Complete</option>
+                                    <option value="cancelled">Terminated</option>
+                                </select>
+                            </div>
+
+                            {/* Page Size */}
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Ledger Density</label>
+                                <select
+                                    className="w-full h-14 px-6 rounded-2xl bg-muted/30 border-none font-black text-sm appearance-none outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer"
+                                    value={pageSize}
+                                    onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
+                                >
+                                    {[5, 10, 25, 50].map(s => <option key={s} value={s}>{s} Records / View</option>)}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-8 border-t border-border/10">
+                            {/* Date Ranges */}
+                            <div className="md:col-span-2 grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Chronicle From</label>
+                                    <div className="relative group">
+                                        <CalendarDays className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors pointer-events-none" />
+                                        <Input
                                             type="date"
-                                            className="w-full input input-bordered pl-7"
+                                            className="pl-11 h-12 rounded-xl bg-muted/30 border-none font-bold"
                                             value={startDate}
-                                            onChange={(e) => handleDateFromChange(e.target.value)}
+                                            onChange={(e) => { setStartDate(e.target.value); setCurrentPage(1); }}
                                         />
                                     </div>
                                 </div>
-
-                                {/* Date To */}
-                                <div className="flex-1 form-control">
-                                    <label className="label">
-                                        <span className="label-text">To Date</span>
-                                    </label>
-                                    <div className="relative input-group">
-                                        <span className="absolute top-2.5 left-1 bg-base-200 z-10">
-                                            <Calendar className="w-5 h-5" />
-                                        </span>
-                                        <input
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Chronicle To</label>
+                                    <div className="relative group">
+                                        <CalendarDays className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors pointer-events-none" />
+                                        <Input
                                             type="date"
-                                            className="w-full input input-bordered pl-7"
+                                            className="pl-11 h-12 rounded-xl bg-muted/30 border-none font-bold"
                                             value={endDate}
-                                            onChange={(e) => handleDateToChange(e.target.value)}
+                                            onChange={(e) => { setEndDate(e.target.value); setCurrentPage(1); }}
                                             min={startDate}
                                         />
                                     </div>
                                 </div>
-
-                                {/* Sort By */}
-                                <div className="flex-1 form-control">
-                                    <label className="label">
-                                        <span className="label-text">Sort By</span>
-                                    </label>
-                                    <div className="relative input-group">
-                                        <span className="bg-base-200 absolute top-2.5 left-1 z-10">
-                                            <ArrowUpDown className="w-5 h-5" />
-                                        </span>
-                                        <select
-                                            className="w-full select select-bordered pl-7"
-                                            value={sortBy}
-                                            onChange={(e) => handleSortChange(e.target.value)}
-                                        >
-                                            <option value="createdAt">Date</option>
-                                            <option value="totalAmount">Total Amount</option>
-                                        </select>
-                                    </div>
-                                </div>
-
-                                {/* Sort Order */}
-                                <div className="form-control lg:w-32">
-                                    <label className="label">
-                                        <span className="label-text">Order</span>
-                                    </label>
-                                    <select
-                                        className="select select-bordered"
-                                        value={sortOrder}
-                                        onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')}
-                                    >
-                                        <option value="asc">Ascending</option>
-                                        <option value="desc">Descending</option>
-                                    </select>
-                                </div>
                             </div>
 
-                            {/* Filter Actions */}
-                            <div className="flex flex-wrap gap-2">
-                                {(startDate || endDate) && (
-                                    <button
-                                        className="gap-2 btn btn-ghost btn-sm"
-                                        onClick={clearDateFilters}
-                                    >
-                                        <XCircle className="w-4 h-4" />
-                                        Clear Dates
-                                    </button>
-                                )}
-                                {(searchTerm || filterStatus !== 'all' || startDate || endDate || sortBy !== 'date' || sortOrder !== 'desc') && (
-                                    <button
-                                        className="gap-2 btn btn-error btn-sm"
+                            <div className="flex items-end gap-3">
+                                { (searchTerm || filterStatus !== 'all' || startDate || endDate) && (
+                                    <Button 
+                                        variant="ghost" 
+                                        className="h-12 flex-1 rounded-xl font-black text-destructive uppercase tracking-widest text-[10px] hover:bg-destructive/5"
                                         onClick={clearAllFilters}
                                     >
-                                        <XCircle className="w-4 h-4" />
-                                        Clear All Filters
-                                    </button>
+                                        <XCircle size={14} className="mr-2" />
+                                        Flush Filters
+                                    </Button>
                                 )}
+                                <Button 
+                                    className="h-12 flex-1 rounded-xl font-black uppercase tracking-widest text-[10px] shadow-lg shadow-primary/20"
+                                    onClick={() => setCurrentPage(1)}
+                                >
+                                    <RefreshCw size={14} className={cn("mr-2", isLoading && "animate-spin")} />
+                                    Synchronize
+                                </Button>
                             </div>
                         </div>
-                    </div>
-                </div>
+                    </CardContent>
+                </Card>
 
-                {/* Loading State */}
-                {isLoading && (
-                    <div className="flex items-center justify-center py-16 shadow-xl card">
-                        <span className="loading loading-spinner loading-lg text-primary"></span>
-                    </div>
-                )}
+                {/* Ledger Content */}
+                <div className="relative min-h-[400px]">
+                    {isLoading && (
+                        <div className="absolute inset-0 z-20 bg-background/50 backdrop-blur-sm rounded-[3rem] flex items-center justify-center animate-fade-in">
+                            <div className="text-center p-10 rounded-[2.5rem] bg-background border shadow-2xl">
+                                <Loader2 className="h-10 w-10 text-primary animate-spin mx-auto mb-4" />
+                                <p className="font-black tracking-widest uppercase text-[10px] text-muted-foreground">Accessing Transaction Ledger...</p>
+                            </div>
+                        </div>
+                    )}
 
-                {/* Error State */}
-                {error && !isLoading && (
-                    <div className="shadow-lg alert alert-error">
-                        <XCircle className="w-6 h-6" />
-                        <span>{error}</span>
-                    </div>
-                )}
-
-                {/* Orders List - Desktop Table */}
-                {!isLoading && !error && ordersData && (
-                    <>
-                        <div className="hidden overflow-hidden shadow-xl lg:block card">
-                            <div className="overflow-x-auto">
-                                <table className="table table-zebra">
-                                    <thead className="bg-base-200">
-                                        <tr>
-                                            <th>Order Number</th>
-                                            <th>Date</th>
-                                            <th>Items</th>
-                                            <th>Total</th>
-                                            <th>Status</th>
-                                            <th>Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {ordersData.data.map((order) => (
-                                            <tr key={order.id} className="hover">
-                                                <td>
-                                                    <div className="font-bold text-primary">{order.ref_no}</div>
-                                                </td>
-                                                {/* <td>
-                                                    <div className="font-semibold">{order.customer}</div>
-                                                    <div className="max-w-xs text-sm text-gray-500 truncate">
-                                                        {order.shippingAddress}
+                    {!isLoading && ordersData && ordersData.data.length > 0 ? (
+                        <Card className="border-none shadow-2xl shadow-black/[0.02] bg-background/50 backdrop-blur-sm rounded-[3rem] overflow-hidden">
+                            <CardContent className="p-0">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow className="hover:bg-transparent border-border/50">
+                                            <TableHead className="h-16 px-10 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Trace Reference</TableHead>
+                                            <TableHead className="h-16 px-10 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Timestamp</TableHead>
+                                            <TableHead className="h-16 px-10 text-[10px] font-black uppercase tracking-widest text-muted-foreground text-right">Volume</TableHead>
+                                            <TableHead className="h-16 px-10 text-[10px] font-black uppercase tracking-widest text-muted-foreground text-right">Valuation</TableHead>
+                                            <TableHead className="h-16 px-10 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Status Relay</TableHead>
+                                            <TableHead className="h-16 px-10 text-[10px] font-black uppercase tracking-widest text-muted-foreground text-right">Operations</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {ordersData.data.map((order, index) => (
+                                            <TableRow key={order.id} className="group border-border/40 hover:bg-muted/30 transition-colors animate-fade-in-up" style={{ animationDelay: `${index * 0.05}s` }}>
+                                                <TableCell className="px-10 py-6">
+                                                    <span className="font-black text-primary tracking-tighter text-lg">{order.ref_no}</span>
+                                                </TableCell>
+                                                <TableCell className="px-10 py-6">
+                                                    <div className="space-y-1">
+                                                        <p className="font-bold text-sm">{new Date(order.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                                                        <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest">{new Date(order.createdAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}</p>
                                                     </div>
-                                                </td> */}
-                                                <td>{new Date(order.createdAt).toLocaleDateString()}</td>
-                                                <td>{order._count.order} items</td>
-                                                <td className="font-bold">{formatPrice(order.totalAmount)}</td>
-                                                <td>{getStatusBadge(order.status)}</td>
-                                                <td>
-                                                    <button
-                                                        className="items-center gap-1 btn btn-ghost btn-sm"
+                                                </TableCell>
+                                                <TableCell className="px-10 py-6 text-right">
+                                                    <Badge variant="outline" className="rounded-full px-3 py-0.5 font-black text-[10px] border-2">
+                                                        {order._count.order} UNITS
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell className="px-10 py-6 text-right">
+                                                    <span className="font-black tracking-tight text-lg">{formatPrice(order.totalAmount)}</span>
+                                                </TableCell>
+                                                <TableCell className="px-10 py-6">
+                                                    {getStatusBadge(order.status)}
+                                                </TableCell>
+                                                <TableCell className="px-10 py-6 text-right">
+                                                    <Button 
+                                                        variant="ghost" 
+                                                        size="sm" 
+                                                        className="font-black text-[10px] uppercase tracking-widest group/btn hover:bg-primary/5 hover:text-primary rounded-xl h-10 px-6 gap-2"
                                                         onClick={() => handleViewOrder(order.ref_no)}
                                                     >
-                                                        <Eye className="w-4 h-4" />
-                                                        View
-                                                    </button>
-                                                </td>
-                                            </tr>
+                                                        Details
+                                                        <ArrowRight size={14} className="transition-transform group-hover/btn:translate-x-1" />
+                                                    </Button>
+                                                </TableCell>
+                                            </TableRow>
                                         ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
+                                    </TableBody>
+                                </Table>
 
-                        {/* Orders List - Mobile Cards */}
-                        <div className="space-y-4 lg:hidden">
-                            {ordersData.data.map((order) => (
-                                <div key={order.id} className="shadow-xl card">
-                                    <div className="card-body">
-                                        <div className="flex items-start justify-between mb-3">
-                                            <div>
-                                                <h3 className="text-lg font-bold text-primary">{order.ref_no}</h3>
-                                                <p className="text-sm text-gray-600">{new Date(order.createdAt).toLocaleDateString()}</p>
-                                            </div>
-                                            {getStatusBadge(order.status)}
+                                {/* Pagination Controls */}
+                                <div className="p-8 bg-muted/10 border-t border-border/50 flex flex-col md:flex-row items-center justify-between gap-6">
+                                    <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                                        Showing <span className="text-foreground">{((ordersData.pagination.page - 1) * ordersData.pagination.limit) + 1}</span> - <span className="text-foreground">{Math.min(ordersData.pagination.page * ordersData.pagination.limit, ordersData.pagination.total)}</span> of <span className="text-foreground">{ordersData.pagination.total}</span> Records
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => handlePageChange(ordersData.pagination.page - 1)}
+                                            disabled={!ordersData.pagination.hasPrev || isLoading}
+                                            className="h-10 w-10 rounded-xl hover:bg-background"
+                                        >
+                                            <ChevronLeft size={16} />
+                                        </Button>
+                                        
+                                        <div className="flex items-center gap-1">
+                                            {Array.from({ length: ordersData.pagination.totalPages }, (_, i) => i + 1)
+                                                .filter(p => p === 1 || p === ordersData.pagination.totalPages || Math.abs(p - ordersData.pagination.page) <= 1)
+                                                .map((p, i, arr) => (
+                                                    <React.Fragment key={p}>
+                                                        {i > 0 && arr[i-1] !== p - 1 && <span className="px-2 text-muted-foreground font-black text-xs">•••</span>}
+                                                        <Button
+                                                            variant={p === ordersData.pagination.page ? "default" : "ghost"}
+                                                            onClick={() => handlePageChange(p as number)}
+                                                            className={cn(
+                                                                "h-10 w-10 rounded-xl font-black text-xs transition-all",
+                                                                p === ordersData.pagination.page ? "shadow-lg shadow-primary/20 scale-105" : "hover:bg-background"
+                                                            )}
+                                                        >
+                                                            {p}
+                                                        </Button>
+                                                    </React.Fragment>
+                                                ))
+                                            }
                                         </div>
 
-                                        <div className="space-y-2">
-                                            {/* <div className="flex justify-between">
-                                                <span className="text-gray-600">Customer:</span>
-                                                <span className="font-semibold">{order.customer}</span>
-                                            </div> */}
-                                            <div className="flex justify-between">
-                                                <span className="text-gray-600">Items:</span>
-                                                <span className="font-semibold">{order._count.order} items</span>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <span className="text-gray-600">Total:</span>
-                                                <span className="text-lg font-bold">{formatPrice(order.totalAmount)}</span>
-                                            </div>
-                                        </div>
-
-                                        <div className="justify-end mt-4 card-actions">
-                                            <button
-                                                className="items-center gap-1 btn btn-primary btn-sm"
-                                                onClick={() => handleViewOrder(order.ref_no)}
-                                            >
-                                                <Eye className="w-4 h-4" />
-                                                View Details
-                                            </button>
-                                        </div>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => handlePageChange(ordersData.pagination.page + 1)}
+                                            disabled={!ordersData.pagination.hasNext || isLoading}
+                                            className="h-10 w-10 rounded-xl hover:bg-background"
+                                        >
+                                            <ChevronRight size={16} />
+                                        </Button>
                                     </div>
                                 </div>
-                            ))}
-                        </div>
-
-                        {/* Pagination */}
-                        {ordersData.data.length > 0 && (
-                            <div className="mt-6 shadow-xl card">
-                                <div className="card-body">
-                                    <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
-                                        <div className="text-sm text-gray-600">
-                                            Showing {((ordersData.pagination.page - 1) * ordersData.pagination.limit) + 1} to{' '}
-                                            {Math.min(ordersData.pagination.page * ordersData.pagination.limit, ordersData.pagination.total)} of{' '}
-                                            {ordersData.pagination.total} orders
-                                        </div>
-                                        {renderPaginationButtons()}
+                            </CardContent>
+                        </Card>
+                    ) : !isLoading && (
+                        <Card className="border-none shadow-2xl shadow-black/[0.02] bg-background/50 backdrop-blur-sm rounded-[4rem] py-32 text-center animate-scale-in">
+                            <CardContent className="space-y-10">
+                                <div className="relative mx-auto w-32 h-32">
+                                    <div className="absolute inset-0 bg-primary/10 rounded-[2.5rem] blur-2xl animate-pulse" />
+                                    <div className="relative h-32 w-32 rounded-[2.5rem] bg-muted/30 flex items-center justify-center text-muted-foreground/30">
+                                        <Package size={64} />
                                     </div>
                                 </div>
-                            </div>
-                        )}
-                    </>
-                )}
-
-                {/* Empty State */}
-                {!isLoading && !error && ordersData?.data.length === 0 && (
-                    <div className="shadow-xl card">
-                        <div className="items-center py-16 text-center card-body">
-                            <Package className="w-16 h-16 mb-4 text-gray-400" />
-                            <h3 className="mb-2 text-2xl font-bold text-gray-700">No Orders Found</h3>
-                            <p className="text-gray-500">Try adjusting your search or filter criteria</p>
-                        </div>
-                    </div>
-                )}
+                                <div className="space-y-3 max-w-md mx-auto">
+                                    <h2 className="text-4xl font-black tracking-tight">Ledger Is Clear</h2>
+                                    <p className="text-muted-foreground font-medium text-lg leading-relaxed">
+                                        We couldn't locate any transaction records matching your current filter sequence. 
+                                    </p>
+                                </div>
+                                <Button onClick={clearAllFilters} className="rounded-2xl h-16 px-10 font-black text-xl shadow-xl shadow-primary/20 hover-lift">
+                                    Reset Discovery Matrix
+                                </Button>
+                            </CardContent>
+                        </Card>
+                    )}
+                </div>
             </div>
         </div>
     );

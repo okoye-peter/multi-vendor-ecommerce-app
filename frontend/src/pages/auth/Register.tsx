@@ -1,22 +1,42 @@
 import { useState } from 'react';
-import type { BackendError, Country, State, state } from '../../types/Index.ts'
+import type { BackendError, Country, State, state } from '@/types/Index.ts'
 import { useForm, type SubmitHandler, Controller } from 'react-hook-form';
 import { toast } from 'react-toastify';
 import z from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useNavigate } from 'react-router';
+import { useNavigate, Link } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
-import { setUser, setShowEmailVerificationModal } from '../../store/AuthSlice.ts';
-import { useRegisterMutation } from '../../store/features/AuthApi.ts';
+import { setUser, setShowEmailVerificationModal } from '@/store/AuthSlice.ts';
+import { useRegisterMutation } from '@/store/features/AuthApi.ts';
 import Select from 'react-select';
 import makeAnimated from 'react-select/animated';
 import { useQuery } from '@tanstack/react-query';
-import { getCountries, getStatesByCountry } from '../../libs/api.ts';
+import { getCountries, getStatesByCountry } from '@/libs/api.ts';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { 
+  ShoppingBag, 
+  User, 
+  Mail, 
+  Phone, 
+  UserCircle, 
+  Store, 
+  MapPin, 
+  Globe, 
+  Camera, 
+  Lock, 
+  Eye, 
+  EyeOff, 
+  ArrowRight,
+  ShieldCheck
+} from 'lucide-react';
 
 const userSchema = z
     .object({
         name: z.string().min(3, "Name must be at least 3 characters").max(50),
-        email: z.email("Invalid email address"),
+        email: z.string().email("Invalid email address"),
         phone: z
             .string()
             .min(7, "Phone number is too short")
@@ -28,7 +48,7 @@ const userSchema = z
             .optional()
             .refine(
                 (files) => {
-                    if (!files || files.length === 0) return true; // Allow empty
+                    if (!files || files.length === 0) return true;
                     return files.length === 1;
                 },
                 "Please select only one file"
@@ -65,7 +85,7 @@ const userSchema = z
         vendor_address: z.string().optional(),
         state: z.string().optional().nullable(),
     })
-    .refine((data) => data.password === data.repeat_password, { // FIXED: Changed !== to ===
+    .refine((data) => data.password === data.repeat_password, {
         message: "Passwords do not match",
         path: ["repeat_password"],
     })
@@ -102,21 +122,19 @@ const animatedComponents = makeAnimated();
 const Register = () => {
     const navigate = useNavigate();
     const dispatch = useDispatch();
-
     const [selectedCountry, setSelectedCountry] = useState<number | null>(null);
+    const [showPassword, setShowPassword] = useState(false);
+    const [showRepeatPassword, setShowRepeatPassword] = useState(false);
 
-
-    // Fetch countries
     const { data: countries } = useQuery<Country[]>({
         queryFn: getCountries,
         queryKey: ['countries']
     });
 
-    // Fetch states based on selected country
     const { data: states, isLoading: statesIsLoading } = useQuery<State[]>({
         queryFn: () => getStatesByCountry(selectedCountry as number),
         queryKey: ['states', selectedCountry],
-        enabled: !!selectedCountry // Only fetch when country is selected
+        enabled: !!selectedCountry
     });
 
     const {
@@ -129,20 +147,15 @@ const Register = () => {
         control
     } = useForm<registrationData>({
         resolver: zodResolver(userSchema),
-        defaultValues: { state: null },
+        defaultValues: { state: null, type: "CUSTOMER" },
     })
     const selectedType = watch('type');
-
-    const [showPassword, setShowPassword] = useState(false);
-    const [showRepeatPassword, setShowRepeatPassword] = useState(false);
-
 
     const [registerMutation, { isLoading: isRegistering }] = useRegisterMutation();
 
     const onSubmit: SubmitHandler<registrationData> = async (userData: registrationData) => {
         try {
             const formData = new FormData();
-
             formData.append('name', userData.name);
             formData.append('email', userData.email);
             formData.append('phone', userData.phone);
@@ -150,465 +163,331 @@ const Register = () => {
             formData.append('password', userData.password);
             formData.append('repeat_password', userData.repeat_password);
 
-            // Add vendor fields if type is VENDOR
             if (userData.type === 'VENDOR') {
                 if (userData.vendor_name) formData.append('vendor_name', userData.vendor_name);
                 if (userData.vendor_address) formData.append('vendor_address', userData.vendor_address);
                 if (userData.state) formData.append('state', userData.state);
             }
 
-            // Add picture if exists
             if (userData.picture && userData.picture.length > 0) {
                 formData.append('picture', userData.picture[0]);
             }
 
             const res = await registerMutation(formData).unwrap();
-            console.log('Registration successful:', res);
-            toast.success(res.message, {
-                position: 'top-right'
-            })
+            toast.success(res.message);
             dispatch(setUser(res.user));
             dispatch(setShowEmailVerificationModal(true));
             navigate('/')
-
         } catch (error) {
             const backendError = error as BackendError;
             const messages = backendError?.data?.message;
-            console.log('Backend Error:', messages, backendError); // For debugging
-
             if (messages && typeof messages === 'object') {
-                // Handle field-specific validation errors
                 Object.entries(messages).forEach(([field, errs]) => {
                     const messageText = Array.isArray(errs) ? errs[0] : String(errs);
-                    const mappedField = field as keyof registrationData;
-                    console.log(`Setting error for field ${mappedField}: ${messageText}`);
-                    setError(mappedField, {
-                        type: 'server',
-                        message: messageText,
-                    });
+                    setError(field as keyof registrationData, { type: 'server', message: messageText });
                 });
             } else {
-                // Handle general error message
-                const messageText =
-                    typeof messages === 'string'
-                        ? messages
-                        : backendError.message || 'Registration failed';
-
-                toast.error(messageText, {
-                    position: 'top-right',
-                });
+                toast.error(typeof messages === 'string' ? messages : 'Registration failed');
             }
         }
     }
 
+    const selectStyles = {
+        control: (base: any) => ({
+            ...base,
+            backgroundColor: 'hsl(var(--muted) / 0.3)',
+            border: 'none',
+            borderRadius: '0.75rem',
+            padding: '2px 8px',
+            boxShadow: 'none',
+            '&:hover': {
+                backgroundColor: 'hsl(var(--muted) / 0.5)',
+            }
+        }),
+        menu: (base: any) => ({
+            ...base,
+            backgroundColor: 'hsl(var(--background))',
+            border: '1px solid hsl(var(--border) / 0.5)',
+            borderRadius: '0.75rem',
+            overflow: 'hidden',
+            boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)',
+            backdropBlur: '12px',
+        }),
+        option: (base: any, state: any) => ({
+            ...base,
+            backgroundColor: state.isSelected 
+                ? 'hsl(var(--primary))' 
+                : state.isFocused 
+                    ? 'hsl(var(--accent))' 
+                    : 'transparent',
+            color: state.isSelected ? 'white' : 'inherit',
+            fontWeight: '600',
+            fontSize: '0.875rem'
+        }),
+        placeholder: (base: any) => ({
+            ...base,
+            color: 'hsl(var(--muted-foreground))',
+            fontSize: '0.875rem',
+            fontWeight: '500'
+        }),
+        singleValue: (base: any) => ({
+            ...base,
+            color: 'hsl(var(--foreground))',
+            fontSize: '0.875rem',
+            fontWeight: '600'
+        })
+    };
 
     return (
-        <div className="relative flex items-center justify-center min-h-screen py-24 overflow-hidden">
-            {/* Animated Gradient Background */}
-            <div className="absolute inset-0  from-primary/20 via-secondary/20 to-accent/20 animate-gradient"></div>
+        <div className="min-h-screen w-full flex items-center justify-center bg-background py-20 px-4 relative overflow-hidden">
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-primary/10 rounded-full blur-[150px] animate-pulse"></div>
+                <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-indigo-500/10 rounded-full blur-[150px] animate-pulse"></div>
+            </div>
 
-            {/* Floating Orbs */}
-            <div className="absolute top-20 left-20 w-72 h-72 bg-primary/30 rounded-full blur-3xl animate-float"></div>
-            <div className="absolute bottom-20 right-20 w-96 h-96 bg-secondary/30 rounded-full blur-3xl animate-float" style={{ animationDelay: '1s' }}></div>
-
-            {/* Main Card Container */}
-            <div className="relative z-10 w-full max-w-2xl">
-                <div className="p-10 rounded-3xl shadow-2xl animate-fade-in-up">
-                    {/* Header with Gradient Text */}
-                    <div className="mb-10 text-center">
-                        <h1 className="mb-3 text-4xl font-bold gradient-text animate-fade-in-down">Create Account</h1>
-                        <p className="text-base-content/70 text-lg animate-fade-in-down stagger-1">Join us today and start your journey</p>
+            <Card className="w-full max-w-2xl border-none shadow-2xl shadow-indigo-500/10 bg-background/95 backdrop-blur-xl relative z-10 animate-scale-in">
+                <CardHeader className="space-y-4 text-center pb-8 border-b border-border/50 mb-8">
+                    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-indigo-600 shadow-lg shadow-primary/20 animate-float">
+                        <ShoppingBag className="h-8 w-8 text-white" />
                     </div>
+                    <div>
+                        <CardTitle className="text-4xl font-black tracking-tight">Create Account</CardTitle>
+                        <CardDescription className="text-muted-foreground font-medium mt-1">
+                            Join the next generation of multi-vendor marketplace
+                        </CardDescription>
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* Full Name */}
+                            <div className="space-y-2">
+                                <Label className="font-bold text-xs uppercase tracking-widest text-muted-foreground ml-1">Full Name</Label>
+                                <div className="relative group">
+                                    <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-primary" />
+                                    <Input
+                                        placeholder="John Doe"
+                                        className="pl-11 h-12 rounded-xl bg-muted/30 border-none focus-visible:ring-primary/20 font-medium"
+                                        {...register('name')}
+                                    />
+                                </div>
+                                {errors.name && <p className="text-xs font-bold text-destructive ml-1 animate-fade-in">{errors.name.message}</p>}
+                            </div>
 
-                    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-                        {/* Name Field */}
-                        <div className="animate-fade-in-up stagger-1">
-                            <label className="flex items-center gap-2 mb-2 text-sm font-semibold label-text">
-                                <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                </svg>
-                                Full Name
-                            </label>
-                            <input
-                                type="text"
-                                {...register('name')}
-                                className={`w-full input input-bordered bg-base-100 transition-all duration-300 hover:shadow-lg focus:shadow-xl focus:scale-[1.02] ${errors.name ? 'input-error' : 'focus:border-primary'}`}
-                                placeholder="John Doe"
-                            />
-                            {errors.name && <p className="mt-2 text-xs text-error flex items-center gap-1 animate-fade-in">
-                                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                </svg>
-                                {errors.name.message}
-                            </p>}
+                            {/* Email Address */}
+                            <div className="space-y-2">
+                                <Label className="font-bold text-xs uppercase tracking-widest text-muted-foreground ml-1">Email Address</Label>
+                                <div className="relative group">
+                                    <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-primary" />
+                                    <Input
+                                        type="email"
+                                        placeholder="john@example.com"
+                                        className="pl-11 h-12 rounded-xl bg-muted/30 border-none focus-visible:ring-primary/20 font-medium"
+                                        {...register('email')}
+                                    />
+                                </div>
+                                {errors.email && <p className="text-xs font-bold text-destructive ml-1 animate-fade-in">{errors.email.message}</p>}
+                            </div>
+
+                            {/* Phone Number */}
+                            <div className="space-y-2">
+                                <Label className="font-bold text-xs uppercase tracking-widest text-muted-foreground ml-1">Phone Number</Label>
+                                <div className="relative group">
+                                    <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-primary" />
+                                    <Input
+                                        type="tel"
+                                        placeholder="1234567890"
+                                        className="pl-11 h-12 rounded-xl bg-muted/30 border-none focus-visible:ring-primary/20 font-medium"
+                                        {...register('phone')}
+                                    />
+                                </div>
+                                {errors.phone && <p className="text-xs font-bold text-destructive ml-1 animate-fade-in">{errors.phone.message}</p>}
+                            </div>
+
+                            {/* Account Type */}
+                            <div className="space-y-2">
+                                <Label className="font-bold text-xs uppercase tracking-widest text-muted-foreground ml-1">Account Type</Label>
+                                <div className="relative group">
+                                    <UserCircle className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10 transition-colors group-focus-within:text-primary" />
+                                    <select
+                                        {...register('type')}
+                                        className="w-full pl-11 h-12 rounded-xl bg-muted/30 border-none focus:ring-2 focus:ring-primary/20 font-bold text-sm appearance-none cursor-pointer transition-all"
+                                    >
+                                        <option value="CUSTOMER">Customer</option>
+                                        <option value="VENDOR">Vendor</option>
+                                    </select>
+                                </div>
+                            </div>
                         </div>
 
-                        {/* Email Field */}
-                        <div className="animate-fade-in-up stagger-2">
-                            <label className="flex items-center gap-2 mb-2 text-sm font-semibold label-text">
-                                <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                                </svg>
-                                Email Address
-                            </label>
-                            <input
-                                type="email"
-                                {...register('email')}
-                                className={`w-full input input-bordered bg-base-100 transition-all duration-300 hover:shadow-lg focus:shadow-xl focus:scale-[1.02] ${errors.email ? 'input-error' : 'focus:border-primary'}`}
-                                placeholder="you@example.com"
-                            />
-                            {errors.email && <p className="mt-2 text-xs text-error flex items-center gap-1 animate-fade-in">
-                                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                </svg>
-                                {errors.email.message}
-                            </p>}
-                        </div>
-
-                        {/* Phone Field */}
-                        <div className="animate-fade-in-up stagger-3">
-                            <label className="flex items-center gap-2 mb-2 text-sm font-semibold label-text">
-                                <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                                </svg>
-                                Phone Number
-                            </label>
-                            <input
-                                type="tel"
-                                {...register('phone')}
-                                className={`w-full input input-bordered bg-base-100 transition-all duration-300 hover:shadow-lg focus:shadow-xl focus:scale-[1.02] ${errors.phone ? 'input-error' : 'focus:border-primary'}`}
-                                placeholder="1234567890"
-                            />
-                            {errors.phone && <p className="mt-2 text-xs text-error flex items-center gap-1 animate-fade-in">
-                                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                </svg>
-                                {errors.phone.message}
-                            </p>}
-                        </div>
-
-                        {/* Account Type */}
-                        <div className="animate-fade-in-up stagger-4">
-                            <label className="flex items-center gap-2 mb-2 text-sm font-semibold label-text">
-                                <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                                </svg>
-                                Account Type
-                            </label>
-                            <select
-                                {...register('type')}
-                                className="w-full select select-bordered bg-base-100 transition-all duration-300 hover:shadow-lg focus:shadow-xl focus:scale-[1.02] focus:border-primary"
-                            >
-                                <option value="CUSTOMER">🛍️ Customer</option>
-                                <option value="VENDOR">🏪 Vendor</option>
-                            </select>
-                            {errors.type && <p className="mt-2 text-xs text-error flex items-center gap-1 animate-fade-in">
-                                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                </svg>
-                                {errors.type.message}
-                            </p>}
-                        </div>
-
-                        {/* Vendor Fields - Show only when type is VENDOR */}
+                        {/* Vendor Section */}
                         {selectedType === 'VENDOR' && (
-                            <div className="p-6 border-l-4 rounded-2xl border-primary  from-primary/10 to-secondary/10 backdrop-blur-sm animate-fade-in-up">
-                                <h3 className="mb-5 text-base font-bold text-base-content flex items-center gap-2">
-                                    <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                                    </svg>
-                                    Vendor Information
-                                </h3>
-
-                                <div className="space-y-4">
-                                    {/* Vendor Name */}
-                                    <div>
-                                        <label className="flex items-center gap-2 mb-2 text-sm font-semibold label-text">
-                                            <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-                                            </svg>
-                                            Vendor/Business Name
-                                        </label>
-                                        <input
-                                            type="text"
-                                            {...register('vendor_name')}
-                                            className={`w-full input input-bordered bg-base-100 transition-all duration-300 hover:shadow-lg focus:shadow-xl focus:scale-[1.02] ${errors.vendor_name ? 'input-error' : 'focus:border-primary'}`}
-                                            placeholder="Your Business Name"
-                                        />
-                                        {errors.vendor_name && <p className="mt-2 text-xs text-error flex items-center gap-1 animate-fade-in">
-                                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                            </svg>
-                                            {errors.vendor_name.message}
-                                        </p>}
+                            <div className="space-y-6 pt-6 mt-6 border-t border-border/50 animate-fade-in-up">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <div className="h-2 w-2 rounded-full bg-primary" />
+                                    <h3 className="text-sm font-black uppercase tracking-widest">Business Information</h3>
+                                </div>
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-2">
+                                        <Label className="font-bold text-xs uppercase tracking-widest text-muted-foreground">Business Name</Label>
+                                        <div className="relative group">
+                                            <Store className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                            <Input
+                                                placeholder="MarketHub Shop"
+                                                className="pl-11 h-12 rounded-xl bg-muted/30 border-none"
+                                                {...register('vendor_name')}
+                                            />
+                                        </div>
+                                        {errors.vendor_name && <p className="text-xs font-bold text-destructive ml-1">{errors.vendor_name.message}</p>}
                                     </div>
 
-                                    {/* Vendor Address */}
-                                    <div>
-                                        <label className="flex items-center gap-2 mb-2 text-sm font-semibold label-text">
-                                            <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                                            </svg>
-                                            Business Address
-                                        </label>
-                                        <textarea
-                                            {...register('vendor_address')}
-                                            className={`w-full textarea textarea-bordered bg-base-100 resize-none transition-all duration-300 hover:shadow-lg focus:shadow-xl focus:scale-[1.02] ${errors.vendor_address ? 'textarea-error' : 'focus:border-primary'}`}
-                                            placeholder="Your business address"
-                                            rows={3}
-                                        ></textarea>
-                                        {errors.vendor_address && <p className="mt-2 text-xs text-error flex items-center gap-1 animate-fade-in">
-                                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                            </svg>
-                                            {errors.vendor_address.message}
-                                        </p>}
+                                    <div className="space-y-2">
+                                        <Label className="font-bold text-xs uppercase tracking-widest text-muted-foreground">Country</Label>
+                                        <div className="relative group">
+                                            <Globe className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
+                                            <Select<Country, false>
+                                                styles={selectStyles}
+                                                options={countries ?? []}
+                                                getOptionLabel={(o) => o.name}
+                                                getOptionValue={(o) => String(o.id)}
+                                                value={countries?.find(c => c.id === selectedCountry) || null}
+                                                onChange={(val) => { setSelectedCountry(val?.id || null); setValue('state', null); }}
+                                                placeholder="Select country"
+                                            />
+                                        </div>
                                     </div>
 
-                                    {/* Country Select */}
-                                    <div className="form-control">
-                                        <label className="label">
-                                            <span className="label-text font-semibold flex items-center gap-2">
-                                                <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                </svg>
-                                                Country
-                                            </span>
-                                        </label>
-                                        <Select<Country, false>
-                                            closeMenuOnSelect
-                                            components={animatedComponents}
-                                            options={countries ?? []}
-                                            getOptionLabel={(option: Country) => option.name}
-                                            getOptionValue={(option: Country) => String(option.id)}
-                                            value={countries?.find(country => country.id === selectedCountry) || null}
-                                            onChange={(val: Country | null) => {
-                                                setSelectedCountry(val?.id || null);
-                                                setValue('state', null);
-                                            }}
-                                            isClearable
-                                            placeholder="Select a country..."
-                                            classNames={{
-                                                control: () => '!bg-base-100 hover:!shadow-lg transition-all',
-                                                menu: () => 'bg-base-100 border border-base-300 shadow-xl',
-                                                menuList: () => 'bg-base-100',
-                                                option: (state: { isSelected: boolean; isFocused: boolean }) =>
-                                                    state.isSelected
-                                                        ? 'bg-primary text-primary-content'
-                                                        : state.isFocused
-                                                            ? 'bg-base-200 !text-base-content'
-                                                            : '!text-base-content',
-                                                input: () => '!text-base-content',
-                                                singleValue: () => '!text-base-content',
-                                                placeholder: () => '!text-base-content/60',
-                                                dropdownIndicator: () => '!text-base-content/60',
-                                                clearIndicator: () => '!text-base-content/60',
-                                            }}
-                                        />
+                                    <div className="space-y-2 md:col-span-2">
+                                        <Label className="font-bold text-xs uppercase tracking-widest text-muted-foreground">Business Address</Label>
+                                        <div className="relative group">
+                                            <MapPin className="absolute left-3.5 top-4 h-4 w-4 text-muted-foreground" />
+                                            <textarea
+                                                {...register('vendor_address')}
+                                                className="w-full pl-11 pt-3 h-24 rounded-xl bg-muted/30 border-none focus:ring-2 focus:ring-primary/20 font-medium text-sm transition-all outline-none"
+                                                placeholder="Street address, City, ZIP code"
+                                            />
+                                        </div>
+                                        {errors.vendor_address && <p className="text-xs font-bold text-destructive ml-1">{errors.vendor_address.message}</p>}
                                     </div>
 
-                                    {/* State */}
-                                    <div>
-                                        <label className="flex items-center gap-2 mb-2 text-sm font-semibold label-text">
-                                            <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                                            </svg>
-                                            State
-                                        </label>
-                                        <Controller
-                                            name="state"
-                                            control={control}
-                                            render={({ field }) => (
-                                                <Select<state, false>
-                                                    closeMenuOnSelect
-                                                    components={animatedComponents}
-                                                    options={states ?? []}
-                                                    getOptionLabel={(option: state) => option.name}
-                                                    getOptionValue={(option: state) => String(option.id)}
-                                                    value={states?.find((s) => String(s.id) === field.value) || null}
-                                                    onChange={(val: state | null) => field.onChange(val ? String(val.id) : null)}
-                                                    onBlur={field.onBlur}
-                                                    isClearable
-                                                    isLoading={statesIsLoading}
-                                                    placeholder="Select a state..."
-                                                    classNames={{
-                                                        control: () => '!bg-base-100 hover:!shadow-lg transition-all',
-                                                        menu: () => 'bg-base-100 border border-base-300 shadow-xl',
-                                                        menuList: () => 'bg-base-100',
-                                                        option: (state: { isSelected: boolean; isFocused: boolean } | null) =>
-                                                            state?.isSelected
-                                                                ? 'bg-primary text-primary-content'
-                                                                : state?.isFocused
-                                                                    ? 'bg-base-200 !text-base-content'
-                                                                    : '!text-base-content',
-                                                        input: () => '!text-base-content',
-                                                        singleValue: () => '!text-base-content',
-                                                        placeholder: () => '!text-base-content/60',
-                                                        dropdownIndicator: () => '!text-base-content/60',
-                                                        clearIndicator: () => '!text-base-content/60',
-                                                    }}
-                                                />
-                                            )}
-                                        />
-                                        {errors.state && <p className="mt-2 text-xs text-error flex items-center gap-1 animate-fade-in">
-                                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                            </svg>
-                                            {errors.state.message}
-                                        </p>}
+                                    <div className="space-y-2 md:col-span-2">
+                                        <Label className="font-bold text-xs uppercase tracking-widest text-muted-foreground">State / Region</Label>
+                                        <div className="relative group">
+                                            <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
+                                            <Controller
+                                                name="state"
+                                                control={control}
+                                                render={({ field }) => (
+                                                    <Select<state, false>
+                                                        styles={selectStyles}
+                                                        options={states ?? []}
+                                                        getOptionLabel={(o) => o.name}
+                                                        getOptionValue={(o) => String(o.id)}
+                                                        value={states?.find(s => String(s.id) === field.value) || null}
+                                                        onChange={(val) => field.onChange(val ? String(val.id) : null)}
+                                                        placeholder={statesIsLoading ? "Loading states..." : "Select state"}
+                                                        isLoading={statesIsLoading}
+                                                    />
+                                                )}
+                                            />
+                                        </div>
+                                        {errors.state && <p className="text-xs font-bold text-destructive ml-1">{errors.state.message}</p>}
                                     </div>
                                 </div>
                             </div>
                         )}
 
-                        {/* Profile Picture */}
-                        <div className="animate-fade-in-up stagger-5">
-                            <label className="flex items-center gap-2 mb-2 text-sm font-semibold label-text">
-                                <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                </svg>
-                                Profile Picture (Optional)
-                            </label>
-                            <input
-                                type="file"
-                                {...register('picture')}
-                                accept="image/jpeg,image/png,image/jpg,image/webp"
-                                className={`w-full file-input file-input-bordered bg-base-100 transition-all duration-300 hover:shadow-lg focus:shadow-xl ${errors.picture ? 'file-input-error' : ''}`}
-                            />
-                            <p className="mt-2 text-xs text-base-content/60 flex items-center gap-1">
-                                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                                </svg>
-                                Max 2MB, JPEG/PNG/WebP only
-                            </p>
-                            {errors.picture && <p className="mt-2 text-xs text-error flex items-center gap-1 animate-fade-in">
-                                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                </svg>
-                                {errors.picture.message}
-                            </p>}
-                        </div>
-
-                        {/* Password Field */}
-                        <div className="animate-fade-in-up stagger-6">
-                            <label className="flex items-center gap-2 mb-2 text-sm font-semibold label-text">
-                                <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                                </svg>
-                                Password
-                            </label>
-                            <div className="relative">
-                                <input
-                                    type={showPassword ? 'text' : 'password'}
-                                    {...register('password')}
-                                    className={`w-full input input-bordered bg-base-100 transition-all duration-300 hover:shadow-lg focus:shadow-xl focus:scale-[1.02] ${errors.password ? 'input-error' : 'focus:border-primary'}`}
-                                    placeholder="••••••••"
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-3 top-3 text-base-content/50 hover:text-primary transition-colors duration-200"
-                                >
-                                    {showPassword ? (
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-4.803m5.596-3.856a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0z" />
-                                        </svg>
-                                    ) : (
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                        </svg>
-                                    )}
-                                </button>
+                        {/* Profile Picture & Passwords */}
+                        <div className="space-y-6 pt-6 border-t border-border/50">
+                            <div className="space-y-2">
+                                <Label className="font-bold text-xs uppercase tracking-widest text-muted-foreground ml-1">Profile Picture (Optional)</Label>
+                                <div className="flex items-center gap-4 group">
+                                    <div className="flex-1 relative">
+                                        <Camera className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                        <Input
+                                            type="file"
+                                            {...register('picture')}
+                                            className="pl-11 h-12 rounded-xl bg-muted/30 border-none file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-black file:bg-primary/10 file:text-primary hover:file:bg-primary/20 transition-all"
+                                        />
+                                    </div>
+                                </div>
+                                {errors.picture && <p className="text-xs font-bold text-destructive ml-1">{errors.picture.message}</p>}
                             </div>
-                            <p className="mt-2 text-xs text-base-content/60 flex items-center gap-1">
-                                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                                </svg>
-                                8-30 characters, letters and numbers only
-                            </p>
-                            {errors.password && <p className="mt-2 text-xs text-error flex items-center gap-1 animate-fade-in">
-                                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                </svg>
-                                {errors.password.message}
-                            </p>}
-                        </div>
 
-                        {/* Confirm Password Field */}
-                        <div className="animate-fade-in-up stagger-6">
-                            <label className="flex items-center gap-2 mb-2 text-sm font-semibold label-text">
-                                <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                                </svg>
-                                Confirm Password
-                            </label>
-                            <div className="relative">
-                                <input
-                                    type={showRepeatPassword ? 'text' : 'password'}
-                                    {...register('repeat_password')}
-                                    className={`w-full input input-bordered bg-base-100 transition-all duration-300 hover:shadow-lg focus:shadow-xl focus:scale-[1.02] ${errors.repeat_password ? 'input-error' : 'focus:border-primary'}`}
-                                    placeholder="••••••••"
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowRepeatPassword(!showRepeatPassword)}
-                                    className="absolute right-3 top-3 text-base-content/50 hover:text-primary transition-colors duration-200"
-                                >
-                                    {showRepeatPassword ? (
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-4.803m5.596-3.856a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0z" />
-                                        </svg>
-                                    ) : (
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                        </svg>
-                                    )}
-                                </button>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <Label className="font-bold text-xs uppercase tracking-widest text-muted-foreground ml-1">Password</Label>
+                                    <div className="relative group">
+                                        <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-primary" />
+                                        <Input
+                                            type={showPassword ? 'text' : 'password'}
+                                            placeholder="••••••••"
+                                            className="pl-11 pr-11 h-12 rounded-xl bg-muted/30 border-none focus-visible:ring-primary/20 font-medium"
+                                            {...register('password')}
+                                        />
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            className="absolute right-2 top-1/2 -translate-y-1/2"
+                                            onClick={() => setShowPassword(!showPassword)}
+                                        >
+                                            {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                        </Button>
+                                    </div>
+                                    {errors.password && <p className="text-xs font-bold text-destructive ml-1">{errors.password.message}</p>}
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label className="font-bold text-xs uppercase tracking-widest text-muted-foreground ml-1">Confirm Password</Label>
+                                    <div className="relative group">
+                                        <ShieldCheck className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-primary" />
+                                        <Input
+                                            type={showRepeatPassword ? 'text' : 'password'}
+                                            placeholder="••••••••"
+                                            className="pl-11 pr-11 h-12 rounded-xl bg-muted/30 border-none focus-visible:ring-primary/20 font-medium"
+                                            {...register('repeat_password')}
+                                        />
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            className="absolute right-2 top-1/2 -translate-y-1/2"
+                                            onClick={() => setShowRepeatPassword(!showRepeatPassword)}
+                                        >
+                                            {showRepeatPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                        </Button>
+                                    </div>
+                                    {errors.repeat_password && <p className="text-xs font-bold text-destructive ml-1">{errors.repeat_password.message}</p>}
+                                </div>
                             </div>
-                            {errors.repeat_password && <p className="mt-2 text-xs text-error flex items-center gap-1 animate-fade-in">
-                                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                </svg>
-                                {errors.repeat_password.message}
-                            </p>}
                         </div>
 
-                        {/* Submit Button */}
-                        <button
-                            type='submit'
+                        <Button 
+                            className="w-full h-14 rounded-xl font-black text-xl shadow-2xl shadow-primary/20 hover-lift mt-6 group"
                             disabled={isRegistering}
-                            className="w-full mt-8 btn btn-primary btn-lg text-lg font-bold shadow-xl hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 bg-gradient-to-r from-primary to-secondary border-0 animate-fade-in-up"
                         >
                             {isRegistering ? (
-                                <>
-                                    <span className="loading loading-spinner loading-md"></span>
-                                    Creating Your Account...
-                                </>
+                                <div className="h-6 w-6 animate-spin rounded-full border-2 border-white border-t-transparent" />
                             ) : (
                                 <>
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                    </svg>
-                                    Create Account
+                                    Create My Account
+                                    <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
                                 </>
                             )}
-                        </button>
+                        </Button>
                     </form>
-
-                    {/* Sign In Link */}
-                    <div className="mt-8 text-center animate-fade-in">
-                        <p className="text-sm text-base-content/70">
-                            Already have an account?{' '}
-                            <a href="/login" className="font-bold link link-primary hover:text-secondary transition-colors duration-200">
-                                Sign in →
-                            </a>
-                        </p>
-                    </div>
-                </div>
-            </div>
+                </CardContent>
+                <CardFooter className="flex flex-col items-center pt-2 pb-10 border-t border-border/50">
+                    <p className="mt-8 text-sm font-medium text-muted-foreground">
+                        Already have an account?{" "}
+                        <Link to="/login" className="text-primary font-black hover:underline transition-all">
+                            Sign in to existing account
+                        </Link>
+                    </p>
+                </CardFooter>
+            </Card>
         </div>
     );
 };
