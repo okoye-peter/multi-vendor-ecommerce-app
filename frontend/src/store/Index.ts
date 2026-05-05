@@ -3,6 +3,7 @@ import { configureStore } from "@reduxjs/toolkit";
 import AuthSliceReducer from './AuthSlice.ts';
 import CartSlideReducer from './CartSlice.ts'
 import { authApi } from './features/AuthApi.ts';
+import { productApi } from './features/ProductApi.ts';
 import WishlistSlideReducer from './WishlistSlice.ts'
 import { wishlistApi } from './features/WishlistApi.ts';
 
@@ -13,11 +14,12 @@ export const store = configureStore({
         [authApi.reducerPath]: authApi.reducer,
         cart: CartSlideReducer,
         [cartApi.reducerPath]: cartApi.reducer,
+        [productApi.reducerPath]: productApi.reducer,
         wishlist: WishlistSlideReducer,
         [wishlistApi.reducerPath]: wishlistApi.reducer
     },
     middleware: (getDefaultMiddleware) =>
-        getDefaultMiddleware().concat(authApi.middleware).concat(cartApi.middleware).concat(wishlistApi.middleware),
+        getDefaultMiddleware().concat(authApi.middleware).concat(cartApi.middleware).concat(wishlistApi.middleware).concat(productApi.middleware),
     devTools: import.meta.env.NODE_ENV !== "production",
 });
 

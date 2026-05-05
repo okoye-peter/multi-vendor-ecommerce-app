@@ -1,3 +1,9 @@
 {"endpoint":"/","ip":"::1","level":"error","message":"Connection terminated due to connection timeout","method":"GET","status":500,"timestamp":"2026-01-15T11:04:38.464Z","url":"/api/products?sortBy=name&sortOrder=asc&is_published=true&limit=15&page=1"}
 {"endpoint":"/","ip":"::1","level":"error","message":"Connection terminated due to connection timeout","method":"GET","status":500,"timestamp":"2026-01-15T11:04:38.474Z","url":"/api/categories"}
 {"endpoint":"/","ip":"::1","level":"error","message":"Connection terminated due to connection timeout","method":"GET","status":500,"timestamp":"2026-01-15T11:04:38.476Z","url":"/api/departments"}
+{"endpoint":"/user","ip":"::1","level":"error","message":"Unauthorized - No token provided","method":"GET","status":401,"timestamp":"2026-04-27T15:19:32.321Z","url":"/api/auth/user"}
+{"endpoint":"/user","ip":"::1","level":"error","message":"Unauthorized - No token provided","method":"GET","status":401,"timestamp":"2026-04-27T15:31:11.240Z","url":"/api/auth/user"}
+{"endpoint":"/user","ip":"::1","level":"error","message":"Unauthorized - No token provided","method":"GET","status":401,"timestamp":"2026-04-27T15:32:07.229Z","url":"/api/auth/user"}
+{"endpoint":"/user","ip":"::1","level":"error","message":"Unauthorized - No token provided","method":"GET","status":401,"timestamp":"2026-04-27T15:33:57.995Z","url":"/api/auth/user"}
+{"endpoint":"/user","ip":"::1","level":"error","message":"Unauthorized - No token provided","method":"GET","status":401,"timestamp":"2026-04-27T15:33:58.060Z","url":"/api/auth/user"}
+{"endpoint":"/user","ip":"::1","level":"error","message":"Unauthorized - No token provided","method":"GET","status":401,"timestamp":"2026-04-27T15:42:04.068Z","url":"/api/auth/user"}
