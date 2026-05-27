@@ -17,6 +17,7 @@ export const PRODUCT_FILTER_CONFIG = {
         category: { select: { id: true, name: true } },
         department: { select: { id: true, name: true, slug: true } },
         vendor: { select: { id: true, name: true, address: true } },
+        images: { select: { id: true, url: true } },
     },
 };
 

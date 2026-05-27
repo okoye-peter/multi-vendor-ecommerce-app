@@ -1,6 +1,5 @@
 import seedUsers from './userSeed.ts'
-import seedDepartments from './departmentSeed.ts'
-import seedCategories from './categorySeed.ts'
+import seedDepartmentsAndCategories from './departmentAndCategorySeed.ts'
 import seedStatesAndLgas from './statesAndLgaSeed.ts'
 
 // paste this command `npm run prisma:seed` in your terminal to run the seeder  
@@ -12,8 +11,8 @@ async function main() {
 
     await seedUsers(prisma)
     await seedStatesAndLgas(prisma)
-    await seedDepartments(prisma)
-    await seedCategories(prisma)
+    await seedDepartmentsAndCategories(prisma)
+    // Categories are now seeded within departmentSeed
 
     console.log('✅ Seeding completed!')
 }

@@ -1,5 +1,5 @@
 import express from 'express';
-import { register, login, sendPasswordResetCode, resetPassword, verifyEmail, logout, getAuthenticatedUser, resendEmailVerificationCode } from '../controllers/auth.controller.js';
+import { register, login, sendPasswordResetCode, resetPassword, verifyEmail, logout, getAuthenticatedUser, resendEmailVerificationCode, updateProfile } from '../controllers/auth.controller.js';
 import { isAuthenticated } from '../middleware/auth.middleware.js';
 import { guestOnly } from '../middleware/guest.middleware.js';
 import { handleSingleFileUpload, rollbackOnError, uploadSingleFile } from '../middleware/fileUpload.js';
@@ -28,6 +28,7 @@ router.post('/password/reset', guestOnly, passwordLimiter, resetPassword);
 router.post('/email/verification/code/resend', isAuthenticated, passwordLimiter, resendEmailVerificationCode);
 router.post('/email/verify', isAuthenticated, passwordLimiter, verifyEmail);
 router.get('/user', isAuthenticated, getAuthenticatedUser);
+router.patch('/profile', isAuthenticated, uploadSingleFile("picture"), handleSingleFileUpload("avatars"), rollbackOnError(), updateProfile);
 
 
 

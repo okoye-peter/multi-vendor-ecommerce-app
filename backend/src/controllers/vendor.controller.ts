@@ -4,7 +4,59 @@ import { FilterService } from "../service/filterService.js";
 import { PRODUCT_FILTER_CONFIG } from "../config/filter.config.js";
 import { startOfMonth, endOfMonth, format, startOfDay, endOfDay } from "date-fns";
 import { Prisma } from "@prisma/client";
-import { getOrderStatusValue } from '../enums/orderStatus.js';
+import { getOrderStatusValue, isValidOrderStatus } from '../enums/orderStatus.js';
+
+export const getAllVendors: RequestHandler = async (req, res, next) => {
+    try {
+        const { search, page = '1', limit = '12' } = req.query as {
+            search?: string;
+            page?: string;
+            limit?: string;
+        };
+
+        const pageNum = Math.max(1, parseInt(page));
+        const limitNum = Math.min(50, Math.max(1, parseInt(limit)));
+        const skip = (pageNum - 1) * limitNum;
+
+        const where = search
+            ? { name: { contains: search, mode: 'insensitive' as const } }
+            : {};
+
+        const [vendors, total] = await Promise.all([
+            prisma.vendor.findMany({
+                where,
+                include: {
+                    state: { select: { id: true, name: true } },
+                    _count: { select: { products: { where: { is_published: true } } } },
+                },
+                orderBy: { createdAt: 'desc' },
+                skip,
+                take: limitNum,
+            }),
+            prisma.vendor.count({ where }),
+        ]);
+
+        const totalPages = Math.ceil(total / limitNum);
+
+        return res.status(200).json({
+            data: vendors,
+            pagination: {
+                page: pageNum,
+                limit: limitNum,
+                total,
+                totalPages,
+                hasNext: pageNum < totalPages,
+                hasPrev: pageNum > 1,
+            },
+        });
+    } catch (error) {
+        next(
+            error instanceof Error
+                ? { message: error.message, status: 500 }
+                : { message: 'Server Error', status: 500 }
+        );
+    }
+};
 
 export const getAuthUserVendors: RequestHandler = async (req, res, next) => {
     try {
@@ -186,13 +238,14 @@ export const getPaginatedOrderList: RequestHandler = async (req, res, next) => {
             product: {
                 select: {
                     id: true,
-                    name: true
+                    name: true,
                 }
             },
             orderGroup: {
                 select: {
                     id: true,
-                    ref_no: true
+                    ref_no: true,
+                    status: true,
                 }
             }
         };
@@ -211,4 +264,61 @@ export const getPaginatedOrderList: RequestHandler = async (req, res, next) => {
         );
     }
 }
+
+export const updateOrderGroupStatus: RequestHandler = async (req, res, next) => {
+    try {
+        const user = req.user;
+        const orderGroupId = Number(req.params.orderGroupId);
+        const statusNum = Number(req.body.status);
+
+        if (isNaN(orderGroupId)) return next({ status: 400, message: 'Invalid order group ID' });
+        if (!isValidOrderStatus(statusNum)) return next({ status: 400, message: 'Invalid status value' });
+
+        // Verify this order group has at least one order belonging to this vendor
+        const vendorIds = await prisma.vendor.findMany({
+            where: { userId: user?.id! },
+            select: { id: true },
+        });
+        const vendorIdList = vendorIds.map((v) => v.id);
+
+        const orderGroup = await prisma.orderGroup.findFirst({
+            where: {
+                id: orderGroupId,
+                orders: { some: { product: { vendorId: { in: vendorIdList } } } },
+            },
+        });
+
+        if (!orderGroup) return next({ status: 404, message: 'Order group not found' });
+
+        const TERMINAL = new Set([
+            getOrderStatusValue('DELIVERED'),
+            getOrderStatusValue('CANCELLED'),
+        ]);
+        if (TERMINAL.has(orderGroup.status as any)) {
+            return next({ status: 400, message: 'Cannot update a delivered or cancelled order' });
+        }
+
+        const prevStatus = orderGroup.status;
+
+        const updated = await prisma.orderGroup.update({
+            where: { id: orderGroupId },
+            data: {
+                status: statusNum,
+                ...(statusNum === 4 ? { deliveredAt: new Date() } : {}),
+            },
+        });
+
+        await prisma.orderStatusLog.create({
+            data: { from: prevStatus, to: statusNum, orderGroupId, userId: user?.id ?? null },
+        });
+
+        res.status(200).json({ message: 'Status updated', orderGroup: updated });
+    } catch (error) {
+        next(
+            error instanceof Error
+                ? { message: error.message, status: 500 }
+                : { message: 'Server Error', status: 500 }
+        );
+    }
+};
 

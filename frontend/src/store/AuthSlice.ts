@@ -31,5 +31,5 @@ const authSlice = createSlice({
 })
 
 
-export const { setUser, setShowEmailVerificationModal } = authSlice.actions;
+export const { setUser, logout, setShowEmailVerificationModal } = authSlice.actions;
 export default authSlice.reducer

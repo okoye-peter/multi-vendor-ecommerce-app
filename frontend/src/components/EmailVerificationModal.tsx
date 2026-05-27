@@ -1,303 +1,239 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Mail, Check, AlertCircle, Clock, X } from 'lucide-react';
-import { useResendEmailVerificationCodeMutation, useVerifyEmailMutation } from '../store/features/AuthApi';
-import type { BackendError } from '../types/Index';
+import { Mail, Check, AlertCircle, Clock, X, ArrowRight, RefreshCw } from 'lucide-react';
+import { useResendEmailVerificationCodeMutation, useVerifyEmailMutation } from '@/store/features/AuthApi';
 import { toast } from 'react-toastify';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/utils/cn';
 
 interface EmailVerificationModalProps {
-    isOpen?: boolean;
-    onClose?: () => void;
-    onSuccess?: (email: string) => void;
-    userEmail: string; // Required - always provided from registration/login
-    autoShow?: boolean; // Show modal automatically if email not verified
+    isOpen: boolean;
+    onClose: () => void;
+    onSuccess?: () => void;
+    userEmail: string;
 }
 
 type OtpArray = [string, string, string, string, string, string];
 
 export default function EmailVerificationModal({
-    isOpen: controlledIsOpen,
-    onClose: controlledOnClose,
+    isOpen,
+    onClose,
     onSuccess,
     userEmail,
-    autoShow = false
 }: EmailVerificationModalProps) {
-    const [internalIsOpen, setInternalIsOpen] = useState<boolean>(autoShow);
     const [otp, setOtp] = useState<OtpArray>(['', '', '', '', '', '']);
-    const [loading, setLoading] = useState<boolean>(false);
-    const [error, setError] = useState<string>('');
-    const [success, setSuccess] = useState<boolean>(false);
-    const [resendTimer, setResendTimer] = useState<number>(60);
-    const [canResend, setCanResend] = useState<boolean>(false);
+    const [error, setError] = useState('');
+    const [success, setSuccess] = useState(false);
+    const [resendTimer, setResendTimer] = useState(0);
+    const [canResend, setCanResend] = useState(true);
 
-    // Use controlled or internal state
-    const isOpen = controlledIsOpen !== undefined ? controlledIsOpen : internalIsOpen;
-    const handleCloseModal = () => {
-        if (controlledOnClose) {
-            controlledOnClose();
-        } else {
-            setInternalIsOpen(false);
-        }
+    const [resendCode, { isLoading: isSending }] = useResendEmailVerificationCodeMutation();
+    const [verifyEmail, { isLoading: isVerifying }] = useVerifyEmailMutation();
+
+    const startTimer = () => {
+        setResendTimer(60);
+        setCanResend(false);
     };
-    const [resendEmailVerificationCodeMutation, { isLoading: isSendingEmailVerification }] = useResendEmailVerificationCodeMutation();
-    const [verifyEmailMutation, { isLoading: isVerifyingEmail }] = useVerifyEmailMutation();
 
-    const handleSendOtp = useCallback(async (): Promise<void> => {
+    const handleSendCode = useCallback(async () => {
         setError('');
-        setLoading(true);
-
         try {
-            // API call: await sendOtpMutation({ email: userEmail }).unwrap();
-            await resendEmailVerificationCodeMutation().unwrap();
-            setResendTimer(60);
-            setCanResend(false);
-        } catch (err) {
-            const backendError = err as BackendError;
-            setError(backendError.response?.data?.message as string || backendError.message || 'Failed to send verification code. Please try again.');
-        } finally {
-            setLoading(false);
+            await resendCode().unwrap();
+            startTimer();
+        } catch (err: any) {
+            setError(err?.data?.message || 'Failed to send verification code.');
         }
-    }, [resendEmailVerificationCodeMutation]);
+    }, [resendCode]);
 
-    // Auto-send OTP when modal opens
+    // Auto-send on open
     useEffect(() => {
-        if (autoShow && isOpen) {
-            handleSendOtp();
+        if (isOpen) {
+            handleSendCode();
         }
-    }, [autoShow, isOpen, handleSendOtp]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isOpen]);
 
-    // Countdown timer for resend
+    // Countdown timer
     useEffect(() => {
-        let interval: ReturnType<typeof setInterval> | undefined;
-        if (isOpen && resendTimer > 0) {
-            interval = setInterval(() => {
-                setResendTimer((prev: number) => {
-                    if (prev <= 1) {
-                        setCanResend(true);
-                        return 0;
-                    }
-                    return prev - 1;
-                });
-            }, 1000);
-        }
-        return () => {
-            if (interval) clearInterval(interval);
-        };
-    }, [isOpen, resendTimer]);
+        if (resendTimer <= 0) return;
+        const id = setInterval(() => {
+            setResendTimer((prev) => {
+                if (prev <= 1) { setCanResend(true); return 0; }
+                return prev - 1;
+            });
+        }, 1000);
+        return () => clearInterval(id);
+    }, [resendTimer]);
 
-    const handleOtpChange = (index: number, value: string): void => {
-        if (value.length > 1) return;
-        if (!/^\d*$/.test(value)) return;
-
-        const newOtp = [...otp] as OtpArray;
-        newOtp[index] = value;
-        setOtp(newOtp);
-
-        // Auto-focus next input
+    const handleOtpChange = (index: number, value: string) => {
+        if (value.length > 1 || !/^\d*$/.test(value)) return;
+        const next = [...otp] as OtpArray;
+        next[index] = value;
+        setOtp(next);
         if (value && index < 5) {
-            const nextInput = document.getElementById(`otp-${index + 1}`);
-            if (nextInput) (nextInput as HTMLInputElement).focus();
+            (document.getElementById(`otp-${index + 1}`) as HTMLInputElement)?.focus();
         }
-
-        // Auto-submit when all 6 digits are entered
-        // if (index === 5 && value) {
-        // const fullOtp = [...newOtp.slice(0, 5), value].join('');
-        // if (fullOtp.length === 6) {
-        //     setTimeout(() => handleVerifyOtp(fullOtp), 100);
-        // }
-        // }
     };
 
-    const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>): void => {
+    const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Backspace') {
             if (!otp[index] && index > 0) {
-                const prevInput = document.getElementById(`otp-${index - 1}`);
-                if (prevInput) (prevInput as HTMLInputElement).focus();
+                (document.getElementById(`otp-${index - 1}`) as HTMLInputElement)?.focus();
             } else {
-                const newOtp = [...otp] as OtpArray;
-                newOtp[index] = '';
-                setOtp(newOtp);
+                const next = [...otp] as OtpArray;
+                next[index] = '';
+                setOtp(next);
             }
         }
     };
 
-    const handleVerifyOtp = async (otpCode: string = otp.join('')): Promise<void> => {
+    const handleVerify = async () => {
+        const code = otp.join('');
+        if (code.length !== 6) { setError('Please enter the complete 6-digit code'); return; }
         setError('');
-
-        if (otpCode.length !== 6) {
-            setError('Please enter the complete 6-digit code');
-            return;
-        }
-
-        setLoading(true);
-
         try {
-            await verifyEmailMutation({ verificationCode: otp.join('') }).unwrap()
+            await verifyEmail({ verificationCode: code }).unwrap();
             setSuccess(true);
-            if (onSuccess) onSuccess(userEmail);
-        } catch (err) {
-            const backendError = err as BackendError;
-            setError(backendError.response?.data?.message as string || backendError.message || 'Invalid verification code. Please try again.');
+            if (onSuccess) onSuccess();
+        } catch (err: any) {
+            setError(err?.data?.message || 'Invalid verification code.');
             setOtp(['', '', '', '', '', '']);
-            const firstInput = document.getElementById('otp-0');
-            if (firstInput) (firstInput as HTMLInputElement).focus();
-        } finally {
-            setLoading(false);
+            (document.getElementById('otp-0') as HTMLInputElement)?.focus();
         }
     };
 
-    const handleResendOtp = async (): Promise<void> => {
+    const handleResend = async () => {
         if (!canResend) return;
-
         setError('');
         setOtp(['', '', '', '', '', '']);
-        setLoading(true);
-
         try {
-            const res = await resendEmailVerificationCodeMutation().unwrap();
-            setResendTimer(60);
-            setCanResend(false);
-            const firstInput = document.getElementById('otp-0');
-            toast.success(res.message || 'Email verification code sent successfully')
-            if (firstInput) (firstInput as HTMLInputElement).focus();
-        } catch (error) {
-            const backendError = error as BackendError;
-            setError(backendError.response?.data?.message as string || backendError.message || 'Failed to resend code. Please try again.');
-        } finally {
-            setLoading(false);
+            const res = await resendCode().unwrap();
+            startTimer();
+            toast.success(res.message || 'Code sent!');
+            (document.getElementById('otp-0') as HTMLInputElement)?.focus();
+        } catch (err: any) {
+            setError(err?.data?.message || 'Failed to resend code.');
         }
     };
 
-    const handleSkip = (): void => {
-        handleCloseModal();
-    };
+    if (!isOpen) return null;
 
-    if (!isOpen) {
-        return null;
-    }
+    const loading = isSending || isVerifying;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-            <div className={`modal ${isOpen ? 'modal-open' : ''}`}>
-                <div className="relative max-w-md modal-box">
-                    {/* Close Button */}
-                    <button
-                        onClick={handleCloseModal}
-                        className="absolute btn btn-sm btn-circle btn-ghost right-2 top-2"
-                    >
-                        <X className="w-5 h-5" />
-                    </button>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-background/80 backdrop-blur-2xl" onClick={onClose} />
 
+            <div className="relative w-full max-w-md bg-background rounded-[2.5rem] shadow-2xl border border-white/10 overflow-hidden">
+                <button
+                    onClick={onClose}
+                    className="absolute right-6 top-6 w-10 h-10 rounded-full hover:bg-white/5 flex items-center justify-center transition-all z-10"
+                >
+                    <X className="w-5 h-5" />
+                </button>
+
+                <div className="p-10 pt-12">
                     {success ? (
-                        <div className="py-4 text-center">
-                            <div className="inline-flex p-4 mb-4 rounded-full bg-success/10 animate-bounce">
-                                <Check className="w-16 h-16 text-success" />
+                        <div className="text-center py-4 space-y-6">
+                            <div className="inline-flex p-6 rounded-[2rem] bg-emerald-500/10">
+                                <Check className="w-16 h-16 text-emerald-500" />
                             </div>
-                            <h3 className="mb-2 text-2xl font-bold">Email Verified!</h3>
-                            <p className="mb-6 text-base-content/70">
-                                Your email <strong>{userEmail}</strong> has been successfully verified.
-                            </p>
-                            <button
-                                className="btn btn-primary btn-wide"
-                                onClick={handleCloseModal}
-                            >
-                                Continue
-                            </button>
+                            <div className="space-y-2">
+                                <h3 className="text-3xl font-black">Email Verified!</h3>
+                                <p className="text-muted-foreground">
+                                    <span className="text-white font-bold">{userEmail}</span> has been verified.
+                                </p>
+                            </div>
+                            <Button onClick={onClose} className="w-full h-14 rounded-2xl font-black text-lg">
+                                Continue <ArrowRight className="ml-2 w-5 h-5" />
+                            </Button>
                         </div>
                     ) : (
-                        <div>
-                            <div className="mb-6 text-center">
-                                <div className="inline-flex items-center justify-center w-16 h-16 mb-4 rounded-full bg-primary/10">
-                                    <Mail className="w-8 h-8 text-primary" />
+                        <div className="space-y-8">
+                            <div className="text-center space-y-4">
+                                <div className="inline-flex items-center justify-center w-20 h-20 rounded-[2.5rem] bg-primary/10">
+                                    <Mail className="w-10 h-10 text-primary" />
                                 </div>
-                                <h3 className="mb-2 text-2xl font-bold">Check Your Email</h3>
-                                <p className="mb-2 text-base-content/70">
-                                    We've sent a 6-digit code to
-                                </p>
-                                <strong className="text-lg text-base-content">{userEmail}</strong>
+                                <div className="space-y-1">
+                                    <h3 className="text-3xl font-black">Verify Your Email</h3>
+                                    <p className="text-muted-foreground text-sm">
+                                        We sent a 6-digit code to
+                                    </p>
+                                    <p className="text-primary font-bold text-sm">{userEmail}</p>
+                                </div>
                             </div>
 
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="label">
-                                        <span className="font-medium label-text">Enter Verification Code</span>
-                                    </label>
-                                    <div className="flex justify-between gap-2 mb-2">
-                                        {otp.map((digit, index) => (
-                                            <input
-                                                key={index}
-                                                id={`otp-${index}`}
-                                                type="text"
-                                                inputMode="numeric"
-                                                maxLength={1}
-                                                className="w-12 h-12 text-xl font-bold text-center input input-bordered"
-                                                value={digit}
-                                                onChange={(e) => handleOtpChange(index, e.target.value)}
-                                                onKeyDown={(e) => handleOtpKeyDown(index, e)}
-                                                disabled={loading}
-                                            />
-                                        ))}
-                                    </div>
-                                    {otp.join('').length > 0 && otp.join('').length < 6 && (
-                                        <p className="text-xs text-center text-warning">
-                                            Enter all 6 digits
-                                        </p>
-                                    )}
+                            <div className="space-y-3">
+                                <div className="flex justify-between gap-3">
+                                    {otp.map((digit, index) => (
+                                        <input
+                                            key={index}
+                                            id={`otp-${index}`}
+                                            type="text"
+                                            inputMode="numeric"
+                                            maxLength={1}
+                                            value={digit}
+                                            onChange={(e) => handleOtpChange(index, e.target.value)}
+                                            onKeyDown={(e) => handleOtpKeyDown(index, e)}
+                                            disabled={loading}
+                                            className={cn(
+                                                "w-full aspect-square text-2xl font-black text-center rounded-2xl outline-none transition-all",
+                                                "bg-white/5 border border-white/10 focus:ring-2 focus:ring-primary/40 focus:bg-background h-14",
+                                                digit ? "ring-2 ring-primary/20 bg-background" : ""
+                                            )}
+                                        />
+                                    ))}
                                 </div>
 
                                 {error && (
-                                    <div className="alert alert-error">
-                                        <AlertCircle className="w-5 h-5" />
-                                        <span className="text-sm">{error}</span>
+                                    <div className="flex items-center gap-3 p-4 rounded-2xl bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                                        <AlertCircle className="w-4 h-4 shrink-0" />
+                                        <span className="text-sm font-bold">{error}</span>
                                     </div>
                                 )}
+                            </div>
 
-                                <button
-                                    onClick={() => handleVerifyOtp()}
-                                    className={`btn btn-primary w-full ${loading ? 'loading' : ''}`}
-                                    disabled={loading || otp.join('').length !== 6 || isSendingEmailVerification || isVerifyingEmail}
+                            <div className="space-y-3">
+                                <Button
+                                    onClick={handleVerify}
+                                    disabled={loading || otp.join('').length !== 6}
+                                    className="w-full h-14 rounded-2xl font-black text-lg"
                                 >
-                                    {loading ? 'Verifying...' : 'Verify Email'}
-                                </button>
+                                    {isVerifying ? (
+                                        <><RefreshCw className="w-5 h-5 animate-spin mr-2" />Verifying…</>
+                                    ) : 'Verify Code'}
+                                </Button>
 
-                                <button
-                                    onClick={handleSkip}
-                                    className="w-full btn btn-ghost"
+                                {!canResend ? (
+                                    <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground font-bold py-2">
+                                        <Clock className="w-4 h-4" />
+                                        Resend in <span className="text-primary ml-1">{resendTimer}s</span>
+                                    </div>
+                                ) : (
+                                    <Button
+                                        variant="ghost"
+                                        onClick={handleResend}
+                                        disabled={loading}
+                                        className="w-full h-12 rounded-xl text-primary font-black hover:bg-primary/5"
+                                    >
+                                        Resend verification code
+                                    </Button>
+                                )}
+
+                                <Button
+                                    variant="ghost"
+                                    onClick={onClose}
+                                    className="w-full h-12 rounded-xl font-bold text-muted-foreground"
                                 >
-                                    I'll Verify Later
-                                </button>
+                                    Complete later
+                                </Button>
+                            </div>
 
-                                <div className="text-xs divider">OR</div>
-
-                                <div className="text-center">
-                                    {!canResend ? (
-                                        <div className="flex items-center justify-center gap-2 text-sm text-base-content/70">
-                                            <Clock className="w-4 h-4" />
-                                            <span>
-                                                Resend code in <strong className="text-primary">{resendTimer}s</strong>
-                                            </span>
-                                        </div>
-                                    ) : (
-                                        <button
-                                            onClick={handleResendOtp}
-                                            className="btn btn-ghost btn-sm"
-                                            disabled={loading}
-                                        >
-                                            Resend Verification Code
-                                        </button>
-                                    )}
-                                </div>
-
-                                <div className="p-3 text-sm rounded-lg bg-info/10">
-                                    <p className="mb-1 font-medium text-info">💡 Tip:</p>
-                                    <p className="text-xs text-base-content/70">
-                                        Check your spam folder if you don't see the email within a few minutes.
-                                    </p>
-                                </div>
+                            <div className="p-4 rounded-2xl bg-primary/5 border border-primary/10 text-xs text-muted-foreground font-medium">
+                                Check your spam folder if you haven't received the email within a few minutes.
                             </div>
                         </div>
                     )}
                 </div>
-                <div className="modal-backdrop" onClick={handleCloseModal}></div>
             </div>
         </div>
     );
