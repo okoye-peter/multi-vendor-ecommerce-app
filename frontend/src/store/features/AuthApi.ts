@@ -63,6 +63,14 @@ export const authApi = createApi({
             query: () => '/auth/user',
             providesTags: ['user']
         }),
+        updateProfile: builder.mutation<{ user: User; message: string }, FormData>({
+            query: (formData) => ({
+                url: '/auth/profile',
+                method: 'PATCH',
+                body: formData,
+            }),
+            invalidatesTags: ['user'],
+        }),
     }),
 });
 
@@ -74,5 +82,6 @@ export const {
     useResetPasswordMutation,
     useVerifyEmailMutation,
     useGetAuthenticatedUserQuery,
-    useResendEmailVerificationCodeMutation
+    useResendEmailVerificationCodeMutation,
+    useUpdateProfileMutation,
 } = authApi;

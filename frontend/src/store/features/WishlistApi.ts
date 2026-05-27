@@ -14,25 +14,29 @@ export const wishlistApi = createApi({
             query: () => ({
                 url: '/wishlists',
                 method: 'GET'
-            })
+            }),
+            providesTags: ['wishlist'],
         }),
         toggleProductInWishlist: builder.mutation<{ message: string, wishlist: Wishlist }, { productId: number }>({
             query: ({ productId }) => ({
                 url: `/wishlists/${productId}`,
                 method: 'POST'
-            })
+            }),
+            invalidatesTags: ['wishlist'],
         }),
         clearWishlist: builder.mutation<{ message: string }, void>({
             query: () => ({
                 url: `/wishlists`,
                 method: 'DELETE'
-            })
+            }),
+            invalidatesTags: ['wishlist'],
         }),
         moveWishlistItemsToCart: builder.mutation<{ message: string }, void>({
             query: () => ({
                 url: `/wishlists/add-to-cart`,
                 method: 'POST'
-            })
+            }),
+            invalidatesTags: ['wishlist'],
         })
     })
 })

@@ -109,6 +109,8 @@ export interface Category {
     id: number;
     name: string;
     departmentId?: number;
+    department?: { id: number; name: string };
+    _count?: { products: number };
     [key: string]: unknown;
 }
 

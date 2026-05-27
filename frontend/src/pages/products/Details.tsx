@@ -4,6 +4,9 @@ import { ShoppingCart, Heart, Share2, ShieldCheck, Truck, RotateCcw, Star, Loade
 import { useState } from "react";
 import { useGetProductBySlugQuery } from "../../store/features/ProductApi";
 import { useAddToCartMutation } from "../../store/features/CartApi";
+import { useToggleProductInWishlistMutation, useGetUserWishlistQuery } from "../../store/features/WishlistApi";
+import { useSelector } from "react-redux";
+import type { RootState } from "../../store/Index";
 import { toast } from "react-toastify";
 
 const ProductDetails = () => {
@@ -13,8 +16,23 @@ const ProductDetails = () => {
 
   const { data: productResponse, isLoading, error } = useGetProductBySlugQuery(slug || "");
   const [addToCart, { isLoading: isAddingToCart }] = useAddToCartMutation();
+  const [toggleWishlist, { isLoading: isWishlisting }] = useToggleProductInWishlistMutation();
+  const user = useSelector((state: RootState) => state.auth.user);
+  const { data: wishlistItems } = useGetUserWishlistQuery(undefined, { skip: !user });
 
-  const product = productResponse?.data;
+  const product = productResponse?.product;
+  const isWishlisted = wishlistItems?.some((w) => w.productId === product?.id) ?? false;
+
+  const handleToggleWishlist = async () => {
+    if (!user) { toast.info("Please log in to save items to your wishlist"); return; }
+    if (!product) return;
+    try {
+      await toggleWishlist({ productId: product.id }).unwrap();
+      toast.success(isWishlisted ? "Removed from wishlist" : "Added to wishlist!");
+    } catch (err: any) {
+      toast.error(err?.data?.message || "Failed to update wishlist");
+    }
+  };
 
   const handleAddToCart = async () => {
     if (!product) return;
@@ -152,13 +170,20 @@ const ProductDetails = () => {
               <button 
                 onClick={handleAddToCart}
                 disabled={isAddingToCart || product.quantity === 0}
-                className="flex-grow py-5 bg-primary text-white rounded-2xl font-bold btn-premium flex items-center justify-center space-x-3 text-lg disabled:opacity-50"
+                className="grow py-5 bg-primary text-white rounded-2xl font-bold btn-premium flex items-center justify-center space-x-3 text-lg disabled:opacity-50"
               >
                 {isAddingToCart ? <Loader2 className="w-6 h-6 animate-spin" /> : <ShoppingCart className="w-6 h-6" />}
                 <span>Add to Cart</span>
               </button>
-              <button className="w-16 h-16 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center hover:bg-white/10 transition-all text-white">
-                <Heart className="w-6 h-6" />
+              <button
+                onClick={handleToggleWishlist}
+                disabled={isWishlisting}
+                className="w-16 h-16 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center hover:bg-white/10 transition-all text-white disabled:opacity-60"
+              >
+                {isWishlisting
+                  ? <Loader2 className="w-6 h-6 animate-spin" />
+                  : <Heart className={`w-6 h-6 transition-colors ${isWishlisted ? 'fill-rose-500 text-rose-500' : ''}`} />
+                }
               </button>
               <button className="w-16 h-16 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center hover:bg-white/10 transition-all text-white">
                 <Share2 className="w-6 h-6" />

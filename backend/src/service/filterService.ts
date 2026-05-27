@@ -126,8 +126,15 @@ export class FilterService {
                         (where[relation] as Record<string, unknown>)[nestedField] = this.getOperatorClause(operator, value);
                     }
                 } else {
-                    // Handle regular fields
-                    where[field] = this.getOperatorClause(operator, value);
+                    // Handle regular fields — merge if a clause already exists for this field
+                    // (needed for date ranges where gte and lte target the same field)
+                    const clause = this.getOperatorClause(operator, value);
+                    const existing = where[field];
+                    if (existing !== undefined && typeof existing === 'object' && existing !== null && typeof clause === 'object' && clause !== null) {
+                        where[field] = { ...(existing as object), ...(clause as object) };
+                    } else {
+                        where[field] = clause;
+                    }
                 }
             });
         }

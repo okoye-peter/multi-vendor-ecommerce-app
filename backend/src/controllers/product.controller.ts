@@ -708,7 +708,8 @@ export const getProductOrders: RequestHandler = async (req, res, next) => {
                     subProduct: {
                         select: {
                             id: true,
-                            batch_no: true
+                            batch_no: true,
+                            cost_price: true,
                         }
                     }
                 }

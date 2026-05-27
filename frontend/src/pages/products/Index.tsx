@@ -1,10 +1,14 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Search, SlidersHorizontal, Grid3X3, List, Loader2 } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
 import ProductCard from "../../components/ui/ProductCard";
 import { useGetProductsQuery, useGetCategoriesQuery } from "../../store/features/ProductApi";
 
 const ProductIndex = () => {
+  const [searchParams] = useSearchParams();
+  const urlVendorId = searchParams.get("vendorId") ?? "";
+
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
@@ -16,10 +20,11 @@ const ProductIndex = () => {
     return () => clearTimeout(handler);
   }, [searchQuery]);
 
-  const { data: productsData, isLoading: productsLoading } = useGetProductsQuery({ 
-    page, 
+  const { data: productsData, isLoading: productsLoading } = useGetProductsQuery({
+    page,
     search: debouncedSearch,
-    categoryId: selectedCategory
+    categoryId: selectedCategory,
+    vendorId: urlVendorId,
   });
 
   const { data: categories } = useGetCategoriesQuery();

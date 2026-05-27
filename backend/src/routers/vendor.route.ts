@@ -2,12 +2,14 @@ import express from 'express';
 import {} from '../middleware/auth.middleware.js';
 import { requireVendorAuthorization } from '../middleware/vendorOnly.middleware.js';
 import { createProduct, deleteProduct, downloadProductSalesReport, getProduct, getProductBatches, getProductOrders, refillProduct, toggleProductBatchPublicity, toggleProductIsPublished, updateProduct, updateProductBatch } from '../controllers/product.controller.js';
-import { getAuthUserVendors, getPaginatedOrderList, getVendorProducts, vendorDashboardStats } from '../controllers/vendor.controller.js';
+import { getAllVendors, getAuthUserVendors, getPaginatedOrderList, getVendorProducts, updateOrderGroupStatus, vendorDashboardStats } from '../controllers/vendor.controller.js';
 import { handleMultipleFilesUpload, rollbackOnError, uploadMultipleFiles } from '../middleware/fileUpload.js';
 
 const router = express.Router();
+router.get('/public', getAllVendors);
 router.get('/', getAuthUserVendors);
 router.get('/orders', getPaginatedOrderList);
+router.patch('/orders/:orderGroupId/status', updateOrderGroupStatus);
 router.get('/:vendorId/dashboard', requireVendorAuthorization, vendorDashboardStats);
 router.get('/products', getVendorProducts);
 router.post('/:vendorId/products', uploadMultipleFiles("images[]", 4), handleMultipleFilesUpload("products"), rollbackOnError(), requireVendorAuthorization, createProduct);

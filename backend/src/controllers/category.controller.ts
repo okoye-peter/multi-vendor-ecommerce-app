@@ -245,7 +245,7 @@ export const getAllCategories: RequestHandler = async (req, res, next) => {
             const Department = await prisma.department.findUnique({
                 where: { id: departmentId }
             });
-            if(!Department) return res.status(200).json({});
+            if(!Department) return res.status(200).json([]);
             else where.departmentId = departmentId;
         }
 
@@ -256,7 +256,14 @@ export const getAllCategories: RequestHandler = async (req, res, next) => {
             };
         }
 
-        const categories = await prisma.category.findMany({ where })
+        const categories = await prisma.category.findMany({
+            where,
+            include: {
+                department: { select: { id: true, name: true } },
+                _count: { select: { products: { where: { is_published: true } } } },
+            },
+            orderBy: { name: 'asc' },
+        });
 
         res.status(200).json(categories);
     } catch (error) {

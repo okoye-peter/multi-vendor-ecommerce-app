@@ -6,7 +6,7 @@ import { sendPasswordResetToken } from "../utils/sendEmail.js";
 import prisma from "../libs/prisma.js";
 import bcrypt from "bcryptjs";
 import { queuePasswordResetTokenEmail, queueVerificationEmail } from "../queues/email.queue.js";
-import { FileService, type RequestWithUploadedFile } from "../middleware/fileUpload.js";
+import { FileService, type RequestWithUploadedFile, rollbackOnError } from "../middleware/fileUpload.js";
 
 const userService = new UserService();
 
@@ -417,6 +417,68 @@ export const verifyEmail: RequestHandler = async (req, res, next) => {
         } else {
             res.status(500).json({ message: "Server Error" });
         }
+    }
+};
+
+export const updateProfile: RequestHandler = async (req, res, next) => {
+    const reqWithUpload = req as RequestWithUploadedFile;
+    const cloudinaryUpload = reqWithUpload.cloudinaryUpload;
+
+    try {
+        const userId = req.user?.id;
+        if (!userId) return res.status(401).json({ message: "Unauthorized" });
+
+        const schema = z.object({
+            name: z.string().min(3, "Name must be at least 3 characters").max(50).optional(),
+            phone: z.string().min(7).max(15).regex(/^[0-9]+$/, "Phone must contain only digits").optional(),
+            picture_url: z.url("Invalid picture URL").nullable().optional(),
+            picture: fileSchema,
+        });
+
+        const result = schema.safeParse({
+            ...req.body,
+            picture_url: cloudinaryUpload?.url || undefined,
+            picture: cloudinaryUpload?.file || undefined,
+        });
+
+        if (!result.success) {
+            if (cloudinaryUpload?.url) await FileService.rollback(cloudinaryUpload.url);
+            const { fieldErrors, formErrors } = result.error.flatten();
+            const hasFieldErrors = Object.values(fieldErrors).some((e) => e && e.length > 0);
+            return next({ status: 400, message: hasFieldErrors ? fieldErrors : formErrors });
+        }
+
+        const currentUser = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { pictureUrl: true },
+        });
+        if (!currentUser) return res.status(404).json({ message: "User not found" });
+
+        const { picture, picture_url, ...textData } = result.data;
+
+        const updatedUser = await prisma.user.update({
+            where: { id: userId },
+            data: {
+                ...(textData.name   && { name: textData.name }),
+                ...(textData.phone  && { phone: textData.phone }),
+                ...(picture_url !== undefined && { pictureUrl: picture_url }),
+            },
+            select: {
+                id: true, name: true, email: true, emailVerifiedAt: true,
+                phone: true, phoneVerifiedAt: true, type: true, pictureUrl: true, createdAt: true,
+            },
+        });
+
+        // Delete old picture from Cloudinary when a new one is uploaded
+        if (picture_url && currentUser.pictureUrl) {
+            FileService.deleteSingle(currentUser.pictureUrl).catch(() => {});
+        }
+
+        res.status(200).json({ user: updatedUser, message: "Profile updated successfully" });
+    } catch (error) {
+        if (cloudinaryUpload?.url) await FileService.rollback(cloudinaryUpload.url);
+        if (error instanceof Error) next({ message: error.message, status: 500 });
+        else next(error);
     }
 };
 
