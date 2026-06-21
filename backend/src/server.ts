@@ -89,8 +89,11 @@ app.use(helmet({
         directives: {
             defaultSrc: ["'self'"],
             imgSrc: ["'self'", "data:", "https://res.cloudinary.com", "https://images.unsplash.com"],
-            scriptSrc: ["'self'", "'unsafe-inline'"],
-            styleSrc: ["'self'", "'unsafe-inline'"],
+            scriptSrc: ["'self'", "'unsafe-inline'", "https://js.paystack.co"],
+            scriptSrcElem: ["'self'", "'unsafe-inline'", "https://js.paystack.co"],
+            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+            styleSrcElem: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+            fontSrc: ["'self'", "https://fonts.gstatic.com"],
             connectSrc: ["'self'"],
         },
     },
