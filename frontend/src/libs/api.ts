@@ -1,5 +1,11 @@
-import { type BatchData } from '../pages/vendor/products/modals/SubProducts/Create.tsx';
 import type { Country, LGA, State, loginData, PasswordResetData } from "../types/Index.ts";
+
+export type BatchData = {
+    expiry_date?: Date | null;
+    quantity: number;
+    cost_price: number;
+    status: boolean;
+};
 import axiosInstance from "./axios.ts";
 // import { AxiosError } from "axios";
 
