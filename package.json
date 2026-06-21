@@ -6,7 +6,7 @@
   "scripts": {
     "build": "npm install --include=dev --prefix backend && npm run build --prefix backend && npm install --include=dev --prefix frontend && npm run build --prefix frontend",
     "start": "npm run start --prefix backend",
-    "start:prod": "cd backend && npx prisma migrate deploy && NODE_ENV=production npx tsx src/server.ts"
+    "start:prod": "cd backend && node_modules/.bin/prisma migrate deploy && NODE_ENV=production node_modules/.bin/tsx src/server.ts"
   },
   "keywords": [],
   "author": "",
