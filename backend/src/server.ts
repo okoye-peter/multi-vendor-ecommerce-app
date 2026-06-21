@@ -8,7 +8,6 @@ import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
 import routeNotFoundErrorHandler from "./middleware/routeNotFound.middleware.js";
 import path from "path";
-import { fileURLToPath } from "url";
 import departmentRoute from './routers/department.route.js';
 import categoryRoute from './routers/category.route.js'
 import stateRoute from './routers/state.route.js'
@@ -101,12 +100,6 @@ app.use(helmet({
 app.use(cors(corsConfig));
 app.use(useragent());
 
-// Serve the /uploads folder publicly
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-// Serve static files from /public
-// app.use(express.static(path.join(__dirname, "../public")));
-
 app.use('/api/auth', authRoute);
 app.use('/api/locations', stateRoute);
 app.use('/api/departments', departmentRoute);
@@ -124,7 +117,8 @@ app.use('/admin/queues', serverAdapter.getRouter());
 
 // Serve React app (both in development and production)
 const isProduction = process.env.NODE_ENV === 'production';
-const frontendPath = path.resolve(__dirname, '..', '..', 'frontend', 'dist');
+// process.cwd() is always the backend/ directory (start:prod does `cd backend`)
+const frontendPath = path.resolve(process.cwd(), '..', 'frontend', 'dist');
 
 console.log(`Environment: ${process.env.NODE_ENV || 'development (not set)'}`);
 console.log(`Frontend path: ${frontendPath}`);
