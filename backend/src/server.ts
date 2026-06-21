@@ -8,6 +8,7 @@ import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
 import routeNotFoundErrorHandler from "./middleware/routeNotFound.middleware.js";
 import path from "path";
+import { existsSync } from "fs";
 import departmentRoute from './routers/department.route.js';
 import categoryRoute from './routers/category.route.js'
 import stateRoute from './routers/state.route.js'
@@ -122,6 +123,7 @@ const frontendPath = path.resolve(process.cwd(), '..', 'frontend', 'dist');
 
 console.log(`Environment: ${process.env.NODE_ENV || 'development (not set)'}`);
 console.log(`Frontend path: ${frontendPath}`);
+console.log(`Frontend dist exists: ${existsSync(frontendPath)}`);
 
 // Serve static files with fallback to index.html for client-side routing
 app.use(express.static(frontendPath));
