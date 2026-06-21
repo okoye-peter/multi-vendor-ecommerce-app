@@ -5,7 +5,7 @@ services:
     region: oregon
     plan: free
     buildCommand: npm run build
-    startCommand: npm run start
+    startCommand: npm run start:prod --prefix backend
     envVars:
       - key: NODE_ENV
         value: production
